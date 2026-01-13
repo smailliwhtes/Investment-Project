@@ -1,0 +1,150 @@
+# Finnhub quotes + Stooq daily history -> screener_snapshot.csv
+# Put watchlist symbols in .\watchlist.txt (one per line)
+
+$ErrorActionPreference = "Stop"
+
+# ---- Load watchlist ----
+$watchlistPath = ".\watchlist.txt"
+if (-not (Test-Path $watchlistPath)) { throw "Missing watchlist.txt at: $watchlistPath" }
+
+$symbols = Get-Content $watchlistPath |
+  ForEach-Object { $_.Trim().ToUpper() } |
+  Where-Object { $_ -and $_ -notmatch "^\s*#" } |
+  Sort-Object -Unique
+
+if ($symbols.Count -eq 0) { throw "watchlist.txt is empty." }
+
+# ---- Finnhub key (quotes endpoint) ----
+$secure = Read-Host "Finnhub API key (paste, press Enter)" -AsSecureString
+$bstr   = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+$token  = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+
+$headers = @{ "X-Finnhub-Token" = $token }
+
+function Get-FinnhubQuote {
+  param([Parameter(Mandatory)][string]$Symbol)
+
+  $url = "https://finnhub.io/api/v1/quote?symbol=$Symbol"
+  try {
+    return Invoke-RestMethod -Uri $url -Headers $headers
+  } catch {
+    Write-Warning "Finnhub quote failed for $Symbol : $($_.Exception.Message)"
+    return $null
+  } finally {
+    Start-Sleep -Milliseconds 1100
+  }
+}
+
+function Get-StooqDaily {
+  param([Parameter(Mandatory)][string]$Symbol)
+
+  # Stooq uses lower-case and .us suffix for US equities (works for AAPL/MSFT/NVDA, etc.)
+  $sym = $Symbol.ToLower()
+  $url = "https://stooq.com/q/d/l/?s=$sym.us&i=d"
+
+  try {
+    $content = (Invoke-WebRequest -Uri $url -UseBasicParsing).Content
+  } catch {
+    return $null
+  }
+
+  if ([string]::IsNullOrWhiteSpace($content) -or $content -notmatch "Date,Open,High,Low,Close,Volume") {
+    return $null
+  }
+
+  $rows = $content | ConvertFrom-Csv
+  if ($null -eq $rows -or $rows.Count -lt 40) { return $null }
+
+  # sort oldest -> newest
+  return ($rows | Sort-Object { [datetime]$_.Date })
+}
+
+function Compute-MetricsFromStooq {
+  param([Parameter(Mandatory)]$Rows)
+
+  $n = $Rows.Count
+  $last = $Rows[$n-1]
+  $lastClose = [double]$last.Close
+
+  # 20-day avg dollar volume: mean(Close * Volume)
+  $n20 = [Math]::Min(20, $n)
+  $sumDV = 0.0
+  for ($i = $n - $n20; $i -lt $n; $i++) {
+    $sumDV += ([double]$Rows[$i].Close) * ([double]$Rows[$i].Volume)
+  }
+  $adv20 = $sumDV / $n20
+
+  # 252-trading-day return (simple)
+  $ret252 = $null
+  if ($n -ge 252) {
+    $start = [double]$Rows[$n-252].Close
+    if ($start -gt 0) { $ret252 = ($lastClose / $start) - 1.0 }
+  }
+
+  # Annualized volatility from daily log returns
+  $rets = New-Object System.Collections.Generic.List[double]
+  for ($i=1; $i -lt $n; $i++) {
+    $p0 = [double]$Rows[$i-1].Close
+    $p1 = [double]$Rows[$i].Close
+    if ($p0 -gt 0 -and $p1 -gt 0) { $rets.Add([Math]::Log($p1/$p0)) | Out-Null }
+  }
+
+  $annVol = $null
+  if ($rets.Count -ge 30) {
+    $mean = ($rets | Measure-Object -Average).Average
+    $var  = ($rets | ForEach-Object { ($_ - $mean) * ($_ - $mean) } | Measure-Object -Average).Average
+    $sd   = [Math]::Sqrt($var)
+    $annVol = $sd * [Math]::Sqrt(252.0)
+  }
+
+  return [pscustomobject]@{
+    last_close     = [Math]::Round($lastClose, 4)
+    price_under_10 = ($lastClose -le 10.0)
+    adv20_dollar   = [Math]::Round($adv20, 2)
+    return_252d    = if ($ret252 -ne $null) { [Math]::Round($ret252, 6) } else { $null }
+    vol_ann        = if ($annVol -ne $null) { [Math]::Round($annVol, 6) } else { $null }
+    data_last_date = $last.Date
+  }
+}
+
+# ---- Build screener rows ----
+$rowsOut = New-Object System.Collections.Generic.List[object]
+
+foreach ($sym in $symbols) {
+  $q = Get-FinnhubQuote -Symbol $sym  # may be null if quote fails
+
+  $hist = Get-StooqDaily -Symbol $sym
+  if ($null -eq $hist) {
+    Write-Warning "No Stooq daily history for $sym (skipping metrics)"
+    continue
+  }
+
+  $m = Compute-MetricsFromStooq -Rows $hist
+
+  $quoteTime = $null
+  if ($q -and $q.t) {
+    $quoteTime = [DateTimeOffset]::FromUnixTimeSeconds([int]$q.t).UtcDateTime.ToString("o")
+  }
+
+  $rowsOut.Add([pscustomobject]@{
+    ts_utc         = (Get-Date).ToUniversalTime().ToString("o")
+    symbol         = $sym
+    finnhub_last   = if ($q) { $q.c } else { $null }
+    finnhub_time   = $quoteTime
+    last_close     = $m.last_close
+    price_under_10 = $m.price_under_10
+    adv20_dollar   = $m.adv20_dollar
+    return_252d    = $m.return_252d
+    vol_ann        = $m.vol_ann
+    data_last_date = $m.data_last_date
+    source_quote   = "Finnhub:quote"
+    source_hist    = "Stooq:daily"
+  }) | Out-Null
+
+  Start-Sleep -Milliseconds 250
+}
+
+$outPath = ".\screener_snapshot.csv"
+$rowsOut | Export-Csv -NoTypeInformation -Path $outPath
+$outPath

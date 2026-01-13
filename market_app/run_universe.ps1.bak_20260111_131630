@@ -1,0 +1,207 @@
+param(
+  [string]$ConfigPath = ".\config.json",
+  [int]$BatchSize = 0,
+  [int]$Offset = 0,
+  [switch]$UseFinnhubForCandidatesOnly
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+# Ensure .NET relative paths resolve against this folder
+[Environment]::CurrentDirectory = (Get-Location).Path
+
+$cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+
+$dataRoot = Join-Path $PSScriptRoot $cfg.data_root
+$rawDir   = Join-Path $dataRoot "raw"
+$stooqDir = Join-Path $rawDir "stooq"
+$procDir  = Join-Path $dataRoot "processed"
+$logDir   = Join-Path $dataRoot "logs"
+New-Item -ItemType Directory -Force -Path $stooqDir,$procDir,$logDir | Out-Null
+
+$today = Get-Date -Format "yyyy-MM-dd"
+$tag = if ($BatchSize -gt 0) { "o$Offset`_n$BatchSize" } else { "full" }
+$featuresCsv = Join-Path $procDir "features_${today}_${tag}.csv"
+$scoredCsv   = Join-Path $procDir "scored_${today}_${tag}.csv"
+$eligibleCsv = Join-Path $procDir "eligible_${today}_${tag}.csv"
+$reportMd    = Join-Path $procDir "run_report_${today}_${tag}.md"
+$universeCsv = Join-Path $procDir "universe.csv"
+
+$py = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+if (-not (Test-Path $py)) { throw "Missing venv python at: $py (run .\setup.ps1 first)" }
+
+function Get-TextFile {
+  param([string]$Url, [string]$OutPath)
+
+  $headers = @{}
+  if (Test-Path $OutPath) {
+    $headers["If-Modified-Since"] = (Get-Item $OutPath).LastWriteTimeUtc.ToString("R")
+  }
+
+  try {
+    Invoke-WebRequest -Uri $Url -Headers $headers -OutFile $OutPath | Out-Null
+  } catch {
+    if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -eq 304) { return }
+    throw
+  }
+}
+
+function Parse-NasdaqPipeFile {
+  param([string]$Path)
+
+  $all = Get-Content -Path $Path
+  $headerLine = $all | Where-Object { $_ -match '^(Symbol|ACT Symbol)\|' } | Select-Object -First 1
+  if (-not $headerLine) { throw "Header row not found in $Path" }
+
+  $header = $headerLine -split '\|'
+
+  $dataLines = $all | Where-Object {
+    ($_ -match '\|') -and
+    ($_ -notmatch '^(Symbol|ACT Symbol)\|') -and
+    ($_ -notmatch '^File Creation Time')
+  }
+
+  $dataLines | ConvertFrom-Csv -Delimiter '|' -Header $header
+}
+
+# Universe build from NASDAQ Trader symbol directory files
+$nasdaqPath = Join-Path $rawDir "nasdaqlisted.txt"
+$otherPath  = Join-Path $rawDir "otherlisted.txt"
+Get-TextFile -Url $cfg.universe.nasdaqlisted_url -OutPath $nasdaqPath
+Get-TextFile -Url $cfg.universe.otherlisted_url  -OutPath $otherPath
+
+$nasdaq = Parse-NasdaqPipeFile $nasdaqPath | ForEach-Object {
+  [pscustomobject]@{
+    symbol           = $_.Symbol
+    name             = $_.'Security Name'
+    exchange         = "NASDAQ"
+    is_etf           = ($_.ETF -eq "Y")
+    test_issue       = ($_. 'Test Issue' -eq "Y")
+    financial_status = $_.'Financial Status'
+  }
+}
+
+$other = Parse-NasdaqPipeFile $otherPath | ForEach-Object {
+  [pscustomobject]@{
+    symbol           = $_.'ACT Symbol'
+    name             = $_.'Security Name'
+    exchange         = $_.Exchange
+    is_etf           = ($_.ETF -eq "Y")
+    test_issue       = ($_. 'Test Issue' -eq "Y")
+    financial_status = ""
+  }
+}
+
+$universe = @($nasdaq + $other) |
+  Where-Object { -not $_.test_issue } |
+  Where-Object { ($_.financial_status -eq "") -or ($cfg.universe.exclude_fin_status -notcontains $_.financial_status) } |
+  Sort-Object symbol -Unique
+
+$universe | Export-Csv -NoTypeInformation -Path $universeCsv
+
+# Determine symbol list (full universe, optionally chunked)
+$symbols = $universe.symbol
+if ($Offset -gt 0) { $symbols = $symbols | Select-Object -Skip $Offset }
+if ($BatchSize -gt 0) { $symbols = $symbols | Select-Object -First $BatchSize }
+
+if (Test-Path $featuresCsv) { Remove-Item $featuresCsv -Force }
+
+# Pull gate thresholds (safe under StrictMode)
+function Get-PropValue([object]$obj, [string]$name) {
+  if ($null -eq $obj) { return $null }
+  $p = $obj.PSObject.Properties[$name]
+  if ($null -ne $p) { return $p.Value }
+  return $null
+}
+
+$gates = Get-PropValue $cfg 'gates'
+
+$priceMax = Get-PropValue $gates 'price_max'
+if ($null -eq $priceMax) { $priceMax = Get-PropValue $cfg 'price_max' }
+if ($null -eq $priceMax) { $priceMax = 10.0 }
+$priceMax = [double]$priceMax
+
+$minAdv = Get-PropValue $gates 'min_adv20_dollar'
+if ($null -eq $minAdv) { $minAdv = 0.0 }
+$minAdv = [double]$minAdv
+
+$minHist = Get-PropValue $gates 'min_history_days'
+if ($null -eq $minHist) { $minHist = 0 }
+$minHist = [int]$minHist
+
+# Finnhub throttle (only used if UseFinnhubForCandidatesOnly is on)
+$minDelaySec = 1
+if ($cfg.finnhub -and $cfg.finnhub.calls_per_minute) {
+  $minDelaySec = [math]::Ceiling(60.0 / [double]$cfg.finnhub.calls_per_minute)
+}
+
+foreach ($sym in $symbols) {
+  $symU = $sym.ToUpper()
+
+  # Always do Stooq first (Stage 1)
+  $stooqSymbol = ($symU.ToLower() + ".us")
+  $stooqUrl = "https://stooq.com/q/d/l/?s=$stooqSymbol&i=d"
+  $stooqPath = Join-Path $stooqDir "$symU.csv"
+
+  if (-not (Test-Path $stooqPath) -or (Get-Item $stooqPath).LastWriteTime.Date -ne (Get-Date).Date) {
+    try { Invoke-WebRequest -Uri $stooqUrl -OutFile $stooqPath | Out-Null } catch { continue }
+  }
+
+  # Compute features without live quote
+  $json1 = & $py .\py\compute_features.py `
+    --symbol $symU `
+    --stooq_csv $stooqPath `
+    --price NaN `
+    --quote_unix 0 `
+    --config $ConfigPath
+
+  if (-not $json1) { continue }
+
+  $obj1 = $null
+  try { $obj1 = $json1 | ConvertFrom-Json } catch { $obj1 = $null }
+
+  $finalJson = $json1
+
+  # Optional Stage 2: call Finnhub only for candidates near/passing gates
+  if ($UseFinnhubForCandidatesOnly -and $obj1) {
+    $candidate =
+      ($obj1.price_for_gates -le ($priceMax * 1.25)) -and
+      ($obj1.adv20_dollar -ge $minAdv) -and
+      ($obj1.history_days -ge $minHist)
+
+    if ($candidate) {
+      $quoteUrl = "$($cfg.finnhub.base_url)/quote?symbol=$symU&token=$($cfg.finnhub.api_key)"
+      $quote = $null
+      try { $quote = Invoke-RestMethod -Uri $quoteUrl -Method Get } catch { $quote = @{ c = $null; t = $null } }
+      Start-Sleep -Seconds $minDelaySec
+
+      $json2 = & $py .\py\compute_features.py `
+        --symbol $symU `
+        --stooq_csv $stooqPath `
+        --price $((if ($null -ne $quote.c) { $quote.c } else { "NaN" })) `
+        --quote_unix $((if ($null -ne $quote.t) { $quote.t } else { 0 })) `
+        --config $ConfigPath
+
+      if ($json2) { $finalJson = $json2 }
+    }
+  }
+
+  # Append JSON as CSV row
+  $finalJson | & $py .\py\append_json_row.py --out_csv $featuresCsv
+}
+
+# Score + report
+& $py .\py\score_security.py `
+  --features_csv $featuresCsv `
+  --universe_csv $universeCsv `
+  --config $ConfigPath `
+  --scored_csv $scoredCsv `
+  --eligible_csv $eligibleCsv `
+  --report_md $reportMd
+
+Write-Host "Wrote:"
+Write-Host "  $featuresCsv"
+Write-Host "  $scoredCsv"
+Write-Host "  $eligibleCsv"
+Write-Host "  $reportMd"

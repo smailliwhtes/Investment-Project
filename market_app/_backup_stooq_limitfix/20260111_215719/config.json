@@ -1,0 +1,40 @@
+{
+  "run": {
+    "asof_timezone": "America/New_York",
+    "max_symbols_per_run": 800,
+    "batch_strategy": "round_robin"
+  },
+  "universe": {
+    "mode": "all_listed",
+    "include_etfs": true,
+    "exclude_test_issues": true
+  },
+  "data": {
+    "stooq_refresh_hours": 24,
+    "min_history_days": 260
+  },
+  "gates": {
+    "price_max": 10.0,
+    "adv20_dollar_min": 1000000,
+    "zero_volume_frac_max": 0.10
+  },
+  "score": {
+    "weights": {
+      "momentum_6m": 0.30,
+      "trend_sma": 0.20,
+      "volatility_penalty": 0.20,
+      "drawdown_penalty": 0.20,
+      "liquidity": 0.10
+    }
+  },
+  "paths": {
+    "watchlist_file": "inputs/watchlist.txt",
+    "universe_csv": "data/universe/universe.csv",
+    "stooq_dir": "data/stooq",
+    "state_file": "data/state/batch_state.json",
+    "features_out": "outputs/features_.csv",
+    "scored_out": "outputs/scored_.csv",
+    "eligible_out": "outputs/eligible.csv",
+    "report_out": "outputs/report.md"
+  }
+}

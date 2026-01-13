@@ -1,0 +1,35 @@
+{
+    "price_cap":  10.0,
+    "near_cap":  9.5,
+    "adv20_threshold":  500000,
+    "finnhub":  {
+                    "api_key":  "d5h7p5hr01qm40dlrklgd5h7p5hr01qm40dlrkm0",
+                    "base_url":  "https://finnhub.io/api/v1",
+                    "calls_per_minute":  60
+                },
+    "data_root":  "data",
+    "watchlist_path":  "watchlist.txt",
+    "universe":  {
+                     "nasdaqlisted_url":  "https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt",
+                     "otherlisted_url":  "https://www.nasdaqtrader.com/dynamic/symdir/otherlisted.txt",
+                     "exclude_fin_status":  [
+                                                "D",
+                                                "E",
+                                                "Q"
+                                            ]
+                 },
+    "var_alpha":  0.05,
+    "var_horizon_days":  10,
+    "score_weights":  {
+                          "liquidity_size":  0.15,
+                          "vol_tail":  0.20,
+                          "momentum_trend":  0.25,
+                          "drawdown_recovery":  0.15,
+                          "factor_alignment":  0.10,
+                          "regime_fit":  0.15
+                      },
+    "use_full_universe":  true,
+    "gates":  {
+                  "price_max":  10
+              }
+}
