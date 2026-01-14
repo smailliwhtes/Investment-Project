@@ -1,4 +1,7 @@
-import argparse, json, os
+import argparse
+import json
+import os
+
 import pandas as pd
 
 ap = argparse.ArgumentParser()

@@ -1,8 +1,7 @@
-from typing import Dict, List, Tuple
-
-
-def tag_themes(symbol: str, name: str, theme_config: Dict[str, Dict[str, List[str]]]) -> Tuple[List[str], float]:
-    tags: List[str] = []
+def tag_themes(
+    symbol: str, name: str, theme_config: dict[str, dict[str, list[str]]]
+) -> tuple[list[str], float]:
+    tags: list[str] = []
     symbol_upper = symbol.upper()
     name_lower = (name or "").lower()
     for theme, rules in theme_config.items():

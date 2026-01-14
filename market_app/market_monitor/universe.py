@@ -1,6 +1,4 @@
-import csv
 from pathlib import Path
-from typing import Dict, List
 
 import pandas as pd
 import requests
@@ -20,7 +18,7 @@ def _parse_pipe_table(text: str) -> pd.DataFrame:
         raise ValueError("Could not find header row in universe response.")
     header = lines[header_idx].split("|")
     rows = []
-    for line in lines[header_idx + 1:]:
+    for line in lines[header_idx + 1 :]:
         if line.startswith("File Creation Time"):
             break
         parts = line.split("|")
@@ -46,25 +44,34 @@ def fetch_universe() -> pd.DataFrame:
 
 
 def read_watchlist(path: Path) -> pd.DataFrame:
-    symbols: List[str] = []
+    symbols: list[str] = []
     if not path.exists():
-        return pd.DataFrame(columns=["symbol", "name", "exchange", "security_type", "status", "currency"])
+        return pd.DataFrame(
+            columns=["symbol", "name", "exchange", "security_type", "status", "currency"]
+        )
     with path.open("r", encoding="utf-8") as handle:
         for line in handle:
             symbol = line.strip().split("#")[0].strip()
             if symbol:
                 symbols.append(symbol.upper())
-    return pd.DataFrame({
-        "symbol": symbols,
-        "name": symbols,
-        "exchange": None,
-        "security_type": "COMMON",
-        "status": None,
-        "currency": "USD",
-    })
+    return pd.DataFrame(
+        {
+            "symbol": symbols,
+            "name": symbols,
+            "exchange": None,
+            "security_type": "COMMON",
+            "status": None,
+            "currency": "USD",
+        }
+    )
 
 
-def filter_universe(df: pd.DataFrame, allowed_types: List[str], allowed_currencies: List[str], include_etfs: bool) -> pd.DataFrame:
+def filter_universe(
+    df: pd.DataFrame,
+    allowed_types: list[str],
+    allowed_currencies: list[str],
+    include_etfs: bool,
+) -> pd.DataFrame:
     filtered = df.copy()
     if allowed_types:
         filtered = filtered[filtered["security_type"].isin(allowed_types)]

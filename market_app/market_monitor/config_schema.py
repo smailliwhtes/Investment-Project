@@ -2,9 +2,9 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-DEFAULT_CONFIG: Dict[str, Any] = {
+DEFAULT_CONFIG: dict[str, Any] = {
     "run": {
         "asof_timezone": "America/New_York",
         "max_symbols_per_run": 200,
@@ -36,6 +36,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "throttling": {
             "base_delay_s": 0.3,
             "max_retries": 3,
+            "jitter_s": 0.2,
         },
     },
     "gates": {
@@ -76,11 +77,11 @@ class ConfigError(ValueError):
 
 @dataclass
 class ConfigResult:
-    config: Dict[str, Any]
+    config: dict[str, Any]
     config_hash: str
 
 
-def _deep_merge(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     out = dict(base)
     for key, value in patch.items():
         if isinstance(value, dict) and isinstance(out.get(key), dict):
@@ -90,14 +91,16 @@ def _deep_merge(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def _hash_config(config: Dict[str, Any]) -> str:
+def _hash_config(config: dict[str, Any]) -> str:
     payload = json.dumps(config, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def load_config(path: Path, overrides: Optional[Dict[str, Any]] = None) -> ConfigResult:
+def load_config(path: Path, overrides: dict[str, Any] | None = None) -> ConfigResult:
     if not path.exists():
-        raise ConfigError(f"Config file not found at {path}. Create one with 'python -m market_monitor init-config --out {path}'.")
+        raise ConfigError(
+            f"Config file not found at {path}. Create one with 'python -m market_monitor init-config --out {path}'."
+        )
     try:
         config_data = json.loads(path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as exc:
@@ -116,15 +119,17 @@ def write_default_config(path: Path) -> None:
     path.write_text(json.dumps(DEFAULT_CONFIG, indent=2), encoding="utf-8")
 
 
-def _require(config: Dict[str, Any], keys: List[str]) -> None:
+def _require(config: dict[str, Any], keys: list[str]) -> None:
     node = config
     for key in keys:
         if key not in node:
-            raise ConfigError(f"Config missing {'.'.join(keys)}. Set it in config.json or pass a CLI override.")
+            raise ConfigError(
+                f"Config missing {'.'.join(keys)}. Set it in config.json or pass a CLI override."
+            )
         node = node[key]
 
 
-def _validate_config(config: Dict[str, Any]) -> None:
+def _validate_config(config: dict[str, Any]) -> None:
     required_paths = [
         ["paths", "watchlist_file"],
         ["paths", "outputs_dir"],
@@ -139,7 +144,12 @@ def _validate_config(config: Dict[str, Any]) -> None:
     if config["staging"]["stage1_micro_days"] != 7:
         pass
 
-    for stage_key in ["stage1_micro_days", "stage2_short_days", "stage3_deep_days", "history_min_days"]:
+    for stage_key in [
+        "stage1_micro_days",
+        "stage2_short_days",
+        "stage3_deep_days",
+        "history_min_days",
+    ]:
         if config["staging"][stage_key] <= 0:
             raise ConfigError(f"staging.{stage_key} must be > 0.")
 

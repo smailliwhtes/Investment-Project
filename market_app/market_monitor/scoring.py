@@ -1,12 +1,10 @@
-from typing import Dict, List, Tuple
-
 import numpy as np
 import pandas as pd
 
 
-def score_frame(df: pd.DataFrame, weights: Dict[str, float]) -> pd.DataFrame:
+def score_frame(df: pd.DataFrame, weights: dict[str, float]) -> pd.DataFrame:
     score_components = []
-    for idx, row in df.iterrows():
+    for _idx, row in df.iterrows():
         trend = row.get("sma50_ratio", 0.0)
         momentum = row.get("ret_6m", 0.0)
         liquidity = np.log10(max(row.get("adv20_dollar", 1.0), 1.0))
@@ -24,16 +22,18 @@ def score_frame(df: pd.DataFrame, weights: Dict[str, float]) -> pd.DataFrame:
             + weights.get("tail_penalty", 0.0) * tail_penalty
             + weights.get("theme_bonus", 0.0) * theme_bonus
         )
-        score_components.append({
-            "trend": trend,
-            "momentum": momentum,
-            "liquidity": liquidity,
-            "vol_penalty": vol_penalty,
-            "dd_penalty": dd_penalty,
-            "tail_penalty": tail_penalty,
-            "theme_bonus": theme_bonus,
-            "raw_score": raw_score,
-        })
+        score_components.append(
+            {
+                "trend": trend,
+                "momentum": momentum,
+                "liquidity": liquidity,
+                "vol_penalty": vol_penalty,
+                "dd_penalty": dd_penalty,
+                "tail_penalty": tail_penalty,
+                "theme_bonus": theme_bonus,
+                "raw_score": raw_score,
+            }
+        )
 
     components_df = pd.DataFrame(score_components)
     df = pd.concat([df.reset_index(drop=True), components_df], axis=1)
@@ -42,5 +42,15 @@ def score_frame(df: pd.DataFrame, weights: Dict[str, float]) -> pd.DataFrame:
     else:
         df["decile"] = 0
     df["monitor_priority_1_10"] = (df["decile"].fillna(0).astype(int) + 1).clip(1, 10)
-    df["score_components"] = df[["trend", "momentum", "liquidity", "vol_penalty", "dd_penalty", "tail_penalty", "theme_bonus"]].to_dict(orient="records")
+    df["score_components"] = df[
+        [
+            "trend",
+            "momentum",
+            "liquidity",
+            "vol_penalty",
+            "dd_penalty",
+            "tail_penalty",
+            "theme_bonus",
+        ]
+    ].to_dict(orient="records")
     return df

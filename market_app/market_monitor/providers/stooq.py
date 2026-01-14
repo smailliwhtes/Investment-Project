@@ -5,19 +5,33 @@ import pandas as pd
 import requests
 
 from market_monitor.providers.base import HistoryProvider, ProviderCapabilities, ProviderError
+from market_monitor.providers.http import RetryConfig, request_with_backoff
 
 
 class StooqProvider(HistoryProvider):
     name = "stooq"
     capabilities = ProviderCapabilities(True, False, False, "polite")
 
-    def __init__(self, sleep_ms: int = 0) -> None:
+    def __init__(
+        self,
+        sleep_ms: int = 0,
+        retry_config: RetryConfig | None = None,
+        session: requests.Session | None = None,
+    ) -> None:
         self.sleep_ms = sleep_ms
+        self.retry_config = retry_config
+        self.session = session
 
     def get_history(self, symbol: str, days: int) -> pd.DataFrame:
         stooq_symbol = f"{symbol.lower()}.us"
         url = f"https://stooq.pl/q/d/l/?s={stooq_symbol}&i=d"
-        response = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+        response = request_with_backoff(
+            url,
+            session=self.session,
+            retry=self.retry_config,
+            timeout=30,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
         if response.status_code != 200:
             raise ProviderError(f"Stooq HTTP {response.status_code}")
         if "Date,Open,High,Low,Close,Volume" not in response.text:

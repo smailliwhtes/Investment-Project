@@ -29,7 +29,8 @@
     },
     "throttling": {
       "base_delay_s": 0.3,
-      "max_retries": 3
+      "max_retries": 3,
+      "jitter_s": 0.2
     }
   },
   "gates": {

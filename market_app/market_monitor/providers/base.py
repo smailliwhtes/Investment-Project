@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 import pandas as pd
 
@@ -27,10 +26,10 @@ class ProviderCapabilities:
 @dataclass
 class Quote:
     symbol: str
-    last_price: Optional[float]
-    prev_close: Optional[float]
-    volume: Optional[float]
-    quote_timestamp_utc: Optional[str]
+    last_price: float | None
+    prev_close: float | None
+    volume: float | None
+    quote_timestamp_utc: str | None
 
 
 class HistoryProvider:
