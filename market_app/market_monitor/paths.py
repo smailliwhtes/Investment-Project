@@ -1,0 +1,14 @@
+from pathlib import Path
+from typing import Optional
+
+
+def find_repo_root(start: Optional[Path] = None) -> Path:
+    current = (start or Path.cwd()).resolve()
+    for parent in [current] + list(current.parents):
+        if (parent / "config.json").exists() or (parent / "requirements.txt").exists():
+            return parent
+    return current
+
+
+def resolve_path(root: Path, relative: str) -> Path:
+    return (root / relative).resolve()
