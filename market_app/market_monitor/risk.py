@@ -1,9 +1,6 @@
-from typing import Dict, List, Tuple
-
-
-def assess_risk(features: Dict[str, float], adjusted_mode: str) -> Tuple[List[str], List[str]]:
-    red: List[str] = []
-    amber: List[str] = []
+def assess_risk(features: dict[str, float], adjusted_mode: str) -> tuple[list[str], list[str]]:
+    red: list[str] = []
+    amber: list[str] = []
 
     if adjusted_mode == "UNADJUSTED":
         amber.append("UNADJUSTED_HISTORY")

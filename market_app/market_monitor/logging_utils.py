@@ -3,7 +3,7 @@ import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
 class JsonlLogger:
@@ -11,7 +11,7 @@ class JsonlLogger:
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
-    def log(self, event_type: str, payload: Dict[str, Any]) -> None:
+    def log(self, event_type: str, payload: dict[str, Any]) -> None:
         record = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "event": event_type,

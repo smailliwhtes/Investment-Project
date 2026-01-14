@@ -77,6 +77,69 @@ pytest
 
 Tests are offline-friendly and run against fixtures in `tests/fixtures`.
 
+## Setup (Venv + Dependencies)
+
+```powershell
+.\setup.ps1
+```
+
+Or manually:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
+```
+
+## Diagnostics
+
+```powershell
+python -m market_monitor doctor --config config.json
+```
+
+The doctor command explains failures in plain English and points to the logs directory.
+
+## Example Runs
+
+Small watchlist scan:
+
+```powershell
+python -m market_monitor run --config config.json --mode watchlist
+```
+
+Full staged scan:
+
+```powershell
+python -m market_monitor run --config config.json --mode universe
+```
+
+## Tooling
+
+Lint, format, type-check, security, and tests:
+
+```powershell
+ruff check .
+black .
+mypy market_monitor
+bandit -r market_monitor
+pytest
+```
+
+Install pre-commit hooks:
+
+```powershell
+pre-commit install
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and set keys as needed:
+
+- `FINNHUB_API_KEY`
+- `FINNHUB_WEBHOOK_SECRET`
+- `TWELVEDATA_API_KEY`
+- `ALPHAVANTAGE_API_KEY`
+
 ## Adding a Provider
 
 Implement `HistoryProvider` in `market_monitor/providers/` with explicit capability flags:

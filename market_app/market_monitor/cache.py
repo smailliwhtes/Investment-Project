@@ -1,13 +1,10 @@
-import json
 import os
 import time
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
 
 import pandas as pd
-
-from market_monitor.providers.base import ProviderError
 
 
 @dataclass
@@ -30,18 +27,16 @@ class FileLock:
             try:
                 self.fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_RDWR)
                 return self
-            except FileExistsError:
+            except FileExistsError as exc:
                 if time.time() - start > self.timeout_s:
-                    raise TimeoutError(f"Timeout acquiring lock {self.path}")
+                    raise TimeoutError(f"Timeout acquiring lock {self.path}") from exc
                 time.sleep(0.1)
 
     def __exit__(self, exc_type, exc, tb):
         if self.fd is not None:
             os.close(self.fd)
-            try:
+            with suppress(FileNotFoundError):
                 os.remove(self.path)
-            except FileNotFoundError:
-                pass
 
 
 def cache_key(provider_name: str, symbol: str, adjusted_mode: str) -> str:
@@ -49,7 +44,7 @@ def cache_key(provider_name: str, symbol: str, adjusted_mode: str) -> str:
     return f"{provider_name}_{safe_symbol}_{adjusted_mode}.csv"
 
 
-def load_cache(path: Path) -> Optional[pd.DataFrame]:
+def load_cache(path: Path) -> pd.DataFrame | None:
     if not path.exists():
         return None
     df = pd.read_csv(path)

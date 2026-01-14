@@ -1,8 +1,11 @@
-from typing import Dict, List, Tuple
-
-
-def apply_gates(features: Dict[str, float], price_max: float, min_adv20_dollar: float, max_zero_volume_frac: float, history_min_days: int) -> Tuple[bool, List[str]]:
-    reasons: List[str] = []
+def apply_gates(
+    features: dict[str, float],
+    price_max: float,
+    min_adv20_dollar: float,
+    max_zero_volume_frac: float,
+    history_min_days: int,
+) -> tuple[bool, list[str]]:
+    reasons: list[str] = []
     last_price = features.get("last_price")
     if last_price is not None and last_price > price_max:
         reasons.append("PRICE_MAX")

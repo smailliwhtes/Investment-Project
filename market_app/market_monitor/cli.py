@@ -2,26 +2,37 @@ import argparse
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
+import requests
 
-from market_monitor.cache import get_or_fetch
 from market_monitor.config_schema import ConfigError, load_config, write_default_config
-from market_monitor.io import FEATURE_COLUMNS, SCORED_COLUMNS, ELIGIBLE_COLUMNS, write_csv
+from market_monitor.doctor import run_doctor
+from market_monitor.io import ELIGIBLE_COLUMNS, FEATURE_COLUMNS, SCORED_COLUMNS, write_csv
 from market_monitor.logging_utils import JsonlLogger, get_console_logger
 from market_monitor.paths import find_repo_root, resolve_path
-from market_monitor.providers.base import BudgetManager, HistoryProvider, ProviderAccessError, ProviderError
+from market_monitor.providers.alphavantage import AlphaVantageProvider
+from market_monitor.providers.base import (
+    BudgetManager,
+    HistoryProvider,
+    ProviderAccessError,
+    ProviderError,
+)
+from market_monitor.providers.finnhub import FinnhubProvider
+from market_monitor.providers.http import RetryConfig
 from market_monitor.providers.stooq import StooqProvider
 from market_monitor.providers.twelvedata import TwelveDataProvider
-from market_monitor.providers.alphavantage import AlphaVantageProvider
-from market_monitor.providers.finnhub import FinnhubProvider
 from market_monitor.report import write_report
 from market_monitor.scoring import score_frame
 from market_monitor.staging import stage_pipeline
 from market_monitor.themes import tag_themes
-from market_monitor.universe import fetch_universe, filter_universe, read_watchlist, write_universe_csv
-from market_monitor.doctor import run_doctor
+from market_monitor.universe import (
+    fetch_universe,
+    filter_universe,
+    read_watchlist,
+    write_universe_csv,
+)
 
 
 class LimitedProvider(HistoryProvider):
@@ -41,7 +52,7 @@ class LimitedProvider(HistoryProvider):
 
 
 class FallbackProvider(HistoryProvider):
-    def __init__(self, primary: HistoryProvider, fallbacks: List[HistoryProvider], logger) -> None:
+    def __init__(self, primary: HistoryProvider, fallbacks: list[HistoryProvider], logger) -> None:
         self.primary = primary
         self.fallbacks = fallbacks
         self.logger = logger
@@ -63,35 +74,46 @@ class FallbackProvider(HistoryProvider):
     def get_quote(self, symbol: str):
         return self.primary.get_quote(symbol)
 
-def _build_provider(config: Dict[str, Any], logger) -> HistoryProvider:
+
+def _build_provider(config: dict[str, Any], logger) -> HistoryProvider:
     provider_name = config["data"]["provider"]
     budget_cfg = config["data"].get("budget", {})
     fallback_chain = config["data"].get("fallback_chain", [])
+    throttling_cfg = config["data"].get("throttling", {})
+    retry_config = RetryConfig(
+        max_retries=int(throttling_cfg.get("max_retries", 3)),
+        base_delay_s=float(throttling_cfg.get("base_delay_s", 0.3)),
+        jitter_s=float(throttling_cfg.get("jitter_s", 0.2)),
+    )
+    session = requests.Session()
+    sleep_ms = int(float(throttling_cfg.get("base_delay_s", 0.3)) * 1000)
 
     def build(name: str) -> HistoryProvider:
         if name == "stooq":
-            return StooqProvider()
+            return StooqProvider(sleep_ms=sleep_ms, retry_config=retry_config, session=session)
         if name == "twelvedata":
             api_key = os.getenv("TWELVEDATA_API_KEY")
             if not api_key:
                 raise ProviderError("TWELVEDATA_API_KEY is missing")
-            return TwelveDataProvider(api_key)
+            return TwelveDataProvider(api_key, retry_config=retry_config, session=session)
         if name == "alphavantage":
             api_key = os.getenv("ALPHAVANTAGE_API_KEY")
             if not api_key:
                 raise ProviderError("ALPHAVANTAGE_API_KEY is missing")
-            return AlphaVantageProvider(api_key)
+            return AlphaVantageProvider(api_key, retry_config=retry_config, session=session)
         if name == "finnhub":
             api_key = os.getenv("FINNHUB_API_KEY")
             if not api_key:
                 raise ProviderError("FINNHUB_API_KEY is missing")
-            return FinnhubProvider(api_key)
+            return FinnhubProvider(api_key, retry_config=retry_config, session=session)
         raise ProviderError(f"Unknown provider {name}")
 
     try:
-        primary = build(provider_name)
+        primary: HistoryProvider | None = build(provider_name)
     except ProviderError as exc:
-        logger.warning(f"Provider {provider_name} unavailable: {exc}. Falling back to {fallback_chain}")
+        logger.warning(
+            f"Provider {provider_name} unavailable: {exc}. Falling back to {fallback_chain}"
+        )
         primary = None
 
     fallback_providers = []
@@ -106,6 +128,7 @@ def _build_provider(config: Dict[str, Any], logger) -> HistoryProvider:
 
     if primary is None:
         raise ProviderError("No usable provider available")
+    provider: HistoryProvider
     if fallback_providers:
         provider = FallbackProvider(primary, fallback_providers, logger)
     else:
@@ -119,7 +142,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
     root = find_repo_root()
     config_path = resolve_path(root, args.config)
     try:
-        overrides: Dict[str, Any] = {}
+        overrides: dict[str, Any] = {}
         if args.provider:
             overrides.setdefault("data", {})["provider"] = args.provider
         if args.price_max is not None:
@@ -187,7 +210,9 @@ def run_pipeline(args: argparse.Namespace) -> int:
         themes = [t.strip() for t in (args.themes or "").split(",") if t.strip()]
         filtered_rows = []
         for _, row in universe_df.iterrows():
-            tags, _ = tag_themes(row["symbol"], row.get("name") or row["symbol"], config.get("themes", {}))
+            tags, _ = tag_themes(
+                row["symbol"], row.get("name") or row["symbol"], config.get("themes", {})
+            )
             if not themes or any(t in tags for t in themes):
                 filtered_rows.append(row)
         universe_df = pd.DataFrame(filtered_rows)
@@ -217,7 +242,9 @@ def run_pipeline(args: argparse.Namespace) -> int:
         logger,
     )
 
-    scored = score_frame(stage3_df, config["score"]["weights"]) if not stage3_df.empty else stage3_df
+    scored = (
+        score_frame(stage3_df, config["score"]["weights"]) if not stage3_df.empty else stage3_df
+    )
 
     features_path = outputs_dir / f"features_{run_id}.csv"
     scored_path = outputs_dir / f"scored_{run_id}.csv"
@@ -226,7 +253,11 @@ def run_pipeline(args: argparse.Namespace) -> int:
 
     write_csv(scored, scored_path, SCORED_COLUMNS)
     write_csv(scored, features_path, FEATURE_COLUMNS)
-    eligible = scored[["symbol", "name", "eligible", "gate_fail_codes", "notes"]] if not scored.empty else pd.DataFrame(columns=ELIGIBLE_COLUMNS)
+    eligible = (
+        scored[["symbol", "name", "eligible", "gate_fail_codes", "notes"]]
+        if not scored.empty
+        else pd.DataFrame(columns=ELIGIBLE_COLUMNS)
+    )
     write_csv(eligible, eligible_path, ELIGIBLE_COLUMNS)
 
     write_report(report_path, summary, scored)
@@ -251,7 +282,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_parser = sub.add_parser("run", help="Run the monitor")
     run_parser.add_argument("--config", default="config.json")
-    run_parser.add_argument("--mode", choices=["universe", "watchlist", "themed", "batch"], default="watchlist")
+    run_parser.add_argument(
+        "--mode", choices=["universe", "watchlist", "themed", "batch"], default="watchlist"
+    )
     run_parser.add_argument("--watchlist")
     run_parser.add_argument("--themes")
     run_parser.add_argument("--provider")

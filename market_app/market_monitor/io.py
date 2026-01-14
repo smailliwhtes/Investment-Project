@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 import pandas as pd
 
@@ -66,13 +65,13 @@ ELIGIBLE_COLUMNS = [
 ]
 
 
-def _ensure_columns(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
+def _ensure_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     for col in columns:
         if col not in df.columns:
             df[col] = None
     return df[columns]
 
 
-def write_csv(df: pd.DataFrame, path: Path, columns: List[str]) -> None:
+def write_csv(df: pd.DataFrame, path: Path, columns: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     _ensure_columns(df, columns).to_csv(path, index=False)

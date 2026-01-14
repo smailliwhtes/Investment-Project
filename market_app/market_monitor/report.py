@@ -1,11 +1,10 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
 
 import pandas as pd
 
 
-def write_report(path: Path, summary: Dict[str, int], scored: pd.DataFrame) -> None:
+def write_report(path: Path, summary: dict[str, int], scored: pd.DataFrame) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "# Market Monitor Report",

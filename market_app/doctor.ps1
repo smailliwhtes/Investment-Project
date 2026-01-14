@@ -40,6 +40,10 @@ Write-Host "[stage] installing requirements"
 
 Write-Host "[stage] running doctor"
 & $VenvPy -m market_monitor doctor --config $Config
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[error] Doctor reported blocking issues. Fix them and rerun .\doctor.ps1"
+  exit $LASTEXITCODE
+}
 
 Write-Host "[stage] running pipeline"
 & $VenvPy -m market_monitor run --config $Config --mode watchlist

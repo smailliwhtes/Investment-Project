@@ -1,11 +1,10 @@
 import math
-from typing import Dict
 
 import numpy as np
 import pandas as pd
 
 
-def compute_features(df: pd.DataFrame) -> Dict[str, float]:
+def compute_features(df: pd.DataFrame) -> dict[str, float]:
     close = df["Close"].to_numpy(dtype=float)
     volume = df.get("Volume", pd.Series([np.nan] * len(df))).to_numpy(dtype=float)
     n = len(close)
