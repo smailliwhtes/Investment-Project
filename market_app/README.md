@@ -67,14 +67,6 @@ A bulk historical CSV downloader design (including module stubs and a novice-fir
 - `docs/bulk_downloader.md`
 - `docs/product_roadmap.md`
 
-CLI commands are available for bulk planning, downloading, and standardizing CSVs:
-
-```powershell
-python -m market_monitor bulk-plan --config config.json --sources stooq,treasury_yield_curve
-python -m market_monitor bulk-download --config config.json --sources stooq,treasury_yield_curve
-python -m market_monitor bulk-standardize --config config.json --source stooq --mode ohlcv
-```
-
 ## Outputs
 
 Each run writes:

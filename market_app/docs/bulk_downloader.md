@@ -79,52 +79,20 @@ These stubs live under `market_monitor/bulk/`.
 
 ---
 
-## CLI Commands (Implemented)
+## Minimal CLI Extension (Future)
 
-Bulk CSV commands are now available:
+Suggested CLI interface for bulk CSV runs:
 
 ```
-python -m market_monitor bulk-plan --config config.json --sources stooq,treasury_yield_curve
-python -m market_monitor bulk-download --config config.json --sources stooq,treasury_yield_curve
-python -m market_monitor bulk-standardize --config config.json --source stooq --mode ohlcv
-python -m market_monitor bulk-standardize --config config.json --source treasury_yield_curve --mode timeseries
+python -m market_monitor bulk-download --config config.json --sources stooq,treasury
 ```
 
-These commands:
+This would:
 1. Build a download plan
 2. Write a manifest
 3. Execute downloads with retries and throttling
-4. Standardize raw CSVs into curated datasets
 
 ---
-
-## Config Shape (Bulk Section)
-
-```json
-{
-  "bulk": {
-    "paths": {
-      "raw_dir": "data/raw",
-      "curated_dir": "data/curated",
-      "manifest_dir": "data/manifests"
-    },
-    "sources": [
-      {
-        "name": "stooq",
-        "base_url": "https://stooq.pl/q/d/l",
-        "symbol_template": "?s={symbol}.us&i=d",
-        "file_extension": ""
-      },
-      {
-        "name": "treasury_yield_curve",
-        "base_url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates",
-        "static_path": "/DailyTreasuryYieldCurveRateData.csv",
-        "file_extension": ""
-      }
-    ]
-  }
-}
-```
 
 ## Guardrails for a Novice‑First Experience
 

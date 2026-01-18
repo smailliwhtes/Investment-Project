@@ -30,7 +30,6 @@ def write_manifest(path: Path, manifest: BulkManifest) -> None:
                 "destination": str(task.destination),
                 "symbol": task.symbol,
                 "is_archive": task.is_archive,
-                "kind": task.kind,
             }
             for task in manifest.tasks
         ],
@@ -47,7 +46,6 @@ def read_manifest(path: Path) -> BulkManifest:
             destination=Path(item["destination"]),
             symbol=item.get("symbol"),
             is_archive=bool(item.get("is_archive")),
-            kind=item.get("kind", "symbol"),
         )
         for item in payload.get("tasks", [])
     ]

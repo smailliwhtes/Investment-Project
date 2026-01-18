@@ -40,21 +40,3 @@ def test_build_download_plan_archive_task():
     assert tasks[0].is_archive is True
     assert tasks[0].url == "https://example.gov/data/archives/treasury.zip"
     assert tasks[0].destination == Path("data/raw/gov/treasury.zip")
-    assert tasks[0].kind == "archive"
-
-
-def test_build_download_plan_static_task():
-    sources = [
-        BulkSource(
-            name="treasury",
-            base_url="https://example.gov",
-            static_path="/rates/daily.csv",
-        )
-    ]
-    symbols = pd.Series(["AAPL"])
-    tasks = build_download_plan(sources, symbols, Path("data/raw"), use_archives=False)
-
-    assert len(tasks) == 1
-    assert tasks[0].kind == "static"
-    assert tasks[0].url == "https://example.gov/rates/daily.csv"
-    assert tasks[0].destination == Path("data/raw/treasury/daily.csv")

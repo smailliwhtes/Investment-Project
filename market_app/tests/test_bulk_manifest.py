@@ -12,7 +12,6 @@ def test_manifest_round_trip(tmp_path: Path):
             destination=tmp_path / "stooq" / "AAPL.csv",
             symbol="AAPL",
             is_archive=False,
-            kind="symbol",
         )
     ]
     manifest = BulkManifest.create(tasks)

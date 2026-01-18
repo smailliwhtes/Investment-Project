@@ -30,21 +30,6 @@ def build_download_plan(
                     destination=destination,
                     symbol=None,
                     is_archive=True,
-                    kind="archive",
-                )
-            )
-            continue
-
-        if source.static_path:
-            destination = source_dir / Path(source.static_path).name
-            tasks.append(
-                BulkDownloadTask(
-                    source_name=source.name,
-                    url=source.build_static_url(),
-                    destination=destination,
-                    symbol=None,
-                    is_archive=False,
-                    kind="static",
                 )
             )
             continue
@@ -58,7 +43,6 @@ def build_download_plan(
                     destination=destination,
                     symbol=symbol,
                     is_archive=False,
-                    kind="symbol",
                 )
             )
 
