@@ -60,6 +60,13 @@ Supported providers are:
 
 If a selected provider is missing credentials or blocked, the system falls back to the configured chain and logs a plain-language explanation.
 
+## Bulk CSV Downloader (Design + Stubs)
+
+A bulk historical CSV downloader design (including module stubs and a novice-first roadmap) lives in:
+
+- `docs/bulk_downloader.md`
+- `docs/product_roadmap.md`
+
 ## Outputs
 
 Each run writes:
