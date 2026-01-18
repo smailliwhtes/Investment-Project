@@ -23,10 +23,11 @@
                     "history_min_days":  63
                 },
     "data":  {
-                 "provider":  "stooq",
+                 "provider":  "twelvedata",
                  "fallback_chain":  [
                                         "twelvedata",
-                                        "alphavantage"
+                                        "alphavantage",
+                                        "stooq"
                                     ],
                  "max_cache_age_days":  2,
                  "max_workers":  6,

@@ -1,0 +1,105 @@
+# Core / macro anchors
+SPY
+QQQ
+TLT
+GLD
+SLV
+USO
+
+# Defense / aerospace ETFs (war demand basket)
+ITA
+PPA
+XAR
+
+# Energy ETFs (oil & gas / services)
+XLE
+XOP
+OIH
+
+# Metals & mining (broad cyclicals)
+XME
+
+# Gold / silver (precious metals)
+GDX
+GDXJ
+SIL
+SLVP
+
+# Critical / strategic metals (rare earths, battery metals)
+REMX
+LIT
+
+# Uranium / nuclear
+URA
+NLR
+
+# Infrastructure / industrial buildout
+PAVE
+
+# Cyber / strategic tech
+IHAK
+
+# Add-on strategic tech baskets
+SOXX
+SMH
+
+# Defense / aerospace names
+GE
+RTX
+BA
+LMT
+NOC
+GD
+HWM
+
+# Energy names
+XOM
+CVX
+COP
+EOG
+SLB
+
+# Metals & mining names
+FCX
+NUE
+CLF
+TECK
+SCCO
+
+# Gold complex
+NEM
+GOLD
+AEM
+WPM
+FNV
+
+# Silver complex
+PAAS
+HL
+CDE
+AG
+EXK
+
+# Rare earths / battery / copper names
+MP
+ALB
+SQM
+LAC
+FCX
+
+# Nuclear / power / supply chain
+CCJ
+UEC
+CEG
+BWXT
+
+# Infrastructure / industrial names
+CAT
+ETN
+URI
+DE
+
+# Liquid semis
+NVDA
+AMD
+AVGO

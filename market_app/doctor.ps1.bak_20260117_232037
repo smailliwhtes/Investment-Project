@@ -1,4 +1,4 @@
-﻿param(
+param(
   [string]$Config = ".\config.json"
 )
 
@@ -33,10 +33,10 @@ if (-not (Test-Path $VenvPy)) {
 }
 
 Write-Host "[stage] upgrading pip"
-& $VenvPy -m pip install --upgrade pip 1>$null
+& $VenvPy -m pip install --upgrade pip
+
 Write-Host "[stage] installing requirements"
-& $VenvPy -m pip install -r ".\requirements.txt" 1>$null
- | Out-Null
+& $VenvPy -m pip install -r ".\requirements.txt"
 
 Write-Host "[stage] running doctor"
 & $VenvPy -m market_monitor doctor --config $Config
@@ -49,7 +49,3 @@ Write-Host "[stage] running pipeline"
 & $VenvPy -m market_monitor run --config $Config --mode watchlist
 
 Write-Host "Outputs are in .\outputs"
-
-
-
-

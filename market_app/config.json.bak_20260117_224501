@@ -20,13 +20,14 @@
                     "stage1_micro_days":  7,
                     "stage2_short_days":  60,
                     "stage3_deep_days":  600,
-                    "history_min_days":  63
+                    "history_min_days":  252
                 },
     "data":  {
-                 "provider":  "stooq",
+                 "provider":  "twelvedata",
                  "fallback_chain":  [
                                         "twelvedata",
-                                        "alphavantage"
+                                        "alphavantage",
+                                        "stooq"
                                     ],
                  "max_cache_age_days":  2,
                  "max_workers":  6,
@@ -48,9 +49,9 @@
                                 }
              },
     "gates":  {
-                  "price_max":  1000000,
-                  "min_adv20_dollar":  200000,
-                  "max_zero_volume_frac":  0.5
+                  "price_max":  10.0,
+                  "min_adv20_dollar":  1000000,
+                  "max_zero_volume_frac":  0.1
               },
     "score":  {
                   "weights":  {
