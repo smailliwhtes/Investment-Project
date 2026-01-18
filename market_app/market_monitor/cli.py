@@ -9,6 +9,14 @@ import requests
 
 from market_monitor.config_schema import ConfigError, load_config, write_default_config
 from market_monitor.doctor import run_doctor
+from market_monitor.bulk import (
+    BulkManifest,
+    build_download_plan,
+    download_tasks,
+    load_bulk_sources,
+    standardize_directory,
+    write_manifest,
+)
 from market_monitor.io import ELIGIBLE_COLUMNS, FEATURE_COLUMNS, SCORED_COLUMNS, write_csv
 from market_monitor.logging_utils import JsonlLogger, get_console_logger
 from market_monitor.paths import find_repo_root, resolve_path
@@ -267,6 +275,131 @@ def run_pipeline(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_bulk_plan(args: argparse.Namespace) -> int:
+    root = find_repo_root()
+    config_path = resolve_path(root, args.config)
+    try:
+        config = load_config(config_path).config
+    except ConfigError as exc:
+        print(f"[error] {exc}")
+        return 2
+
+    logger = get_console_logger(args.log_level)
+    sources = load_bulk_sources(config)
+    if args.sources:
+        allowed = {name.strip() for name in args.sources.split(",") if name.strip()}
+        sources = [src for src in sources if src.name in allowed]
+
+    symbols = _load_bulk_symbols(config, root, args)
+    bulk_paths = config.get("bulk", {}).get("paths", {})
+    raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
+    manifest_dir = resolve_path(root, bulk_paths.get("manifest_dir", "data/manifests"))
+
+    tasks = build_download_plan(sources, symbols, raw_dir, use_archives=args.use_archives)
+    manifest = BulkManifest.create(tasks)
+    manifest_path = resolve_path(
+        root,
+        args.manifest or (manifest_dir / f"bulk_manifest_{manifest.created_at_utc}.json"),
+    )
+    write_manifest(manifest_path, manifest)
+    logger.info(f"[bulk] planned {len(tasks)} tasks -> {manifest_path}")
+    return 0
+
+
+def run_bulk_download(args: argparse.Namespace) -> int:
+    root = find_repo_root()
+    config_path = resolve_path(root, args.config)
+    try:
+        config = load_config(config_path).config
+    except ConfigError as exc:
+        print(f"[error] {exc}")
+        return 2
+
+    logger = get_console_logger(args.log_level)
+    sources = load_bulk_sources(config)
+    if args.sources:
+        allowed = {name.strip() for name in args.sources.split(",") if name.strip()}
+        sources = [src for src in sources if src.name in allowed]
+
+    symbols = _load_bulk_symbols(config, root, args)
+    bulk_paths = config.get("bulk", {}).get("paths", {})
+    raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
+    manifest_dir = resolve_path(root, bulk_paths.get("manifest_dir", "data/manifests"))
+
+    tasks = build_download_plan(sources, symbols, raw_dir, use_archives=args.use_archives)
+    manifest = BulkManifest.create(tasks)
+    manifest_path = resolve_path(
+        root,
+        args.manifest or (manifest_dir / f"bulk_manifest_{manifest.created_at_utc}.json"),
+    )
+    write_manifest(manifest_path, manifest)
+
+    throttling_cfg = config["data"].get("throttling", {})
+    retry_config = RetryConfig(
+        max_retries=int(throttling_cfg.get("max_retries", 3)),
+        base_delay_s=float(throttling_cfg.get("base_delay_s", 0.3)),
+        jitter_s=float(throttling_cfg.get("jitter_s", 0.2)),
+    )
+    summary = download_tasks(
+        tasks,
+        retry_config=retry_config,
+        timeout_s=args.timeout,
+        dry_run=args.dry_run,
+        extract_archives=args.extract_archives,
+        logger=logger,
+    )
+    logger.info(
+        f"[bulk] planned={summary.planned} downloaded={summary.downloaded} "
+        f"skipped={summary.skipped} failed={summary.failed}"
+    )
+    return 0 if summary.failed == 0 else 1
+
+
+def run_bulk_standardize(args: argparse.Namespace) -> int:
+    root = find_repo_root()
+    config_path = resolve_path(root, args.config)
+    try:
+        config = load_config(config_path).config
+    except ConfigError as exc:
+        print(f"[error] {exc}")
+        return 2
+
+    logger = get_console_logger(args.log_level)
+    bulk_paths = config.get("bulk", {}).get("paths", {})
+    raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
+    curated_dir = resolve_path(root, bulk_paths.get("curated_dir", "data/curated"))
+
+    input_dir = resolve_path(root, args.input_dir) if args.input_dir else raw_dir / args.source
+    output_dir = resolve_path(root, args.output_dir) if args.output_dir else curated_dir / args.source
+
+    results = standardize_directory(
+        input_dir,
+        output_dir,
+        mode=args.mode,
+        value_column=args.value_column,
+    )
+    total_rows = sum(result.rows for result in results)
+    logger.info(f"[bulk] standardized {len(results)} files -> {output_dir} ({total_rows} rows)")
+    return 0
+
+
+def _load_bulk_symbols(config: dict[str, Any], root: Path, args: argparse.Namespace) -> pd.Series:
+    mode = args.mode or "watchlist"
+    if mode == "universe":
+        universe_df = fetch_universe()
+        universe_df = filter_universe(
+            universe_df,
+            config["universe"]["allowed_security_types"],
+            config["universe"]["allowed_currencies"],
+            config["universe"]["include_etfs"],
+        )
+        return universe_df["symbol"]
+
+    watchlist_path = resolve_path(root, args.watchlist or config["paths"]["watchlist_file"])
+    universe_df = read_watchlist(watchlist_path)
+    return universe_df["symbol"]
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser("market_monitor")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -299,6 +432,38 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--max-workers", type=int)
     run_parser.add_argument("--log-level", default="INFO")
 
+    bulk_plan_parser = sub.add_parser("bulk-plan", help="Plan bulk CSV downloads")
+    bulk_plan_parser.add_argument("--config", default="config.json")
+    bulk_plan_parser.add_argument("--mode", choices=["watchlist", "universe"], default="watchlist")
+    bulk_plan_parser.add_argument("--watchlist")
+    bulk_plan_parser.add_argument("--sources")
+    bulk_plan_parser.add_argument("--use-archives", action="store_true")
+    bulk_plan_parser.add_argument("--manifest")
+    bulk_plan_parser.add_argument("--log-level", default="INFO")
+
+    bulk_download_parser = sub.add_parser("bulk-download", help="Download bulk CSV data")
+    bulk_download_parser.add_argument("--config", default="config.json")
+    bulk_download_parser.add_argument("--mode", choices=["watchlist", "universe"], default="watchlist")
+    bulk_download_parser.add_argument("--watchlist")
+    bulk_download_parser.add_argument("--sources")
+    bulk_download_parser.add_argument("--use-archives", action="store_true")
+    bulk_download_parser.add_argument("--manifest")
+    bulk_download_parser.add_argument("--timeout", type=float, default=60)
+    bulk_download_parser.add_argument("--dry-run", action="store_true")
+    bulk_download_parser.add_argument("--extract-archives", action="store_true")
+    bulk_download_parser.add_argument("--log-level", default="INFO")
+
+    bulk_standardize_parser = sub.add_parser(
+        "bulk-standardize", help="Standardize bulk CSV data into curated outputs"
+    )
+    bulk_standardize_parser.add_argument("--config", default="config.json")
+    bulk_standardize_parser.add_argument("--source", required=True)
+    bulk_standardize_parser.add_argument("--mode", choices=["ohlcv", "timeseries"], required=True)
+    bulk_standardize_parser.add_argument("--input-dir")
+    bulk_standardize_parser.add_argument("--output-dir")
+    bulk_standardize_parser.add_argument("--value-column")
+    bulk_standardize_parser.add_argument("--log-level", default="INFO")
+
     return parser
 
 
@@ -325,6 +490,15 @@ def main() -> int:
 
     if args.command == "run":
         return run_pipeline(args)
+
+    if args.command == "bulk-plan":
+        return run_bulk_plan(args)
+
+    if args.command == "bulk-download":
+        return run_bulk_download(args)
+
+    if args.command == "bulk-standardize":
+        return run_bulk_standardize(args)
 
     return 1
 

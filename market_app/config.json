@@ -95,6 +95,27 @@
                                                ]
                               }
                },
+    "bulk":  {
+                 "paths":  {
+                               "raw_dir":  "data/raw",
+                               "curated_dir":  "data/curated",
+                               "manifest_dir":  "data/manifests"
+                           },
+                 "sources":  [
+                                 {
+                                     "name":  "stooq",
+                                     "base_url":  "https://stooq.pl/q/d/l",
+                                     "symbol_template":  "?s={symbol}.us&i=d",
+                                     "file_extension":  ""
+                                 },
+                                 {
+                                     "name":  "treasury_yield_curve",
+                                     "base_url":  "https://home.treasury.gov/resource-center/data-chart-center/interest-rates",
+                                     "static_path":  "/DailyTreasuryYieldCurveRateData.csv",
+                                     "file_extension":  ""
+                                 }
+                             ]
+             },
     "paths":  {
                   "watchlist_file":  "inputs/watchlist.txt",
                   "universe_csv":  "data/universe/universe.csv",
