@@ -60,6 +60,21 @@ Supported providers are:
 
 If a selected provider is missing credentials or blocked, the system falls back to the configured chain and logs a plain-language explanation.
 
+## Bulk CSV Downloader (Design + Stubs)
+
+A bulk historical CSV downloader design (including module stubs and a novice-first roadmap) lives in:
+
+- `docs/bulk_downloader.md`
+- `docs/product_roadmap.md`
+
+CLI commands are available for bulk planning, downloading, and standardizing CSVs:
+
+```powershell
+python -m market_monitor bulk-plan --config config.json --sources stooq,treasury_yield_curve
+python -m market_monitor bulk-download --config config.json --sources stooq,treasury_yield_curve
+python -m market_monitor bulk-standardize --config config.json --source stooq --mode ohlcv
+```
+
 ## Outputs
 
 Each run writes:

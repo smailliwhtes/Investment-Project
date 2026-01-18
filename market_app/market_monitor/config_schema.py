@@ -68,6 +68,27 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "outputs_dir": "outputs",
         "logs_dir": "outputs/logs",
     },
+    "bulk": {
+        "paths": {
+            "raw_dir": "data/raw",
+            "curated_dir": "data/curated",
+            "manifest_dir": "data/manifests",
+        },
+        "sources": [
+            {
+                "name": "stooq",
+                "base_url": "https://stooq.pl/q/d/l",
+                "symbol_template": "?s={symbol}.us&i=d",
+                "file_extension": "",
+            },
+            {
+                "name": "treasury_yield_curve",
+                "base_url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates",
+                "static_path": "/DailyTreasuryYieldCurveRateData.csv",
+                "file_extension": "",
+            },
+        ],
+    },
 }
 
 
@@ -161,3 +182,28 @@ def _validate_config(config: dict[str, Any]) -> None:
 
     if config["data"]["max_workers"] <= 0:
         raise ConfigError("data.max_workers must be > 0.")
+
+    _validate_bulk_section(config)
+
+
+def _validate_bulk_section(config: dict[str, Any]) -> None:
+    bulk_cfg = config.get("bulk", {})
+    sources = bulk_cfg.get("sources", [])
+    names: set[str] = set()
+
+    for source in sources:
+        name = source.get("name")
+        base_url = source.get("base_url")
+        if not name or not base_url:
+            raise ConfigError("bulk.sources entries must include name and base_url.")
+        if name in names:
+            raise ConfigError(f"bulk.sources contains duplicate name: {name}")
+        names.add(name)
+
+        supports_archive = bool(source.get("supports_bulk_archive", False))
+        has_symbol = bool(source.get("symbol_template"))
+        has_static = bool(source.get("static_path"))
+        if not (supports_archive or has_symbol or has_static):
+            raise ConfigError(
+                f"bulk.sources entry '{name}' must provide symbol_template, static_path, or supports_bulk_archive."
+            )
