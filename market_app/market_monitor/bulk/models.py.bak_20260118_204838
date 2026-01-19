@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,7 +13,6 @@ class BulkSource:
     archive_path: str | None = None
     file_extension: str = ".csv"
 
-    static_path: str | None = None
     def build_symbol_url(self, symbol: str) -> str:
         if not self.symbol_template:
             raise ValueError(f"Source {self.name} does not support symbol URLs.")

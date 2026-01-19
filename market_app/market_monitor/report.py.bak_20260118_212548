@@ -9,7 +9,7 @@ def write_report(path: Path, summary: dict[str, int], scored: pd.DataFrame) -> N
     lines = [
         "# Market Monitor Report",
         "",
-    f"Generated: {datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}",
+        f"Generated: {datetime.now(timezone.utc).isoformat()}Z",
         "",
         "## Stage Summary",
         "",

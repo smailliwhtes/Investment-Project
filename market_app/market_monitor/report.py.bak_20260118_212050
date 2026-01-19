@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+﻿from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -9,7 +9,7 @@ def write_report(path: Path, summary: dict[str, int], scored: pd.DataFrame) -> N
     lines = [
         "# Market Monitor Report",
         "",
-    f"Generated: {datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}",
+        f"Generated: {datetime.now(datetime.UTC).isoformat()}Z",
         "",
         "## Stage Summary",
         "",
@@ -36,5 +36,4 @@ def write_report(path: Path, summary: dict[str, int], scored: pd.DataFrame) -> N
     lines.append("This report is monitoring-only and contains no trading recommendations.")
 
     path.write_text("\n".join(lines), encoding="utf-8")
-
 

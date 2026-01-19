@@ -1,4 +1,4 @@
-﻿from market_monitor.bulk.manifest import BulkManifest, read_manifest, write_manifest
+from market_monitor.bulk.manifest import BulkManifest, read_manifest, write_manifest
 from market_monitor.bulk.models import BulkDownloadTask, BulkSource
 from market_monitor.bulk.planner import build_download_plan
 
@@ -10,7 +10,3 @@ __all__ = [
     "read_manifest",
     "write_manifest",
 ]
-
-
-from .downloader import download_tasks
-
