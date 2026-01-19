@@ -406,6 +406,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor_parser = sub.add_parser("doctor", help="Run diagnostics")
     doctor_parser.add_argument("--config", default="config.json")
+    doctor_parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Skip connectivity checks (also honored by MM_OFFLINE=1).",
+    )
+    doctor_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Treat provider/bulk connectivity warnings as errors.",
+    )
 
     validate_parser = sub.add_parser("validate", help="Validate config")
     validate_parser.add_argument("--config", required=True)
@@ -486,7 +496,7 @@ def main() -> int:
             return 2
 
     if args.command == "doctor":
-        return run_doctor(Path(args.config))
+        return run_doctor(Path(args.config), offline=args.offline, strict=args.strict)
 
     if args.command == "run":
         return run_pipeline(args)

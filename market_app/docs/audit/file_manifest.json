@@ -97506,5 +97506,45 @@
     "entrypoints": [],
     "inputs_read": [],
     "outputs_written": []
+  },
+  {
+    "path": "run_all.ps1",
+    "type": "script",
+    "size": 2774,
+    "purpose_summary": "One-command PowerShell runner (venv, tests, pipeline run).",
+    "imports_deps": [],
+    "entrypoints": [],
+    "inputs_read": [],
+    "outputs_written": []
+  },
+  {
+    "path": "acceptance_test.ps1",
+    "type": "script",
+    "size": 2650,
+    "purpose_summary": "Fresh-clone acceptance test PowerShell script.",
+    "imports_deps": [],
+    "entrypoints": [],
+    "inputs_read": [],
+    "outputs_written": []
+  },
+  {
+    "path": "docs/bulk/WHERE_DATA_LIVES.md",
+    "type": "doc",
+    "size": 3723,
+    "purpose_summary": "Documentation for bulk/cache storage paths and lifecycle.",
+    "imports_deps": [],
+    "entrypoints": [],
+    "inputs_read": [],
+    "outputs_written": []
+  },
+  {
+    "path": "docs/audit/REPO_AUDIT_UPDATE.md",
+    "type": "doc",
+    "size": 4189,
+    "purpose_summary": "Updated audit report covering repo status and gaps.",
+    "imports_deps": [],
+    "entrypoints": [],
+    "inputs_read": [],
+    "outputs_written": []
   }
 ]

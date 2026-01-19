@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from pathlib import Path
 
 import requests
 
+from market_monitor.bulk import load_bulk_sources
 from market_monitor.config_schema import ConfigError, load_config
 from market_monitor.paths import find_repo_root, resolve_path
 from market_monitor.providers import (
@@ -16,7 +18,7 @@ from market_monitor.providers import (
     TwelveDataProvider,
 )
 from market_monitor.providers.base import HistoryProvider, ProviderError
-from market_monitor.providers.http import RetryConfig
+from market_monitor.providers.http import RetryConfig, request_with_backoff
 
 
 @dataclass
@@ -27,10 +29,20 @@ class DoctorMessage:
     fix_steps: list[str]
 
 
-def run_doctor(config_path: Path) -> int:
+@dataclass
+class ConnectivityResult:
+    name: str
+    url: str
+    status: str
+    detail: str
+
+
+def run_doctor(config_path: Path, *, offline: bool = False, strict: bool = False) -> int:
     print("[doctor] Market Monitor diagnostics")
     messages: list[DoctorMessage] = []
     root = find_repo_root()
+    offline = offline or os.getenv("MM_OFFLINE") == "1" or os.getenv("MARKET_MONITOR_OFFLINE") == "1"
+    strict = strict or os.getenv("MM_STRICT_CONNECTIVITY") == "1"
 
     if root != Path.cwd():
         messages.append(
@@ -96,9 +108,19 @@ def run_doctor(config_path: Path) -> int:
 
     logs_dir.mkdir(parents=True, exist_ok=True)
 
+    _print_data_directories(config, root, outputs_dir, logs_dir, cache_dir)
     _check_env_vars(config, messages)
     _check_gate_sanity(config, messages)
-    _check_provider_health(config, messages)
+    provider_status, provider_detail = _check_provider_health(
+        config, messages, offline=offline, strict=strict
+    )
+    _print_provider_status(config["data"]["provider"], provider_status, provider_detail)
+
+    bulk_results = _check_bulk_sources(config, messages, offline=offline, strict=strict)
+    _print_bulk_results(bulk_results, offline=offline)
+
+    cache_stats = _read_cache_stats(logs_dir)
+    _print_cache_stats(cache_stats)
 
     _print_messages(messages, logs_dir)
 
@@ -109,14 +131,13 @@ def run_doctor(config_path: Path) -> int:
 def _check_env_vars(config, messages: list[DoctorMessage]) -> None:
     provider = config["data"]["provider"]
     fallbacks = config["data"].get("fallback_chain", [])
-    required = set([provider] + fallbacks)
     mapping = {
         "twelvedata": "TWELVEDATA_API_KEY",
         "alphavantage": "ALPHAVANTAGE_API_KEY",
         "finnhub": "FINNHUB_API_KEY",
     }
     for provider_name, env_var in mapping.items():
-        if provider_name in required and not os.getenv(env_var):
+        if provider_name == provider and not os.getenv(env_var):
             messages.append(
                 DoctorMessage(
                     level="ERROR",
@@ -125,6 +146,18 @@ def _check_env_vars(config, messages: list[DoctorMessage]) -> None:
                     fix_steps=[
                         f"Set {env_var} in your environment (or .env locally).",
                         "Re-run doctor to confirm the key is detected.",
+                    ],
+                )
+            )
+        elif provider_name in fallbacks and not os.getenv(env_var):
+            messages.append(
+                DoctorMessage(
+                    level="WARN",
+                    title="Missing fallback API key",
+                    detail=f"{env_var} is not set for fallback provider '{provider_name}'.",
+                    fix_steps=[
+                        f"Set {env_var} if you want {provider_name} as a fallback.",
+                        "Otherwise remove it from fallback_chain in config.json.",
                     ],
                 )
             )
@@ -170,7 +203,12 @@ def _check_gate_sanity(config, messages: list[DoctorMessage]) -> None:
         )
 
 
-def _check_provider_health(config, messages: list[DoctorMessage]) -> None:
+def _check_provider_health(
+    config, messages: list[DoctorMessage], *, offline: bool, strict: bool
+) -> tuple[str, str]:
+    if offline:
+        return "SKIPPED", "Offline mode enabled."
+
     throttling = config["data"].get("throttling", {})
     retry_cfg = RetryConfig(
         max_retries=int(throttling.get("max_retries", 2)),
@@ -196,14 +234,14 @@ def _check_provider_health(config, messages: list[DoctorMessage]) -> None:
             provider = FinnhubProvider(api_key, retry_config=retry_cfg)
 
     if provider is None:
-        return
+        return "SKIPPED", "Provider not initialized (missing API key or unavailable)."
 
     try:
         provider.get_history("AAPL", 5)
     except ProviderError as exc:
         messages.append(
             DoctorMessage(
-                level="WARN",
+                level="ERROR" if strict else "WARN",
                 title="Provider health check failed",
                 detail=f"{provider_name} returned an error during a short history check: {exc}.",
                 fix_steps=[
@@ -213,10 +251,11 @@ def _check_provider_health(config, messages: list[DoctorMessage]) -> None:
                 ],
             )
         )
+        return "WARN", f"Provider error: {exc}"
     except requests.RequestException as exc:
         messages.append(
             DoctorMessage(
-                level="WARN",
+                level="ERROR" if strict else "WARN",
                 title="Provider network check failed",
                 detail=f"Network error while contacting {provider_name}: {exc}.",
                 fix_steps=[
@@ -225,6 +264,213 @@ def _check_provider_health(config, messages: list[DoctorMessage]) -> None:
                 ],
             )
         )
+        return "WARN", f"Network error: {exc}"
+
+    return "OK", "History check succeeded."
+
+
+def _print_data_directories(
+    config: dict[str, object],
+    root: Path,
+    outputs_dir: Path,
+    logs_dir: Path,
+    cache_dir: Path,
+) -> None:
+    paths_cfg = config["paths"]
+    bulk_paths = config.get("bulk", {}).get("paths", {})
+    raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
+    curated_dir = resolve_path(root, bulk_paths.get("curated_dir", "data/curated"))
+    manifest_dir = resolve_path(root, bulk_paths.get("manifest_dir", "data/manifests"))
+
+    print("[doctor] Data directories")
+    print(f"  outputs_dir: {outputs_dir}")
+    print(f"  logs_dir: {logs_dir}")
+    print(f"  cache_dir: {cache_dir}")
+    print(f"  watchlist_file: {resolve_path(root, paths_cfg['watchlist_file'])}")
+    print(f"  universe_csv: {resolve_path(root, paths_cfg['universe_csv'])}")
+    print(f"  state_file: {resolve_path(root, paths_cfg['state_file'])}")
+    print(f"  bulk_raw_dir: {raw_dir}")
+    print(f"  bulk_curated_dir: {curated_dir}")
+    print(f"  bulk_manifest_dir: {manifest_dir}")
+
+
+def _print_provider_status(provider_name: str, status: str, detail: str) -> None:
+    print(f"[doctor] Provider reachability ({provider_name}): {status} - {detail}")
+
+
+def _check_bulk_sources(
+    config: dict[str, object],
+    messages: list[DoctorMessage],
+    *,
+    offline: bool,
+    strict: bool,
+) -> list[ConnectivityResult]:
+    sources = load_bulk_sources(config)
+    if not sources:
+        return []
+
+    throttling = config.get("data", {}).get("throttling", {})
+    retry_cfg = RetryConfig(
+        max_retries=int(throttling.get("max_retries", 1)),
+        base_delay_s=float(throttling.get("base_delay_s", 0.3)),
+        jitter_s=float(throttling.get("jitter_s", 0.2)),
+    )
+    session = requests.Session()
+    results: list[ConnectivityResult] = []
+
+    for source in sources:
+        try:
+            url = _resolve_bulk_probe_url(source)
+        except ValueError as exc:
+            results.append(
+                ConnectivityResult(
+                    name=source.name,
+                    url="",
+                    status="SKIPPED",
+                    detail=str(exc),
+                )
+            )
+            continue
+
+        if offline:
+            results.append(
+                ConnectivityResult(
+                    name=source.name,
+                    url=url,
+                    status="SKIPPED",
+                    detail="Offline mode enabled.",
+                )
+            )
+            continue
+
+        status, detail = _probe_url(url, session, retry_cfg)
+        if status != "OK":
+            messages.append(
+                DoctorMessage(
+                    level="ERROR" if strict else "WARN",
+                    title="Bulk source reachability failed",
+                    detail=f"{source.name} at {url} returned {detail}.",
+                    fix_steps=[
+                        "Confirm the URL is reachable in your browser.",
+                        "Check if the provider has changed the endpoint.",
+                        "Retry later if the host is temporarily unavailable.",
+                    ],
+                )
+            )
+        results.append(
+            ConnectivityResult(
+                name=source.name,
+                url=url,
+                status=status,
+                detail=detail,
+            )
+        )
+
+    return results
+
+
+def _resolve_bulk_probe_url(source) -> str:
+    if source.static_path:
+        return source.build_static_url()
+    if source.supports_bulk_archive and source.archive_path:
+        return source.build_archive_url()
+    if source.symbol_template:
+        return source.build_symbol_url("AAPL")
+    raise ValueError("No URL template available for bulk connectivity check.")
+
+
+def _probe_url(url: str, session: requests.Session, retry_cfg: RetryConfig) -> tuple[str, str]:
+    headers = {"User-Agent": "market-monitor-doctor/1.0"}
+    response: requests.Response | None = None
+    try:
+        response = session.head(url, allow_redirects=True, timeout=15, headers=headers)
+        if response.status_code >= 400:
+            raise requests.RequestException(f"HTTP {response.status_code}")
+    except requests.RequestException:
+        response = request_with_backoff(
+            url,
+            session=session,
+            retry=retry_cfg,
+            timeout=15,
+            headers={**headers, "Range": "bytes=0-0"},
+            stream=True,
+        )
+
+    status_code = response.status_code
+    detail = _format_probe_detail(response)
+    response.close()
+
+    if 200 <= status_code < 400:
+        return "OK", detail
+    return "WARN", detail
+
+
+def _format_probe_detail(response: requests.Response) -> str:
+    status_code = response.status_code
+    size = response.headers.get("Content-Length")
+    last_modified = response.headers.get("Last-Modified")
+    extras = []
+    if size:
+        extras.append(f"size={size}")
+    if last_modified:
+        extras.append(f"last-modified={last_modified}")
+    extra_text = f" ({', '.join(extras)})" if extras else ""
+    return f"HTTP {status_code}{extra_text}"
+
+
+def _print_bulk_results(results: list[ConnectivityResult], *, offline: bool) -> None:
+    if not results:
+        print("[doctor] Bulk source reachability: none configured.")
+        return
+    if offline:
+        print("[doctor] Bulk source reachability: skipped (offline mode).")
+        return
+    print("[doctor] Bulk source reachability")
+    for result in results:
+        print(f"  - {result.name}: {result.status} - {result.detail} ({result.url})")
+
+
+def _read_cache_stats(logs_dir: Path) -> dict[str, object] | None:
+    if not logs_dir.exists():
+        return None
+
+    log_files = sorted(
+        logs_dir.glob("run_*.jsonl"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for path in log_files:
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in reversed(lines):
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if record.get("event") != "summary":
+                continue
+            counts = record.get("counts", {})
+            hits = counts.get("cache_hits")
+            misses = counts.get("cache_misses")
+            if hits is None or misses is None:
+                continue
+            total = hits + misses
+            rate = hits / total if total else None
+            return {"hits": hits, "misses": misses, "rate": rate, "log": path}
+    return None
+
+
+def _print_cache_stats(cache_stats: dict[str, object] | None) -> None:
+    if cache_stats is None:
+        print("[doctor] Cache hit rate: unavailable (no run metrics yet).")
+        return
+    hits = cache_stats["hits"]
+    misses = cache_stats["misses"]
+    rate = cache_stats["rate"]
+    rate_pct = f"{rate:.1%}" if isinstance(rate, float) else "n/a"
+    print(f"[doctor] Cache hit rate: {rate_pct} (hits={hits}, misses={misses})")
 
 
 def _print_messages(messages: list[DoctorMessage], logs_dir: Path) -> None:

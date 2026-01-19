@@ -50,8 +50,11 @@ def stage_pipeline(
     stage1_survivors: list[dict[str, Any]] = []
     stage2_survivors: list[dict[str, Any]] = []
     stage3_rows: list[dict[str, Any]] = []
+    cache_hits = 0
+    cache_misses = 0
 
     def fetch_cached(symbol: str, days: int):
+        nonlocal cache_hits, cache_misses
         return get_or_fetch(
             cache_dir=cache_dir,
             provider_name=provider.name,
@@ -68,6 +71,10 @@ def stage_pipeline(
         name = row.get("name") or symbol
         try:
             cache_res = fetch_cached(symbol, staging_cfg["stage1_micro_days"])
+            if cache_res.used_cache:
+                cache_hits += 1
+            else:
+                cache_misses += 1
             df, adjusted_mode = _apply_adjusted(cache_res.df, provider)
             if df.empty:
                 status = "DATA_UNAVAILABLE"
@@ -121,6 +128,10 @@ def stage_pipeline(
         name = row.get("name") or symbol
         try:
             cache_res = fetch_cached(symbol, staging_cfg["stage2_short_days"])
+            if cache_res.used_cache:
+                cache_hits += 1
+            else:
+                cache_misses += 1
             df, adjusted_mode = _apply_adjusted(cache_res.df, provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
@@ -174,6 +185,10 @@ def stage_pipeline(
         name = row.get("name") or symbol
         try:
             cache_res = fetch_cached(symbol, staging_cfg["stage3_deep_days"])
+            if cache_res.used_cache:
+                cache_hits += 1
+            else:
+                cache_misses += 1
             df, adjusted_mode = _apply_adjusted(cache_res.df, provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
@@ -230,6 +245,8 @@ def stage_pipeline(
         "stage1": len(stage1_survivors),
         "stage2": len(stage2_survivors),
         "stage3": len(stage3_rows),
+        "cache_hits": cache_hits,
+        "cache_misses": cache_misses,
     }
 
     stage1_df = pd.DataFrame(stage1_survivors)

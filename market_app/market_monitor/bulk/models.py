@@ -12,8 +12,8 @@ class BulkSource:
     supports_bulk_archive: bool = False
     archive_path: str | None = None
     file_extension: str = ".csv"
-
     static_path: str | None = None
+
     def build_symbol_url(self, symbol: str) -> str:
         if not self.symbol_template:
             raise ValueError(f"Source {self.name} does not support symbol URLs.")
@@ -24,6 +24,11 @@ class BulkSource:
         if not self.supports_bulk_archive or not self.archive_path:
             raise ValueError(f"Source {self.name} does not support archive downloads.")
         return f"{self.base_url.rstrip('/')}/{self.archive_path.lstrip('/')}"
+
+    def build_static_url(self) -> str:
+        if not self.static_path:
+            raise ValueError(f"Source {self.name} does not define a static path.")
+        return f"{self.base_url.rstrip('/')}/{self.static_path.lstrip('/')}"
 
 
 @dataclass(frozen=True)

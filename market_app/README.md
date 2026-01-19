@@ -13,14 +13,22 @@ Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. 
 From the repo root:
 
 ```powershell
-.\doctor.ps1
+.\run_all.ps1
 ```
 
 This will:
 1) Create a Python 3.11 venv
-2) Install dependencies
-3) Run diagnostics
-4) Run the pipeline
+2) Install dependencies (and optional dev deps)
+3) Run tests (`python -m pytest -q`)
+4) Run the pipeline (watchlist by default) into a timestamped outputs folder
+
+Optional flags (examples):
+
+```powershell
+.\run_all.ps1 -Mode universe
+.\run_all.ps1 -Mode themed -Themes defense,tech
+.\run_all.ps1 -Mode batch -BatchSize 200 -BatchCursorFile .\data\state\batch_state.json
+```
 
 ## CLI Usage
 
@@ -67,6 +75,10 @@ A bulk historical CSV downloader design (including module stubs and a novice-fir
 - `docs/bulk_downloader.md`
 - `docs/product_roadmap.md`
 
+Actual bulk storage locations + lifecycle are documented here:
+
+- `docs/bulk/WHERE_DATA_LIVES.md`
+
 ## Outputs
 
 Each run writes:
@@ -105,6 +117,13 @@ python -m market_monitor doctor --config config.json
 ```
 
 The doctor command explains failures in plain English and points to the logs directory.
+
+To skip connectivity checks (offline mode):
+
+```powershell
+$env:MM_OFFLINE = "1"
+python -m market_monitor doctor --config config.json
+```
 
 ## Example Runs
 
@@ -146,6 +165,14 @@ Copy `.env.example` to `.env` and set keys as needed:
 - `FINNHUB_WEBHOOK_SECRET`
 - `TWELVEDATA_API_KEY`
 - `ALPHAVANTAGE_API_KEY`
+
+## Acceptance Test (Fresh Clone)
+
+Run the fresh-clone verification (creates venv, installs deps, runs tests, runs a watchlist pipeline, and checks connectivity):
+
+```powershell
+.\acceptance_test.ps1
+```
 
 ## Adding a Provider
 
