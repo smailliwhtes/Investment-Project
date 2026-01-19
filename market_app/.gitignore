@@ -5,4 +5,5 @@ outputs/
 output/
 data/cache/
 outputs/logs/
+.env
 *.pyc

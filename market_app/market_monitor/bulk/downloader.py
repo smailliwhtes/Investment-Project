@@ -38,7 +38,8 @@ def download_tasks(
     for task in tasks:
         planned += 1
         if logger:
-            logger.info(f"[bulk] {task.kind} -> {task.destination}")
+            label = "archive" if task.is_archive else (task.symbol or "symbol")
+            logger.info(f"[bulk] {task.source_name}:{label} -> {task.destination}")
         if dry_run:
             skipped += 1
             continue
