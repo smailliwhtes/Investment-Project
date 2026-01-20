@@ -1,0 +1,163 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import subprocess
+import sys
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
+
+from market_monitor.preflight import PreflightReport
+
+
+def generate_run_id(
+    *,
+    timestamp: datetime,
+    config_hash: str,
+    watchlist_hash: str,
+) -> str:
+    stamp = timestamp.strftime("%Y%m%d_%H%M%S")
+    digest = hashlib.sha256(f"{config_hash}:{watchlist_hash}".encode("utf-8")).hexdigest()
+    return f"{stamp}_{digest[:8]}"
+
+
+def hash_file(path: Path) -> str:
+    payload = path.read_bytes()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def hash_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def resolve_git_commit(repo_root: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return result.stdout.strip() or None
+
+
+def _redact_config(config: dict[str, Any]) -> dict[str, Any]:
+    def redact(value: Any, key: str | None = None) -> Any:
+        if isinstance(value, dict):
+            return {k: redact(v, k) for k, v in value.items()}
+        if isinstance(value, list):
+            return [redact(v, key) for v in value]
+        if key and any(token in key.lower() for token in ("key", "secret", "token", "password")):
+            return "<redacted>"
+        return value
+
+    return redact(config)
+
+
+def _watchlist_hash(watchlist_df: pd.DataFrame) -> str:
+    symbols = watchlist_df["symbol"].astype(str).tolist() if not watchlist_df.empty else []
+    payload = "\n".join(symbols)
+    return hash_text(payload)
+
+
+def _collect_versions() -> dict[str, str]:
+    versions = {"python": sys.version.split()[0]}
+    try:
+        import importlib.metadata as metadata
+    except ImportError:
+        import importlib_metadata as metadata  # type: ignore
+
+    for name in ("pandas", "numpy", "requests"):
+        try:
+            versions[name] = metadata.version(name)
+        except metadata.PackageNotFoundError:
+            versions[name] = "unknown"
+    return versions
+
+
+@dataclass(frozen=True)
+class RunManifest:
+    payload: dict[str, Any]
+
+    def to_json(self, *, indent: int | None = None) -> str:
+        return json.dumps(self.payload, indent=indent, sort_keys=True)
+
+
+def build_run_manifest(
+    *,
+    run_id: str,
+    run_start: datetime,
+    run_end: datetime,
+    config: dict[str, Any],
+    config_hash: str,
+    watchlist_path: Path | None,
+    watchlist_df: pd.DataFrame,
+    summary: dict[str, int],
+    scored: pd.DataFrame,
+    preflight: PreflightReport | None,
+    git_commit: str | None,
+) -> RunManifest:
+    watchlist_file_hash = None
+    if watchlist_path and watchlist_path.exists():
+        watchlist_file_hash = hash_file(watchlist_path)
+
+    watchlist_hash = _watchlist_hash(watchlist_df)
+    input_files: dict[str, dict[str, str]] = {}
+    if preflight:
+        for symbol in preflight.symbols:
+            if symbol.status != "FOUND" or not symbol.file_path:
+                continue
+            try:
+                path = Path(symbol.file_path)
+                input_files[symbol.symbol] = {
+                    "path": str(path),
+                    "sha256": hash_file(path),
+                }
+            except OSError:
+                continue
+
+    eligible_count = int(scored["eligible"].sum()) if "eligible" in scored.columns else 0
+    counts = {
+        "symbols_requested": int(len(watchlist_df)),
+        "symbols_found": int(len(preflight.found_symbols)) if preflight else 0,
+        "symbols_processed": int(summary.get("stage3", 0)),
+        "symbols_eligible": eligible_count,
+    }
+
+    payload = {
+        "run_id": run_id,
+        "git_commit": git_commit,
+        "start_timestamp_utc": run_start.isoformat(),
+        "end_timestamp_utc": run_end.isoformat(),
+        "config_hash": config_hash,
+        "config": _redact_config(config),
+        "watchlist_file": str(watchlist_path) if watchlist_path else None,
+        "watchlist_file_hash": watchlist_file_hash,
+        "watchlist_hash": watchlist_hash,
+        "input_files": input_files,
+        "counts": counts,
+        "summary": summary,
+        "versions": _collect_versions(),
+    }
+    return RunManifest(payload=payload)
+
+
+def run_id_from_inputs(
+    *,
+    timestamp: datetime,
+    config_hash: str,
+    watchlist_path: Path | None,
+    watchlist_df: pd.DataFrame,
+) -> str:
+    if watchlist_path and watchlist_path.exists():
+        watchlist_hash = hash_file(watchlist_path)
+    else:
+        watchlist_hash = _watchlist_hash(watchlist_df)
+    return generate_run_id(timestamp=timestamp, config_hash=config_hash, watchlist_hash=watchlist_hash)

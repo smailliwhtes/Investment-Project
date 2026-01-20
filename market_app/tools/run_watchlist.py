@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 import requests
 
+from market_monitor.offline import require_online
+
 # --- .env autoload (optional) ---
 try:
     from dotenv import load_dotenv  # python-dotenv
@@ -84,6 +86,7 @@ def _read_watchlist(path: str):
 
 
 def _stooq_reachable(timeout_sec: float = 2.0) -> bool:
+    require_online("stooq reachability check")
     try:
         sock = socket.create_connection(("stooq.com", 443), timeout=timeout_sec)
         sock.close()
@@ -101,6 +104,7 @@ def _request_with_retry(
     max_retries: int = 4,
     backoff_base: float = 0.7,
 ) -> requests.Response:
+    require_online(f"{provider} request {url}")
     last_exc = None
     for attempt in range(max_retries + 1):
         stats[provider].requests += 1

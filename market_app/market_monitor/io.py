@@ -116,4 +116,8 @@ def _ensure_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
 
 def write_csv(df: pd.DataFrame, path: Path, columns: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    _ensure_columns(df, columns).to_csv(path, index=False)
+    cleaned = _ensure_columns(df.copy(), columns)
+    float_cols = cleaned.select_dtypes(include=["float", "float32", "float64"]).columns
+    if len(float_cols):
+        cleaned[float_cols] = cleaned[float_cols].round(6)
+    cleaned.to_csv(path, index=False)

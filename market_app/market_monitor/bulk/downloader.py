@@ -8,6 +8,7 @@ from zipfile import ZipFile
 import requests
 
 from market_monitor.bulk.models import BulkDownloadTask
+from market_monitor.offline import require_online
 from market_monitor.providers.http import RetryConfig, request_with_backoff
 
 
@@ -36,6 +37,7 @@ def download_tasks(
     session = session or requests.Session()
 
     for task in tasks:
+        require_online(f"bulk download {task.url}")
         planned += 1
         if logger:
             label = "archive" if task.is_archive else (task.symbol or "symbol")

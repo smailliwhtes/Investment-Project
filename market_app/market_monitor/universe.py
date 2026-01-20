@@ -3,6 +3,8 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+from market_monitor.offline import require_online
+
 NASDAQ_LISTED_URL = "https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
 OTHER_LISTED_URL = "https://www.nasdaqtrader.com/dynamic/symdir/otherlisted.txt"
 
@@ -28,6 +30,7 @@ def _parse_pipe_table(text: str) -> pd.DataFrame:
 
 
 def fetch_universe() -> pd.DataFrame:
+    require_online("fetch universe list")
     listed = requests.get(NASDAQ_LISTED_URL, timeout=30).text
     other = requests.get(OTHER_LISTED_URL, timeout=30).text
     df_listed = _parse_pipe_table(listed)

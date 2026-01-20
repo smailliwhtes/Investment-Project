@@ -34,6 +34,9 @@ from market_monitor.providers.http import RetryConfig
 from market_monitor.providers.stooq import StooqProvider
 from market_monitor.providers.twelvedata import TwelveDataProvider
 from market_monitor.macro import load_silver_series
+from market_monitor.manifest import build_run_manifest, resolve_git_commit, run_id_from_inputs
+from market_monitor.offline import set_offline_mode
+from market_monitor.preflight import run_preflight
 from market_monitor.prediction import build_panel, latest_predictions, train_and_predict
 from market_monitor.report import write_report
 from market_monitor.scoring import score_frame
@@ -108,7 +111,7 @@ def _build_provider(config: dict[str, Any], logger, root: Path) -> HistoryProvid
         if name == "nasdaq_daily":
             paths = resolve_data_paths(config, root)
             if not paths.nasdaq_daily_dir:
-                raise ProviderError("NASDAQ_DAILY_DIR is not configured.")
+                raise ProviderError("MARKET_APP_NASDAQ_DAILY_DIR is not configured.")
             cache_dir = resolve_path(root, config["paths"]["cache_dir"])
             return NasdaqDailyProvider(
                 NasdaqDailySource(directory=paths.nasdaq_daily_dir, cache_dir=cache_dir)
@@ -195,30 +198,22 @@ def run_pipeline(args: argparse.Namespace) -> int:
     config_hash = config_result.config_hash
 
     logger = get_console_logger(args.log_level)
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    run_timestamp = datetime.now(timezone.utc).isoformat()
+    offline_mode = bool(config["data"].get("offline_mode", False))
+    if not offline_mode:
+        logger.error("Offline mode is required for this release. Set data.offline_mode=true.")
+        return 3
+    set_offline_mode(offline_mode)
+
+    run_start = datetime.now(timezone.utc)
+    run_timestamp = run_start.isoformat()
 
     provider = _build_provider(config, logger, root)
-
-    outputs_dir = resolve_path(root, config["paths"]["outputs_dir"])
-    cache_dir = resolve_path(root, config["paths"]["cache_dir"])
-    logs_dir = resolve_path(root, config["paths"]["logs_dir"])
-    outputs_dir.mkdir(parents=True, exist_ok=True)
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    logs_dir.mkdir(parents=True, exist_ok=True)
-
-    json_logger = JsonlLogger(logs_dir / f"run_{run_id}.jsonl")
-    run_meta = {
-        "run_id": run_id,
-        "run_timestamp_utc": run_timestamp,
-        "config_hash": config_hash,
-        "provider_name": provider.name,
-    }
 
     if config["data"].get("offline_mode", False) and args.mode != "watchlist":
         logger.error("Offline mode is enabled; only --mode watchlist is supported.")
         return 3
 
+    watchlist_path: Path | None = None
     if args.mode == "watchlist":
         watchlist_path = resolve_path(root, args.watchlist or config["paths"]["watchlist_file"])
         universe_df = read_watchlist(watchlist_path)
@@ -262,12 +257,45 @@ def run_pipeline(args: argparse.Namespace) -> int:
         universe_df = universe_df.iloc[start:end]
         cursor_file.write_text(str(end), encoding="utf-8")
 
+    run_id = run_id_from_inputs(
+        timestamp=run_start,
+        config_hash=config_hash,
+        watchlist_path=watchlist_path if args.mode == "watchlist" else None,
+        watchlist_df=universe_df,
+    )
+
+    outputs_dir = resolve_path(root, config["paths"]["outputs_dir"])
+    cache_dir = resolve_path(root, config["paths"]["cache_dir"])
+    logs_dir = resolve_path(root, config["paths"]["logs_dir"])
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    json_logger = JsonlLogger(logs_dir / f"run_{run_id}.jsonl")
+    run_meta = {
+        "run_id": run_id,
+        "run_timestamp_utc": run_timestamp,
+        "config_hash": config_hash,
+        "provider_name": provider.name,
+    }
+
     paths = resolve_data_paths(config, root)
     silver_macro = None
-    if paths.silver_prices_csv:
-        macro = load_silver_series(paths.silver_prices_csv)
+    if paths.silver_prices_dir:
+        macro = load_silver_series(paths.silver_prices_dir)
         if macro:
             silver_macro = macro.features
+
+    preflight = None
+    if args.mode == "watchlist":
+        preflight = run_preflight(
+            universe_df,
+            provider,
+            outputs_dir,
+            run_id=run_id,
+            run_timestamp=run_timestamp,
+            logger=logger,
+        )
 
     stage1_df, stage2_df, stage3_df, summary = stage_pipeline(
         universe_df,
@@ -304,8 +332,8 @@ def run_pipeline(args: argparse.Namespace) -> int:
         "provider_name": provider.name,
         "nasdaq_daily_dir": str(paths.nasdaq_daily_dir) if paths.nasdaq_daily_dir else "unset",
         "nasdaq_daily_found": str(bool(paths.nasdaq_daily_dir and paths.nasdaq_daily_dir.exists())),
-        "silver_prices_csv": str(paths.silver_prices_csv) if paths.silver_prices_csv else "unset",
-        "silver_prices_found": str(bool(paths.silver_prices_csv and paths.silver_prices_csv.exists())),
+        "silver_prices_dir": str(paths.silver_prices_dir) if paths.silver_prices_dir else "unset",
+        "silver_prices_found": str(bool(paths.silver_prices_dir and paths.silver_prices_dir.exists())),
     }
 
     prediction_panel = None
@@ -343,6 +371,8 @@ def run_pipeline(args: argparse.Namespace) -> int:
         report_path,
         summary,
         scored,
+        run_id=run_id,
+        run_timestamp=run_timestamp,
         data_usage=data_usage,
         prediction_panel=prediction_panel,
         prediction_metrics=prediction_metrics,
@@ -351,9 +381,30 @@ def run_pipeline(args: argparse.Namespace) -> int:
         report_archive,
         summary,
         scored,
+        run_id=run_id,
+        run_timestamp=run_timestamp,
         data_usage=data_usage,
         prediction_panel=prediction_panel,
         prediction_metrics=prediction_metrics,
+    )
+
+    run_end = datetime.now(timezone.utc)
+    manifest = build_run_manifest(
+        run_id=run_id,
+        run_start=run_start,
+        run_end=run_end,
+        config=config,
+        config_hash=config_hash,
+        watchlist_path=watchlist_path if args.mode == "watchlist" else None,
+        watchlist_df=universe_df,
+        summary=summary,
+        scored=scored,
+        preflight=preflight,
+        git_commit=resolve_git_commit(root),
+    )
+    (outputs_dir / "run_manifest.json").write_text(
+        manifest.to_json(indent=2),
+        encoding="utf-8",
     )
 
     json_logger.log("summary", {"counts": summary})
@@ -371,6 +422,7 @@ def run_bulk_plan(args: argparse.Namespace) -> int:
         return 2
 
     logger = get_console_logger(args.log_level)
+    set_offline_mode(bool(config["data"].get("offline_mode", False)))
     sources = load_bulk_sources(config)
     if args.sources:
         allowed = {name.strip() for name in args.sources.split(",") if name.strip()}
@@ -402,6 +454,7 @@ def run_bulk_download(args: argparse.Namespace) -> int:
         return 2
 
     logger = get_console_logger(args.log_level)
+    set_offline_mode(bool(config["data"].get("offline_mode", False)))
     sources = load_bulk_sources(config)
     if args.sources:
         allowed = {name.strip() for name in args.sources.split(",") if name.strip()}
@@ -451,6 +504,7 @@ def run_bulk_standardize(args: argparse.Namespace) -> int:
         return 2
 
     logger = get_console_logger(args.log_level)
+    set_offline_mode(bool(config["data"].get("offline_mode", False)))
     bulk_paths = config.get("bulk", {}).get("paths", {})
     raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
     curated_dir = resolve_path(root, bulk_paths.get("curated_dir", "data/curated"))
@@ -466,6 +520,53 @@ def run_bulk_standardize(args: argparse.Namespace) -> int:
     )
     total_rows = sum(result.rows for result in results)
     logger.info(f"[bulk] standardized {len(results)} files -> {output_dir} ({total_rows} rows)")
+    return 0
+
+
+def run_preflight_command(args: argparse.Namespace) -> int:
+    root = find_repo_root()
+    config_path = resolve_path(root, args.config)
+    try:
+        config_result = load_config(config_path)
+    except ConfigError as exc:
+        print(f"[error] {exc}")
+        return 2
+
+    config = config_result.config
+    config_hash = config_result.config_hash
+    logger = get_console_logger(args.log_level)
+    offline_mode = bool(config["data"].get("offline_mode", False))
+    if not offline_mode:
+        logger.error("Offline mode is required for preflight.")
+        return 3
+    set_offline_mode(offline_mode)
+
+    watchlist_path = resolve_path(root, args.watchlist or config["paths"]["watchlist_file"])
+    watchlist_df = read_watchlist(watchlist_path)
+    if watchlist_df.empty:
+        logger.error(f"Watchlist is empty or missing at {watchlist_path}.")
+        return 3
+
+    provider = _build_provider(config, logger, root)
+    outputs_dir = resolve_path(root, args.outdir or config["paths"]["outputs_dir"])
+    run_start = datetime.now(timezone.utc)
+    run_timestamp = run_start.isoformat()
+    run_id = run_id_from_inputs(
+        timestamp=run_start,
+        config_hash=config_hash,
+        watchlist_path=watchlist_path,
+        watchlist_df=watchlist_df,
+    )
+
+    run_preflight(
+        watchlist_df,
+        provider,
+        outputs_dir,
+        run_id=run_id,
+        run_timestamp=run_timestamp,
+        logger=logger,
+    )
+    logger.info(f"[preflight] report written to {outputs_dir}")
     return 0
 
 
@@ -528,6 +629,12 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--max-workers", type=int)
     run_parser.add_argument("--log-level", default="INFO")
 
+    preflight_parser = sub.add_parser("preflight", help="Run offline preflight checks")
+    preflight_parser.add_argument("--config", default="config.yaml")
+    preflight_parser.add_argument("--watchlist")
+    preflight_parser.add_argument("--outdir")
+    preflight_parser.add_argument("--log-level", default="INFO")
+
     bulk_plan_parser = sub.add_parser("bulk-plan", help="Plan bulk CSV downloads")
     bulk_plan_parser.add_argument("--config", default="config.yaml")
     bulk_plan_parser.add_argument("--mode", choices=["watchlist", "universe"], default="watchlist")
@@ -586,6 +693,9 @@ def main() -> int:
 
     if args.command == "run":
         return run_pipeline(args)
+
+    if args.command == "preflight":
+        return run_preflight_command(args)
 
     if args.command == "bulk-plan":
         return run_bulk_plan(args)

@@ -14,9 +14,10 @@ class SilverMacro:
 
 
 def load_silver_series(path: Path) -> SilverMacro | None:
-    if not path.exists():
+    resolved = _resolve_silver_file(path)
+    if resolved is None or not resolved.exists():
         return None
-    df = pd.read_csv(path)
+    df = pd.read_csv(resolved)
     columns = {c.lower(): c for c in df.columns}
     date_col = columns.get("date") or columns.get("timestamp") or columns.get("time")
     price_col = columns.get("price") or columns.get("close") or columns.get("value")
@@ -31,6 +32,18 @@ def load_silver_series(path: Path) -> SilverMacro | None:
     series = series.sort_values("Date").drop_duplicates(subset=["Date"], keep="last")
     features = compute_silver_features(series)
     return SilverMacro(df=series.reset_index(drop=True), features=features)
+
+
+def _resolve_silver_file(path: Path) -> Path | None:
+    if path.is_file():
+        return path
+    if path.is_dir():
+        candidates = sorted(path.glob("*.csv"))
+        if not candidates:
+            return None
+        preferred = [c for c in candidates if "silver" in c.stem.lower()]
+        return preferred[0] if preferred else candidates[0]
+    return None
 
 
 def compute_silver_features(df: pd.DataFrame) -> dict[str, float]:

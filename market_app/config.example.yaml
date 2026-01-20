@@ -20,8 +20,7 @@ data:
   max_cache_age_days: 2
   max_workers: 6
   provider: nasdaq_daily
-  fallback_chain:
-  - stooq
+  fallback_chain: []
   offline_mode: true
   budget:
     twelvedata:
@@ -35,9 +34,9 @@ data:
     max_retries: 3
     jitter_s: 0.2
   paths:
-    market_app_data_root: C:\\Users\\<USER>\\Desktop
-    nasdaq_daily_dir: C:\\Users\\<USER>\\Desktop\\NASDAQ_Daily
-    silver_prices_csv: C:\\Users\\<USER>\\Desktop\\silver_prices_data\\silver_prices_data.csv
+    market_app_data_root: C:\\Users\\<USER>\\Desktop\\Kaggle_datasets
+    nasdaq_daily_dir: C:\\Users\\<USER>\\Desktop\\Kaggle_datasets\\NASDAQ_Daily
+    silver_prices_dir: C:\\Users\\<USER>\\Desktop\\Kaggle_datasets\\silver_prices_data
 gates:
   price_max: 10.0
   min_adv20_dollar: 1000000

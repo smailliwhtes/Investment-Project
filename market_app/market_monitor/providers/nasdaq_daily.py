@@ -63,44 +63,100 @@ class NasdaqDailyProvider(HistoryProvider):
         return float(delta.total_seconds() / 86400.0)
 
     def _load_symbol(self, symbol: str) -> pd.DataFrame:
+        df, _ = self.load_symbol_data(symbol)
+        return df
+
+    def resolve_symbol_file(self, symbol: str) -> Path | None:
+        return self._find_symbol_file(symbol)
+
+    def load_symbol_data(self, symbol: str) -> tuple[pd.DataFrame, Path]:
         source_file = self._find_symbol_file(symbol)
         if source_file is None:
             raise ProviderError(f"NASDAQ_DAILY_MISSING:{symbol}")
         df = pd.read_csv(source_file)
         normalized = self._normalize_ohlc(df, symbol)
-        return normalized
+        return normalized, source_file
 
     def _find_symbol_file(self, symbol: str) -> Path | None:
-        candidates = [
-            self.source.directory / f"{symbol}.csv",
-            self.source.directory / f"{symbol.upper()}.csv",
-            self.source.directory / f"{symbol.lower()}.csv",
-            self.source.directory / f"{symbol.upper()}.CSV",
-            self.source.directory / f"{symbol.lower()}.CSV",
-        ]
+        candidates = []
+        for variant in _symbol_variants(symbol):
+            candidates.append(self.source.directory / f"{variant}.csv")
+            candidates.append(self.source.directory / f"{variant}.CSV")
         for candidate in candidates:
             if candidate.exists():
                 return candidate
+
+        normalized_target = _normalize_symbol(symbol)
+        for path in self.source.directory.glob("*.csv"):
+            if _normalize_symbol(path.stem) == normalized_target:
+                return path
+        for path in self.source.directory.glob("*.CSV"):
+            if _normalize_symbol(path.stem) == normalized_target:
+                return path
         return None
 
     @staticmethod
     def _normalize_ohlc(df: pd.DataFrame, symbol: str) -> pd.DataFrame:
-        cols = {c.lower(): c for c in df.columns}
-        required = ["date", "open", "high", "low", "close"]
-        missing = [c for c in required if c not in cols]
+        cols = {c.lower().strip(): c for c in df.columns}
+        date_col = cols.get("date") or cols.get("timestamp") or cols.get("time")
+        open_col = cols.get("open")
+        high_col = cols.get("high")
+        low_col = cols.get("low")
+        close_col = cols.get("close")
+        adj_close_col = (
+            cols.get("adj close")
+            or cols.get("adj_close")
+            or cols.get("adjusted close")
+            or cols.get("adjusted_close")
+        )
+        volume_col = cols.get("volume") or cols.get("vol")
+
+        missing = []
+        for key, value in {
+            "date": date_col,
+            "open": open_col,
+            "high": high_col,
+            "low": low_col,
+            "close": close_col,
+        }.items():
+            if value is None:
+                missing.append(key)
         if missing:
             raise ProviderError(f"NASDAQ_DAILY_SCHEMA_MISSING:{symbol}:{','.join(missing)}")
 
         normalized = pd.DataFrame(
             {
-                "Date": pd.to_datetime(df[cols["date"]], errors="coerce"),
-                "Open": pd.to_numeric(df[cols["open"]], errors="coerce"),
-                "High": pd.to_numeric(df[cols["high"]], errors="coerce"),
-                "Low": pd.to_numeric(df[cols["low"]], errors="coerce"),
-                "Close": pd.to_numeric(df[cols["close"]], errors="coerce"),
+                "Date": pd.to_datetime(df[date_col], errors="coerce"),
+                "Open": pd.to_numeric(df[open_col], errors="coerce"),
+                "High": pd.to_numeric(df[high_col], errors="coerce"),
+                "Low": pd.to_numeric(df[low_col], errors="coerce"),
+                "Close": pd.to_numeric(df[close_col], errors="coerce"),
             }
         )
+        if adj_close_col is not None:
+            normalized["Adjusted_Close"] = pd.to_numeric(df[adj_close_col], errors="coerce")
+        if volume_col is not None:
+            normalized["Volume"] = pd.to_numeric(df[volume_col], errors="coerce")
+        else:
+            normalized["Volume"] = np.nan
+
         normalized = normalized.dropna(subset=["Date"]).sort_values("Date")
         normalized = normalized.drop_duplicates(subset=["Date"], keep="last")
-        normalized["Volume"] = np.nan
+        normalized = normalized.dropna(subset=["Close"])
         return normalized.reset_index(drop=True)
+
+
+def _symbol_variants(symbol: str) -> set[str]:
+    base = symbol.strip()
+    variants = {base, base.upper(), base.lower()}
+    variants.add(base.replace(".", "-"))
+    variants.add(base.replace("-", "."))
+    variants.add(base.replace("/", "-"))
+    variants.add(base.replace("/", "."))
+    variants.add(base.replace(".", ""))
+    variants.add(base.replace("-", ""))
+    return {v for v in variants if v}
+
+
+def _normalize_symbol(symbol: str) -> str:
+    return symbol.replace("-", "").replace(".", "").replace("/", "").strip().upper()

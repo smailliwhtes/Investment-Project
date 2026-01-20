@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from importlib import metadata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,12 +13,15 @@ from market_monitor.bulk import load_bulk_sources
 from market_monitor.config_schema import ConfigError, load_config
 from market_monitor.data_paths import resolve_data_paths
 from market_monitor.paths import find_repo_root, resolve_path
+from market_monitor.offline import set_offline_mode
 from market_monitor.providers import (
     AlphaVantageProvider,
     FinnhubProvider,
     StooqProvider,
     TwelveDataProvider,
 )
+from market_monitor.providers.nasdaq_daily import NasdaqDailyProvider, NasdaqDailySource
+from market_monitor.universe import read_watchlist
 from market_monitor.providers.base import HistoryProvider, ProviderError
 from market_monitor.providers.http import RetryConfig, request_with_backoff
 
@@ -91,6 +95,8 @@ def run_doctor(config_path: Path, *, offline: bool = False, strict: bool = False
         return 2
 
     config = result.config
+    offline = offline or config["data"].get("offline_mode", False)
+    set_offline_mode(bool(offline))
     logs_dir = resolve_path(root, config["paths"]["logs_dir"])
 
     watchlist_path = resolve_path(root, config["paths"]["watchlist_file"])
@@ -116,6 +122,8 @@ def run_doctor(config_path: Path, *, offline: bool = False, strict: bool = False
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     _print_data_directories(config, root, outputs_dir, logs_dir, cache_dir)
+    _print_runtime_info()
+    _print_symbol_coverage(config, root, messages)
     _check_env_vars(config, messages)
     _check_external_data_paths(config, root, messages)
     _check_gate_sanity(config, messages)
@@ -183,22 +191,22 @@ def _check_external_data_paths(config, root: Path, messages: list[DoctorMessage]
                     level="ERROR",
                     title="NASDAQ daily dataset missing",
                     detail=(
-                        "Offline mode is enabled but NASDAQ_DAILY_DIR is not configured or missing."
+                        "Offline mode is enabled but the NASDAQ daily dataset path is not configured or missing."
                     ),
                     fix_steps=[
-                        "Set NASDAQ_DAILY_DIR in config.yaml or environment.",
+                        "Set MARKET_APP_NASDAQ_DAILY_DIR in config.yaml or environment.",
                         "Ensure the folder contains per-ticker CSVs.",
                     ],
                 )
             )
-    if paths.silver_prices_csv and not paths.silver_prices_csv.exists():
+    if paths.silver_prices_dir and not paths.silver_prices_dir.exists():
         messages.append(
             DoctorMessage(
                 level="WARN",
                 title="Silver dataset missing",
-                detail=f"Silver CSV not found at {paths.silver_prices_csv}.",
+                detail=f"Silver dataset not found at {paths.silver_prices_dir}.",
                 fix_steps=[
-                    "Verify SILVER_PRICES_CSV path in config.yaml or env.",
+                    "Verify MARKET_APP_SILVER_PRICES_DIR path in config.yaml or env.",
                     "Leave unset if you do not want silver macro features.",
                 ],
             )
@@ -326,6 +334,7 @@ def _print_data_directories(
     manifest_dir = resolve_path(root, bulk_paths.get("manifest_dir", "data/manifests"))
 
     print("[doctor] Data directories")
+    print(f"  offline_mode: {config.get('data', {}).get('offline_mode', False)}")
     print(f"  outputs_dir: {outputs_dir}")
     print(f"  logs_dir: {logs_dir}")
     print(f"  cache_dir: {cache_dir}")
@@ -334,7 +343,7 @@ def _print_data_directories(
     print(f"  state_file: {resolve_path(root, paths_cfg['state_file'])}")
     print(f"  market_app_data_root: {data_paths.market_app_data_root}")
     print(f"  nasdaq_daily_dir: {data_paths.nasdaq_daily_dir}")
-    print(f"  silver_prices_csv: {data_paths.silver_prices_csv}")
+    print(f"  silver_prices_dir: {data_paths.silver_prices_dir}")
     print(f"  bulk_raw_dir: {raw_dir}")
     print(f"  bulk_curated_dir: {curated_dir}")
     print(f"  bulk_manifest_dir: {manifest_dir}")
@@ -517,6 +526,59 @@ def _print_cache_stats(cache_stats: dict[str, object] | None) -> None:
     rate = cache_stats["rate"]
     rate_pct = f"{rate:.1%}" if isinstance(rate, float) else "n/a"
     print(f"[doctor] Cache hit rate: {rate_pct} (hits={hits}, misses={misses})")
+
+
+def _print_runtime_info() -> None:
+    print("[doctor] Runtime environment")
+    print(f"  python: {sys.version.split()[0]}")
+    for pkg in ("pandas", "numpy", "requests"):
+        try:
+            version = metadata.version(pkg)
+        except metadata.PackageNotFoundError:
+            version = "not installed"
+        print(f"  {pkg}: {version}")
+
+
+def _print_symbol_coverage(config: dict[str, object], root: Path, messages: list[DoctorMessage]) -> None:
+    if not config["data"].get("offline_mode", False):
+        return
+
+    data_paths = resolve_data_paths(config, root)
+    if not data_paths.nasdaq_daily_dir or not data_paths.nasdaq_daily_dir.exists():
+        return
+
+    watchlist_path = resolve_path(root, config["paths"]["watchlist_file"])
+    if not watchlist_path.exists():
+        return
+
+    watchlist = read_watchlist(watchlist_path)
+    provider = NasdaqDailyProvider(
+        NasdaqDailySource(directory=data_paths.nasdaq_daily_dir, cache_dir=resolve_path(root, config["paths"]["cache_dir"]))
+    )
+    found = 0
+    missing = 0
+    for symbol in watchlist["symbol"].tolist():
+        if provider.resolve_symbol_file(symbol):
+            found += 1
+        else:
+            missing += 1
+
+    print("[doctor] Offline symbol coverage")
+    print(f"  watchlist symbols: {len(watchlist)}")
+    print(f"  found: {found}")
+    print(f"  missing: {missing}")
+    if missing:
+        messages.append(
+            DoctorMessage(
+                level="WARN",
+                title="Watchlist symbols missing from NASDAQ daily dataset",
+                detail=f"{missing} symbols are missing from {data_paths.nasdaq_daily_dir}.",
+                fix_steps=[
+                    "Confirm the symbol CSVs exist in the NASDAQ daily folder.",
+                    "Check for symbol naming mismatches (dash vs dot).",
+                ],
+            )
+        )
 
 
 def _print_messages(messages: list[DoctorMessage], logs_dir: Path) -> None:
