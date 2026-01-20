@@ -1,5 +1,5 @@
 param(
-  [string]$Config = ".\config.json",
+  [string]$Config = ".\config.yaml",
   [string]$OutRoot = ".\outputs\acceptance"
 )
 
@@ -72,7 +72,7 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
-$Report = Get-ChildItem -Path $RunDir -Filter "report_*.md" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$Report = Get-ChildItem -Path $RunDir -Filter "run_report*.md" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $Report) {
   Write-Host "[error] Report file not found in $RunDir"
   exit 1

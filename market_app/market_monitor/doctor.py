@@ -10,6 +10,7 @@ import requests
 
 from market_monitor.bulk import load_bulk_sources
 from market_monitor.config_schema import ConfigError, load_config
+from market_monitor.data_paths import resolve_data_paths
 from market_monitor.paths import find_repo_root, resolve_path
 from market_monitor.providers import (
     AlphaVantageProvider,
@@ -41,7 +42,13 @@ def run_doctor(config_path: Path, *, offline: bool = False, strict: bool = False
     print("[doctor] Market Monitor diagnostics")
     messages: list[DoctorMessage] = []
     root = find_repo_root()
-    offline = offline or os.getenv("MM_OFFLINE") == "1" or os.getenv("MARKET_MONITOR_OFFLINE") == "1"
+    offline_flag = os.getenv("OFFLINE_MODE")
+    offline = (
+        offline
+        or os.getenv("MM_OFFLINE") == "1"
+        or os.getenv("MARKET_MONITOR_OFFLINE") == "1"
+        or (offline_flag is not None and offline_flag.lower() in {"1", "true", "yes"})
+    )
     strict = strict or os.getenv("MM_STRICT_CONNECTIVITY") == "1"
 
     if root != Path.cwd():
@@ -110,6 +117,7 @@ def run_doctor(config_path: Path, *, offline: bool = False, strict: bool = False
 
     _print_data_directories(config, root, outputs_dir, logs_dir, cache_dir)
     _check_env_vars(config, messages)
+    _check_external_data_paths(config, root, messages)
     _check_gate_sanity(config, messages)
     provider_status, provider_detail = _check_provider_health(
         config, messages, offline=offline, strict=strict
@@ -130,6 +138,7 @@ def run_doctor(config_path: Path, *, offline: bool = False, strict: bool = False
 
 def _check_env_vars(config, messages: list[DoctorMessage]) -> None:
     provider = config["data"]["provider"]
+    offline_mode = config["data"].get("offline_mode", False)
     fallbacks = config["data"].get("fallback_chain", [])
     mapping = {
         "twelvedata": "TWELVEDATA_API_KEY",
@@ -137,6 +146,8 @@ def _check_env_vars(config, messages: list[DoctorMessage]) -> None:
         "finnhub": "FINNHUB_API_KEY",
     }
     for provider_name, env_var in mapping.items():
+        if offline_mode:
+            continue
         if provider_name == provider and not os.getenv(env_var):
             messages.append(
                 DoctorMessage(
@@ -157,10 +168,41 @@ def _check_env_vars(config, messages: list[DoctorMessage]) -> None:
                     detail=f"{env_var} is not set for fallback provider '{provider_name}'.",
                     fix_steps=[
                         f"Set {env_var} if you want {provider_name} as a fallback.",
-                        "Otherwise remove it from fallback_chain in config.json.",
+                        "Otherwise remove it from fallback_chain in config.yaml.",
                     ],
                 )
             )
+
+
+def _check_external_data_paths(config, root: Path, messages: list[DoctorMessage]) -> None:
+    paths = resolve_data_paths(config, root)
+    if config["data"].get("offline_mode", False):
+        if not paths.nasdaq_daily_dir or not paths.nasdaq_daily_dir.exists():
+            messages.append(
+                DoctorMessage(
+                    level="ERROR",
+                    title="NASDAQ daily dataset missing",
+                    detail=(
+                        "Offline mode is enabled but NASDAQ_DAILY_DIR is not configured or missing."
+                    ),
+                    fix_steps=[
+                        "Set NASDAQ_DAILY_DIR in config.yaml or environment.",
+                        "Ensure the folder contains per-ticker CSVs.",
+                    ],
+                )
+            )
+    if paths.silver_prices_csv and not paths.silver_prices_csv.exists():
+        messages.append(
+            DoctorMessage(
+                level="WARN",
+                title="Silver dataset missing",
+                detail=f"Silver CSV not found at {paths.silver_prices_csv}.",
+                fix_steps=[
+                    "Verify SILVER_PRICES_CSV path in config.yaml or env.",
+                    "Leave unset if you do not want silver macro features.",
+                ],
+            )
+        )
 
 
 def _check_gate_sanity(config, messages: list[DoctorMessage]) -> None:
@@ -277,6 +319,7 @@ def _print_data_directories(
     cache_dir: Path,
 ) -> None:
     paths_cfg = config["paths"]
+    data_paths = resolve_data_paths(config, root)
     bulk_paths = config.get("bulk", {}).get("paths", {})
     raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
     curated_dir = resolve_path(root, bulk_paths.get("curated_dir", "data/curated"))
@@ -289,6 +332,9 @@ def _print_data_directories(
     print(f"  watchlist_file: {resolve_path(root, paths_cfg['watchlist_file'])}")
     print(f"  universe_csv: {resolve_path(root, paths_cfg['universe_csv'])}")
     print(f"  state_file: {resolve_path(root, paths_cfg['state_file'])}")
+    print(f"  market_app_data_root: {data_paths.market_app_data_root}")
+    print(f"  nasdaq_daily_dir: {data_paths.nasdaq_daily_dir}")
+    print(f"  silver_prices_csv: {data_paths.silver_prices_csv}")
     print(f"  bulk_raw_dir: {raw_dir}")
     print(f"  bulk_curated_dir: {curated_dir}")
     print(f"  bulk_manifest_dir: {manifest_dir}")

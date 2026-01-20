@@ -9,3 +9,5 @@ def test_compute_features_basic():
     assert features["history_days"] > 150
     assert features["ret_1m"] is not None
     assert features["adv20_dollar"] > 0
+    assert features["volume_available"] == 1.0
+    assert "trend_quality_6m" in features

@@ -10,7 +10,7 @@ Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. 
 
 ## One-Command Run (PowerShell)
 
-From the repo root:
+From the repo root (offline by default):
 
 ```powershell
 .\run_all.ps1
@@ -34,19 +34,19 @@ Optional flags (examples):
 
 ```powershell
 # Validate config
-python -m market_monitor validate --config config.json
+python -m market_monitor validate --config config.yaml
 
 # Create default config
-python -m market_monitor init-config --out config.json
+python -m market_monitor init-config --out config.yaml
 
 # Run watchlist mode (default)
-python -m market_monitor run --config config.json --mode watchlist
+python -m market_monitor run --config config.yaml --mode watchlist
 
 # Run full universe
-python -m market_monitor run --config config.json --mode universe
+python -m market_monitor run --config config.yaml --mode universe
 
 # Run themed mode
-python -m market_monitor run --config config.json --mode themed --themes defense,tech
+python -m market_monitor run --config config.yaml --mode themed --themes defense,tech
 ```
 
 ## Staged Ingestion (Required)
@@ -61,7 +61,8 @@ Market Monitor uses staged ingestion to reduce API load:
 ## Providers
 
 Supported providers are:
-- **Stooq** (default, history-only, no API key)
+- **NASDAQ daily (offline)** via external per-ticker CSVs (`NASDAQ_DAILY_DIR`)
+- **Stooq** (online, history-only, no API key)
 - **Twelve Data** (history-only, credit-limited, uses `TWELVEDATA_API_KEY`)
 - **Alpha Vantage** (history-only, credit-limited, uses `ALPHAVANTAGE_API_KEY`)
 - **Finnhub** (quote + optional history; uses `FINNHUB_API_KEY`)
@@ -86,7 +87,21 @@ Each run writes:
 - `outputs/features_<run_id>.csv`
 - `outputs/scored_<run_id>.csv`
 - `outputs/eligible_<run_id>.csv`
-- `outputs/report_<run_id>.md`
+- `outputs/predictions_<run_id>.csv` (if prediction enabled)
+- `outputs/run_report.md` + `outputs/run_report_<run_id>.md`
+- `outputs/model_card.md` (if prediction enabled)
+- `outputs/calibration_plot.png` (if prediction enabled)
+
+## External Data Paths (Offline)
+
+Set either `config.yaml` or environment variables:
+
+- `MARKET_APP_DATA_ROOT`
+- `NASDAQ_DAILY_DIR`
+- `SILVER_PRICES_CSV`
+- `OFFLINE_MODE` (true/false, defaults to true)
+
+See `.env.example` and `config.example.yaml` for templates.
 
 ## Offline Tests
 
@@ -95,6 +110,15 @@ pytest
 ```
 
 Tests are offline-friendly and run against fixtures in `tests/fixtures`.
+
+## Acceptance Script (Offline)
+
+```powershell
+.\scripts\acceptance.ps1
+```
+
+The acceptance script creates a venv, installs requirements quietly, runs pytest, and (if
+`NASDAQ_DAILY_DIR` or `MARKET_APP_DATA_ROOT` is set) runs a watchlist pipeline and verifies outputs.
 
 ## Setup (Venv + Dependencies)
 
@@ -113,7 +137,7 @@ python -m venv .venv
 ## Diagnostics
 
 ```powershell
-python -m market_monitor doctor --config config.json
+python -m market_monitor doctor --config config.yaml
 ```
 
 The doctor command explains failures in plain English and points to the logs directory.
@@ -122,7 +146,7 @@ To skip connectivity checks (offline mode):
 
 ```powershell
 $env:MM_OFFLINE = "1"
-python -m market_monitor doctor --config config.json
+python -m market_monitor doctor --config config.yaml
 ```
 
 ## Example Runs
@@ -130,13 +154,13 @@ python -m market_monitor doctor --config config.json
 Small watchlist scan:
 
 ```powershell
-python -m market_monitor run --config config.json --mode watchlist
+python -m market_monitor run --config config.yaml --mode watchlist
 ```
 
 Full staged scan:
 
 ```powershell
-python -m market_monitor run --config config.json --mode universe
+python -m market_monitor run --config config.yaml --mode universe
 ```
 
 ## Tooling
