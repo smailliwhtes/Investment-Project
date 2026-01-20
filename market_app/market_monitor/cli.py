@@ -8,6 +8,7 @@ import pandas as pd
 import requests
 
 from market_monitor.config_schema import ConfigError, load_config, write_default_config
+from market_monitor.data_paths import resolve_data_paths
 from market_monitor.doctor import run_doctor
 from market_monitor.bulk import (
     BulkManifest,
@@ -28,9 +29,12 @@ from market_monitor.providers.base import (
     ProviderError,
 )
 from market_monitor.providers.finnhub import FinnhubProvider
+from market_monitor.providers.nasdaq_daily import NasdaqDailyProvider, NasdaqDailySource
 from market_monitor.providers.http import RetryConfig
 from market_monitor.providers.stooq import StooqProvider
 from market_monitor.providers.twelvedata import TwelveDataProvider
+from market_monitor.macro import load_silver_series
+from market_monitor.prediction import build_panel, latest_predictions, train_and_predict
 from market_monitor.report import write_report
 from market_monitor.scoring import score_frame
 from market_monitor.staging import stage_pipeline
@@ -83,8 +87,12 @@ class FallbackProvider(HistoryProvider):
         return self.primary.get_quote(symbol)
 
 
-def _build_provider(config: dict[str, Any], logger) -> HistoryProvider:
+def _build_provider(config: dict[str, Any], logger, root: Path) -> HistoryProvider:
     provider_name = config["data"]["provider"]
+    offline_mode = config["data"].get("offline_mode", False)
+    if offline_mode and provider_name != "nasdaq_daily":
+        logger.warning("Offline mode enabled; forcing provider to nasdaq_daily.")
+        provider_name = "nasdaq_daily"
     budget_cfg = config["data"].get("budget", {})
     fallback_chain = config["data"].get("fallback_chain", [])
     throttling_cfg = config["data"].get("throttling", {})
@@ -97,6 +105,14 @@ def _build_provider(config: dict[str, Any], logger) -> HistoryProvider:
     sleep_ms = int(float(throttling_cfg.get("base_delay_s", 0.3)) * 1000)
 
     def build(name: str) -> HistoryProvider:
+        if name == "nasdaq_daily":
+            paths = resolve_data_paths(config, root)
+            if not paths.nasdaq_daily_dir:
+                raise ProviderError("NASDAQ_DAILY_DIR is not configured.")
+            cache_dir = resolve_path(root, config["paths"]["cache_dir"])
+            return NasdaqDailyProvider(
+                NasdaqDailySource(directory=paths.nasdaq_daily_dir, cache_dir=cache_dir)
+            )
         if name == "stooq":
             return StooqProvider(sleep_ms=sleep_ms, retry_config=retry_config, session=session)
         if name == "twelvedata":
@@ -125,6 +141,8 @@ def _build_provider(config: dict[str, Any], logger) -> HistoryProvider:
         primary = None
 
     fallback_providers = []
+    if offline_mode:
+        fallback_chain = []
     for fallback in fallback_chain:
         try:
             fallback_providers.append(build(fallback))
@@ -180,7 +198,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
     run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     run_timestamp = datetime.now(timezone.utc).isoformat()
 
-    provider = _build_provider(config, logger)
+    provider = _build_provider(config, logger, root)
 
     outputs_dir = resolve_path(root, config["paths"]["outputs_dir"])
     cache_dir = resolve_path(root, config["paths"]["cache_dir"])
@@ -196,6 +214,10 @@ def run_pipeline(args: argparse.Namespace) -> int:
         "config_hash": config_hash,
         "provider_name": provider.name,
     }
+
+    if config["data"].get("offline_mode", False) and args.mode != "watchlist":
+        logger.error("Offline mode is enabled; only --mode watchlist is supported.")
+        return 3
 
     if args.mode == "watchlist":
         watchlist_path = resolve_path(root, args.watchlist or config["paths"]["watchlist_file"])
@@ -218,7 +240,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
         themes = [t.strip() for t in (args.themes or "").split(",") if t.strip()]
         filtered_rows = []
         for _, row in universe_df.iterrows():
-            tags, _ = tag_themes(
+            tags, _, _ = tag_themes(
                 row["symbol"], row.get("name") or row["symbol"], config.get("themes", {})
             )
             if not themes or any(t in tags for t in themes):
@@ -240,6 +262,13 @@ def run_pipeline(args: argparse.Namespace) -> int:
         universe_df = universe_df.iloc[start:end]
         cursor_file.write_text(str(end), encoding="utf-8")
 
+    paths = resolve_data_paths(config, root)
+    silver_macro = None
+    if paths.silver_prices_csv:
+        macro = load_silver_series(paths.silver_prices_csv)
+        if macro:
+            silver_macro = macro.features
+
     stage1_df, stage2_df, stage3_df, summary = stage_pipeline(
         universe_df,
         provider,
@@ -248,6 +277,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
         config,
         run_meta,
         logger,
+        silver_macro=silver_macro,
     )
 
     scored = (
@@ -257,7 +287,8 @@ def run_pipeline(args: argparse.Namespace) -> int:
     features_path = outputs_dir / f"features_{run_id}.csv"
     scored_path = outputs_dir / f"scored_{run_id}.csv"
     eligible_path = outputs_dir / f"eligible_{run_id}.csv"
-    report_path = outputs_dir / f"report_{run_id}.md"
+    report_path = outputs_dir / "run_report.md"
+    report_archive = outputs_dir / f"run_report_{run_id}.md"
 
     write_csv(scored, scored_path, SCORED_COLUMNS)
     write_csv(scored, features_path, FEATURE_COLUMNS)
@@ -268,7 +299,62 @@ def run_pipeline(args: argparse.Namespace) -> int:
     )
     write_csv(eligible, eligible_path, ELIGIBLE_COLUMNS)
 
-    write_report(report_path, summary, scored)
+    data_usage = {
+        "offline_mode": str(config["data"].get("offline_mode", False)),
+        "provider_name": provider.name,
+        "nasdaq_daily_dir": str(paths.nasdaq_daily_dir) if paths.nasdaq_daily_dir else "unset",
+        "nasdaq_daily_found": str(bool(paths.nasdaq_daily_dir and paths.nasdaq_daily_dir.exists())),
+        "silver_prices_csv": str(paths.silver_prices_csv) if paths.silver_prices_csv else "unset",
+        "silver_prices_found": str(bool(paths.silver_prices_csv and paths.silver_prices_csv.exists())),
+    }
+
+    prediction_panel = None
+    prediction_metrics = None
+    if config.get("prediction", {}).get("enabled", False) and not stage3_df.empty:
+        panel = build_panel(
+            stage3_df["symbol"].tolist(),
+            provider,
+            config["prediction"]["lookback_days"],
+            config["prediction"]["forward_return_days"],
+            config["prediction"]["forward_drawdown_days"],
+            config["prediction"]["min_history_days"],
+            logger,
+        )
+        artifacts = train_and_predict(
+            panel,
+            outputs_dir,
+            config["prediction"]["drawdown_threshold"],
+            config["prediction"]["walk_forward_folds"],
+            config["prediction"]["embargo_days"],
+        )
+        latest = latest_predictions(panel, artifacts)
+        predictions_path = outputs_dir / f"predictions_{run_id}.csv"
+        latest.to_csv(predictions_path, index=False)
+        model_card_path = outputs_dir / "model_card.md"
+        model_card_path.write_text(artifacts.model_card, encoding="utf-8")
+        prediction_panel = artifacts.predictions.merge(
+            panel,
+            on=["symbol", "date"],
+            how="left",
+        )
+        prediction_metrics = artifacts.metrics
+
+    write_report(
+        report_path,
+        summary,
+        scored,
+        data_usage=data_usage,
+        prediction_panel=prediction_panel,
+        prediction_metrics=prediction_metrics,
+    )
+    write_report(
+        report_archive,
+        summary,
+        scored,
+        data_usage=data_usage,
+        prediction_panel=prediction_panel,
+        prediction_metrics=prediction_metrics,
+    )
 
     json_logger.log("summary", {"counts": summary})
     logger.info(f"Outputs written to {outputs_dir}")
@@ -405,7 +491,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     doctor_parser = sub.add_parser("doctor", help="Run diagnostics")
-    doctor_parser.add_argument("--config", default="config.json")
+    doctor_parser.add_argument("--config", default="config.yaml")
     doctor_parser.add_argument(
         "--offline",
         action="store_true",
@@ -424,7 +510,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--out", required=True)
 
     run_parser = sub.add_parser("run", help="Run the monitor")
-    run_parser.add_argument("--config", default="config.json")
+    run_parser.add_argument("--config", default="config.yaml")
     run_parser.add_argument(
         "--mode", choices=["universe", "watchlist", "themed", "batch"], default="watchlist"
     )
@@ -443,7 +529,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--log-level", default="INFO")
 
     bulk_plan_parser = sub.add_parser("bulk-plan", help="Plan bulk CSV downloads")
-    bulk_plan_parser.add_argument("--config", default="config.json")
+    bulk_plan_parser.add_argument("--config", default="config.yaml")
     bulk_plan_parser.add_argument("--mode", choices=["watchlist", "universe"], default="watchlist")
     bulk_plan_parser.add_argument("--watchlist")
     bulk_plan_parser.add_argument("--sources")
@@ -452,7 +538,7 @@ def build_parser() -> argparse.ArgumentParser:
     bulk_plan_parser.add_argument("--log-level", default="INFO")
 
     bulk_download_parser = sub.add_parser("bulk-download", help="Download bulk CSV data")
-    bulk_download_parser.add_argument("--config", default="config.json")
+    bulk_download_parser.add_argument("--config", default="config.yaml")
     bulk_download_parser.add_argument("--mode", choices=["watchlist", "universe"], default="watchlist")
     bulk_download_parser.add_argument("--watchlist")
     bulk_download_parser.add_argument("--sources")
@@ -466,7 +552,7 @@ def build_parser() -> argparse.ArgumentParser:
     bulk_standardize_parser = sub.add_parser(
         "bulk-standardize", help="Standardize bulk CSV data into curated outputs"
     )
-    bulk_standardize_parser.add_argument("--config", default="config.json")
+    bulk_standardize_parser.add_argument("--config", default="config.yaml")
     bulk_standardize_parser.add_argument("--source", required=True)
     bulk_standardize_parser.add_argument("--mode", choices=["ohlcv", "timeseries"], required=True)
     bulk_standardize_parser.add_argument("--input-dir")

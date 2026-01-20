@@ -1,5 +1,5 @@
 ﻿param(
-  [string]$Config = ".\config.json"
+  [string]$Config = ".\config.yaml"
 )
 
 Set-StrictMode -Version Latest
@@ -49,7 +49,6 @@ Write-Host "[stage] running pipeline"
 & $VenvPy -m market_monitor run --config $Config --mode watchlist
 
 Write-Host "Outputs are in .\outputs"
-
 
 
 

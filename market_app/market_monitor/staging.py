@@ -43,6 +43,7 @@ def stage_pipeline(
     config: dict[str, Any],
     run_meta: dict[str, Any],
     logger,
+    silver_macro: dict[str, float] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, int]]:
     staging_cfg = config["staging"]
     gates_cfg = config["gates"]
@@ -55,7 +56,22 @@ def stage_pipeline(
 
     def fetch_cached(symbol: str, days: int):
         nonlocal cache_hits, cache_misses
-        return get_or_fetch(
+        if hasattr(provider, "get_history_with_cache"):
+            cache_res = provider.get_history_with_cache(
+                symbol, days, max_cache_age_days=max_cache_age_days
+            )
+            cache_hits += int(cache_res.used_cache)
+            cache_misses += int(not cache_res.used_cache)
+            if days > 0:
+                cache_res = cache_res.__class__(
+                    df=cache_res.df.tail(days).copy(),
+                    data_freshness_days=cache_res.data_freshness_days,
+                    cache_path=cache_res.cache_path,
+                    used_cache=cache_res.used_cache,
+                )
+            return cache_res
+
+        cache_res = get_or_fetch(
             cache_dir=cache_dir,
             provider_name=provider.name,
             symbol=symbol,
@@ -64,6 +80,9 @@ def stage_pipeline(
             fetch_fn=lambda: _history_fetch(provider, symbol, days),
             delta_days=10,
         )
+        cache_hits += int(cache_res.used_cache)
+        cache_misses += int(not cache_res.used_cache)
+        return cache_res
 
     logger.info("Stage 1: micro-history gate")
     for _, row in symbols.iterrows():
@@ -71,10 +90,6 @@ def stage_pipeline(
         name = row.get("name") or symbol
         try:
             cache_res = fetch_cached(symbol, staging_cfg["stage1_micro_days"])
-            if cache_res.used_cache:
-                cache_hits += 1
-            else:
-                cache_misses += 1
             df, adjusted_mode = _apply_adjusted(cache_res.df, provider)
             if df.empty:
                 status = "DATA_UNAVAILABLE"
@@ -128,10 +143,6 @@ def stage_pipeline(
         name = row.get("name") or symbol
         try:
             cache_res = fetch_cached(symbol, staging_cfg["stage2_short_days"])
-            if cache_res.used_cache:
-                cache_hits += 1
-            else:
-                cache_misses += 1
             df, adjusted_mode = _apply_adjusted(cache_res.df, provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
@@ -185,20 +196,18 @@ def stage_pipeline(
         name = row.get("name") or symbol
         try:
             cache_res = fetch_cached(symbol, staging_cfg["stage3_deep_days"])
-            if cache_res.used_cache:
-                cache_hits += 1
-            else:
-                cache_misses += 1
             df, adjusted_mode = _apply_adjusted(cache_res.df, provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
             status, reason_codes = _compute_data_status(
                 int(features.get("history_days", 0)), staging_cfg["history_min_days"]
             )
-            theme_tags, purity = tag_themes(symbol, name, themes_cfg)
+            theme_tags, theme_confidence, theme_unknown = tag_themes(symbol, name, themes_cfg)
             scenario = scenario_scores(theme_tags)
-            red, amber = assess_risk(features, adjusted_mode=adjusted_mode)
+            risk_level, red, amber = assess_risk(features, adjusted_mode=adjusted_mode)
             notes = "Eligible for monitoring" if status == "OK" else "Data issue"
+            confidence_score = _confidence_score(features, theme_confidence)
+            silver_payload = _maybe_attach_silver(theme_tags, symbol, silver_macro)
             stage3_rows.append(
                 {
                     **run_meta,
@@ -209,14 +218,18 @@ def stage_pipeline(
                     "data_freshness_days": cache_res.data_freshness_days,
                     "adjusted_mode": adjusted_mode,
                     "theme_tags": ";".join(theme_tags),
-                    "theme_purity_score": purity,
+                    "theme_confidence": theme_confidence,
+                    "theme_unknown": theme_unknown,
+                    "risk_level": risk_level,
                     "risk_red_codes": ";".join(red),
                     "risk_amber_codes": ";".join(amber),
                     "eligible": True,
                     "gate_fail_codes": "",
                     "notes": notes,
+                    "confidence_score": confidence_score,
                     **features,
                     **scenario,
+                    **silver_payload,
                 }
             )
         except ProviderLimitError:
@@ -253,3 +266,25 @@ def stage_pipeline(
     stage2_df = pd.DataFrame(stage2_survivors)
     stage3_df = pd.DataFrame(stage3_rows)
     return stage1_df, stage2_df, stage3_df, summary
+
+
+def _confidence_score(features: dict[str, float], theme_confidence: float) -> float:
+    history_days = features.get("history_days") or 0.0
+    missing_rate = features.get("missing_day_rate") or 0.0
+    volume_available = features.get("volume_available", 1.0)
+    history_score = min(history_days / 252.0, 1.0)
+    completeness = max(1.0 - missing_rate, 0.0)
+    volume_score = 1.0 if volume_available else 0.7
+    score = 0.4 * history_score + 0.3 * completeness + 0.2 * volume_score + 0.1 * theme_confidence
+    return float(max(min(score, 1.0), 0.0))
+
+
+def _maybe_attach_silver(
+    theme_tags: list[str], symbol: str, silver_macro: dict[str, float] | None
+) -> dict[str, float]:
+    if not silver_macro:
+        return {}
+    silver_symbols = {"SLV", "SIL", "SILJ", "AG", "PAAS", "HL"}
+    if "metals" in theme_tags or symbol.upper() in silver_symbols:
+        return silver_macro
+    return {}
