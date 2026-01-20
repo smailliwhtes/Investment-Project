@@ -15,21 +15,19 @@ It does **not** place orders or provide investment recommendations.
 - **Flags risk** (RED/AMBER) and provides scenario sensitivity (defense/tech/metals).
 - **Emits artifacts** including scored/eligible/features CSVs plus a markdown run report; optional
   model artifacts are available if prediction is enabled.
+- **Runs preflight checks** before feature computation, emitting coverage and data-quality summaries.
 
 ## Operational Modes
 
-- **Watchlist** (default, offline-friendly)
-- **Universe** (full scan)
-- **Themed** (theme-tagged scans)
-- **Batch** (batch cursor over a universe)
+For this milestone, **offline watchlist mode is the only supported mode**. Universe, themed, and
+batch modes remain in the codebase but are disabled in offline runs to prevent any network access.
 
 ## Readiness Checklist (Quick Start)
 
 1. **Python 3.11** installed (PowerShell scripts target 3.11).
 2. **Config created** (`config.yaml`) from `config.example.yaml` and tuned for your data paths.
 3. **Data provider ready**:
-   - Offline: set `NASDAQ_DAILY_DIR` (or the config path) to point to per-ticker CSVs.
-   - Online: set API keys for the chosen provider (Finnhub, Twelve Data, Alpha Vantage).
+   - Offline: set `MARKET_APP_NASDAQ_DAILY_DIR` (or the config path) to point to per-ticker CSVs.
 4. **Run tests** (`pytest`) to validate the offline fixtures.
 5. **Execute the pipeline** (e.g., `run_all.ps1` or `python -m market_monitor run`).
 

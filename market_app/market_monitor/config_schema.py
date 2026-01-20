@@ -30,7 +30,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "max_cache_age_days": 2,
         "max_workers": 6,
         "provider": "nasdaq_daily",
-        "fallback_chain": ["stooq"],
+        "fallback_chain": [],
         "offline_mode": True,
         "budget": {
             "twelvedata": {"max_requests_per_run": 600},
@@ -45,7 +45,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "paths": {
             "market_app_data_root": "",
             "nasdaq_daily_dir": "",
-            "silver_prices_csv": "",
+            "silver_prices_dir": "",
         },
     },
     "gates": {
@@ -153,8 +153,12 @@ def _parse_bool(value: str | None) -> bool | None:
 def _load_env_overrides() -> dict[str, Any]:
     overrides: dict[str, Any] = {"data": {"paths": {}}}
     root = os.getenv("MARKET_APP_DATA_ROOT")
-    nasdaq = os.getenv("NASDAQ_DAILY_DIR")
-    silver = os.getenv("SILVER_PRICES_CSV")
+    nasdaq = os.getenv("MARKET_APP_NASDAQ_DAILY_DIR") or os.getenv("NASDAQ_DAILY_DIR")
+    silver = (
+        os.getenv("MARKET_APP_SILVER_PRICES_DIR")
+        or os.getenv("SILVER_PRICES_DIR")
+        or os.getenv("SILVER_PRICES_CSV")
+    )
     offline = _parse_bool(os.getenv("OFFLINE_MODE"))
 
     if root:
@@ -162,7 +166,7 @@ def _load_env_overrides() -> dict[str, Any]:
     if nasdaq:
         overrides["data"]["paths"]["nasdaq_daily_dir"] = nasdaq
     if silver:
-        overrides["data"]["paths"]["silver_prices_csv"] = silver
+        overrides["data"]["paths"]["silver_prices_dir"] = silver
     if offline is not None:
         overrides["data"]["offline_mode"] = offline
     return overrides

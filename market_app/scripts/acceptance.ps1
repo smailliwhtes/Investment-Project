@@ -43,14 +43,23 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
-if (-not $env:NASDAQ_DAILY_DIR -and -not $env:MARKET_APP_DATA_ROOT) {
-  Write-Host "[skip] NASDAQ_DAILY_DIR not set. Skipping pipeline run."
-  exit 0
+Write-Host "[stage] running doctor"
+& $VenvPy -m market_monitor doctor --config $Config --offline
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[error] Doctor checks failed. Fix issues and rerun .\scripts\acceptance.ps1"
+  exit $LASTEXITCODE
 }
 
 $RunId = (Get-Date).ToUniversalTime().ToString("yyyyMMdd_HHmmss")
 $RunDir = Join-Path $OutRoot "run_$RunId"
 if (-not (Test-Path $RunDir)) { New-Item -ItemType Directory -Path $RunDir | Out-Null }
+
+Write-Host "[stage] running preflight"
+& $VenvPy -m market_monitor preflight --config $Config --outdir $RunDir
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[error] Preflight failed. Fix issues and rerun .\scripts\acceptance.ps1"
+  exit $LASTEXITCODE
+}
 
 Write-Host "[stage] running watchlist pipeline"
 & $VenvPy -m market_monitor run --config $Config --mode watchlist --outdir $RunDir
@@ -59,11 +68,23 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
-$Expected = @("features_*.csv", "scored_*.csv", "eligible_*.csv", "run_report*.md")
+$Expected = @(
+  "features_*.csv",
+  "scored_*.csv",
+  "eligible_*.csv",
+  "run_report*.md",
+  "preflight_report.csv",
+  "preflight_report.md",
+  "run_manifest.json"
+)
 foreach ($pattern in $Expected) {
-  $found = Get-ChildItem -Path $RunDir -Filter $pattern | Select-Object -First 1
+  $found = Get-ChildItem -Path $RunDir -Filter $pattern | Sort-Object LastWriteTime -Descending | Select-Object -First 1
   if (-not $found) {
     Write-Host "[error] Missing expected output ($pattern) in $RunDir"
+    exit 1
+  }
+  if ($found.Length -le 0) {
+    Write-Host "[error] Output file is empty ($($found.FullName))"
     exit 1
   }
 }

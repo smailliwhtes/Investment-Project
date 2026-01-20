@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 import requests
 
+from market_monitor.offline import require_online
+
 
 @dataclass(frozen=True)
 class RetryConfig:
@@ -24,6 +26,7 @@ def request_with_backoff(
     timeout: float = 30,
     **kwargs,
 ) -> requests.Response:
+    require_online(f"HTTP GET {url}")
     session = session or requests.Session()
     retry_cfg = retry or RetryConfig(max_retries=0, base_delay_s=0)
     attempt = 0

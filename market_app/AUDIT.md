@@ -7260,7 +7260,7 @@
 - Canonical OHLCV columns: `Date`, `Open`, `High`, `Low`, `Close`, `Volume` (Volume may be NA).
 - Feature outputs defined in `market_monitor.io.FEATURE_COLUMNS`.
 - Scored outputs defined in `market_monitor.io.SCORED_COLUMNS`.
-- External data env vars: `MARKET_APP_DATA_ROOT`, `NASDAQ_DAILY_DIR`, `SILVER_PRICES_CSV`, `OFFLINE_MODE`.
+- External data env vars: `MARKET_APP_DATA_ROOT`, `MARKET_APP_NASDAQ_DAILY_DIR`, `MARKET_APP_SILVER_PRICES_DIR`, `OFFLINE_MODE`.
 
 ## Tests & Coverage
 

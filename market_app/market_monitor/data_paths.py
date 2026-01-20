@@ -9,7 +9,7 @@ from pathlib import Path
 class DataPaths:
     market_app_data_root: Path | None
     nasdaq_daily_dir: Path | None
-    silver_prices_csv: Path | None
+    silver_prices_dir: Path | None
 
 
 def _normalize_path(path_str: str | None, *, root: Path | None, repo_root: Path) -> Path | None:
@@ -28,10 +28,10 @@ def resolve_data_paths(config: dict, repo_root: Path) -> DataPaths:
     root_str = paths_cfg.get("market_app_data_root")
     root = _normalize_path(root_str, root=None, repo_root=repo_root) if root_str else None
     nasdaq = _normalize_path(paths_cfg.get("nasdaq_daily_dir"), root=root, repo_root=repo_root)
-    silver = _normalize_path(paths_cfg.get("silver_prices_csv"), root=root, repo_root=repo_root)
+    silver_setting = paths_cfg.get("silver_prices_dir") or paths_cfg.get("silver_prices_csv")
+    silver = _normalize_path(silver_setting, root=root, repo_root=repo_root)
     return DataPaths(
         market_app_data_root=root,
         nasdaq_daily_dir=nasdaq,
-        silver_prices_csv=silver,
+        silver_prices_dir=silver,
     )
-

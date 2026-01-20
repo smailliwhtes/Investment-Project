@@ -20,8 +20,7 @@ data:
   max_cache_age_days: 2
   max_workers: 6
   provider: nasdaq_daily
-  fallback_chain:
-  - stooq
+  fallback_chain: []
   offline_mode: true
   budget:
     twelvedata:
@@ -37,7 +36,7 @@ data:
   paths:
     market_app_data_root: ''
     nasdaq_daily_dir: ''
-    silver_prices_csv: ''
+    silver_prices_dir: ''
 gates:
   price_max: 10.0
   min_adv20_dollar: 1000000
