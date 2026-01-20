@@ -1,8 +1,11 @@
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "run": {
@@ -26,8 +29,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "data": {
         "max_cache_age_days": 2,
         "max_workers": 6,
-        "provider": "stooq",
+        "provider": "nasdaq_daily",
         "fallback_chain": ["stooq"],
+        "offline_mode": True,
         "budget": {
             "twelvedata": {"max_requests_per_run": 600},
             "alphavantage": {"max_requests_per_run": 80},
@@ -38,6 +42,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "max_retries": 3,
             "jitter_s": 0.2,
         },
+        "paths": {
+            "market_app_data_root": "",
+            "nasdaq_daily_dir": "",
+            "silver_prices_csv": "",
+        },
     },
     "gates": {
         "price_max": 10.0,
@@ -46,14 +55,27 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "score": {
         "weights": {
-            "trend": 0.25,
-            "momentum": 0.25,
-            "liquidity": 0.15,
-            "vol_penalty": 0.15,
-            "dd_penalty": 0.10,
+            "trend": 0.22,
+            "momentum": 0.2,
+            "liquidity": 0.12,
+            "quality": 0.14,
+            "vol_penalty": 0.12,
+            "dd_penalty": 0.1,
             "tail_penalty": 0.05,
+            "attention": 0.05,
             "theme_bonus": 0.05,
+            "volume_missing_penalty": 0.05,
         }
+    },
+    "prediction": {
+        "enabled": False,
+        "min_history_days": 252,
+        "lookback_days": 252,
+        "forward_return_days": 20,
+        "forward_drawdown_days": 60,
+        "drawdown_threshold": -0.2,
+        "walk_forward_folds": 3,
+        "embargo_days": 60,
     },
     "themes": {
         "defense": {"symbols": [], "keywords": ["defense", "aero", "missile"]},
@@ -117,17 +139,67 @@ def _hash_config(config: dict[str, Any]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def load_config(path: Path, overrides: dict[str, Any] | None = None) -> ConfigResult:
+def _parse_bool(value: str | None) -> bool | None:
+    if value is None:
+        return None
+    value = value.strip().lower()
+    if value in {"1", "true", "yes", "y"}:
+        return True
+    if value in {"0", "false", "no", "n"}:
+        return False
+    return None
+
+
+def _load_env_overrides() -> dict[str, Any]:
+    overrides: dict[str, Any] = {"data": {"paths": {}}}
+    root = os.getenv("MARKET_APP_DATA_ROOT")
+    nasdaq = os.getenv("NASDAQ_DAILY_DIR")
+    silver = os.getenv("SILVER_PRICES_CSV")
+    offline = _parse_bool(os.getenv("OFFLINE_MODE"))
+
+    if root:
+        overrides["data"]["paths"]["market_app_data_root"] = root
+    if nasdaq:
+        overrides["data"]["paths"]["nasdaq_daily_dir"] = nasdaq
+    if silver:
+        overrides["data"]["paths"]["silver_prices_csv"] = silver
+    if offline is not None:
+        overrides["data"]["offline_mode"] = offline
+    return overrides
+
+
+def _load_config_file(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise ConfigError(
             f"Config file not found at {path}. Create one with 'python -m market_monitor init-config --out {path}'."
         )
-    try:
-        config_data = json.loads(path.read_text(encoding="utf-8-sig"))
-    except json.JSONDecodeError as exc:
-        raise ConfigError(f"Config file is not valid JSON: {exc}") from exc
+    suffix = path.suffix.lower()
+    content = path.read_text(encoding="utf-8-sig")
+    if suffix in {".yaml", ".yml"}:
+        data = yaml.safe_load(content) or {}
+    elif suffix == ".toml":
+        try:
+            import tomli
+        except ImportError as exc:
+            raise ConfigError("tomli is required to parse TOML config files.") from exc
+        data = tomli.loads(content) or {}
+    else:
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as exc:
+            raise ConfigError(f"Config file is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ConfigError("Config file must define a top-level object.")
+    return data
+
+
+def load_config(path: Path, overrides: dict[str, Any] | None = None) -> ConfigResult:
+    config_data = _load_config_file(path)
 
     config = _deep_merge(DEFAULT_CONFIG, config_data)
+    env_overrides = _load_env_overrides()
+    if env_overrides:
+        config = _deep_merge(config, env_overrides)
     if overrides:
         config = _deep_merge(config, overrides)
 
@@ -137,7 +209,10 @@ def load_config(path: Path, overrides: dict[str, Any] | None = None) -> ConfigRe
 
 def write_default_config(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(DEFAULT_CONFIG, indent=2), encoding="utf-8")
+    if path.suffix.lower() in {".yaml", ".yml"}:
+        path.write_text(yaml.safe_dump(DEFAULT_CONFIG, sort_keys=False), encoding="utf-8")
+    else:
+        path.write_text(json.dumps(DEFAULT_CONFIG, indent=2), encoding="utf-8")
 
 
 def _require(config: dict[str, Any], keys: list[str]) -> None:
@@ -159,8 +234,16 @@ def _validate_config(config: dict[str, Any]) -> None:
     for path_keys in required_paths:
         _require(config, path_keys)
 
-    if config["data"]["provider"] not in {"stooq", "twelvedata", "alphavantage", "finnhub"}:
-        raise ConfigError("data.provider must be one of stooq, twelvedata, alphavantage, finnhub.")
+    if config["data"]["provider"] not in {
+        "nasdaq_daily",
+        "stooq",
+        "twelvedata",
+        "alphavantage",
+        "finnhub",
+    }:
+        raise ConfigError(
+            "data.provider must be one of nasdaq_daily, stooq, twelvedata, alphavantage, finnhub."
+        )
 
     if config["staging"]["stage1_micro_days"] != 7:
         pass

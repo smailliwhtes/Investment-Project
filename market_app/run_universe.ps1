@@ -1,5 +1,5 @@
 param(
-  [string]$Config = ".\config.json"
+  [string]$Config = ".\config.yaml"
 )
 
 Set-StrictMode -Version Latest

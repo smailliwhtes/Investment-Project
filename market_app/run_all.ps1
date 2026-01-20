@@ -1,5 +1,5 @@
 param(
-  [string]$Config = ".\config.json",
+  [string]$Config = ".\config.yaml",
   [ValidateSet("universe","watchlist","themed","batch")]
   [string]$Mode = "watchlist",
   [string]$Watchlist,
