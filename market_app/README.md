@@ -111,6 +111,15 @@ pytest
 
 Tests are offline-friendly and run against fixtures in `tests/fixtures`.
 
+## Acceptance Script (Offline)
+
+```powershell
+.\scripts\acceptance.ps1
+```
+
+The acceptance script creates a venv, installs requirements quietly, runs pytest, and (if
+`NASDAQ_DAILY_DIR` or `MARKET_APP_DATA_ROOT` is set) runs a watchlist pipeline and verifies outputs.
+
 ## Setup (Venv + Dependencies)
 
 ```powershell
@@ -137,7 +146,7 @@ To skip connectivity checks (offline mode):
 
 ```powershell
 $env:MM_OFFLINE = "1"
-python -m market_monitor doctor --config config.json
+python -m market_monitor doctor --config config.yaml
 ```
 
 ## Example Runs
@@ -145,13 +154,13 @@ python -m market_monitor doctor --config config.json
 Small watchlist scan:
 
 ```powershell
-python -m market_monitor run --config config.json --mode watchlist
+python -m market_monitor run --config config.yaml --mode watchlist
 ```
 
 Full staged scan:
 
 ```powershell
-python -m market_monitor run --config config.json --mode universe
+python -m market_monitor run --config config.yaml --mode universe
 ```
 
 ## Tooling
