@@ -8,7 +8,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from market_monitor.corpus.pipeline import discover_corpus_files, load_events
+from market_monitor.corpus.pipeline import (
+    discover_corpus_sources,
+    validate_corpus_sources,
+)
 from market_monitor.providers.base import HistoryProvider, ProviderError
 
 
@@ -46,6 +49,7 @@ def run_preflight(
     run_timestamp: str,
     logger,
     corpus_dir: Path | None = None,
+    raw_events_dir: Path | None = None,
 ) -> PreflightReport:
     symbols: list[PreflightSymbolReport] = []
     for _, row in universe_df.iterrows():
@@ -87,7 +91,7 @@ def run_preflight(
         )
 
     datasets = _check_datasets(provider)
-    corpus = _check_corpus(corpus_dir)
+    corpus = _check_corpus(corpus_dir, raw_events_dir)
     report = PreflightReport(symbols=symbols, datasets=datasets, corpus=corpus)
     _write_preflight_reports(report, outputs_dir, run_id=run_id, run_timestamp=run_timestamp)
     return report
@@ -153,35 +157,40 @@ def _check_datasets(provider: HistoryProvider) -> list[dict[str, Any]]:
     return datasets
 
 
-def _check_corpus(corpus_dir: Path | None) -> list[dict[str, Any]]:
-    if corpus_dir is None:
+def _check_corpus(corpus_dir: Path | None, raw_events_dir: Path | None) -> list[dict[str, Any]]:
+    if corpus_dir is None and raw_events_dir is None:
         return []
-    files = discover_corpus_files(corpus_dir)
-    if not files:
+    sources = discover_corpus_sources(corpus_dir, raw_events_dir)
+    if not sources:
         return [
             {
                 "name": "gdelt_conflict",
                 "status": "EMPTY",
-                "path": str(corpus_dir),
-                "detail": "No CSV files discovered.",
+                "path": str(corpus_dir or raw_events_dir),
+                "detail": "No CSV or raw ZIP files discovered.",
             }
         ]
-    events, infos = load_events(files)
+    report = validate_corpus_sources(
+        sources,
+        rootcode_top_n=1,
+        country_top_k=1,
+        chunk_size=50_000,
+    )
     required = {"SQLDATE", "EventCode", "EventRootCode", "QuadClass"}
-    available = {col for info in infos for col in info.columns}
+    available = {col for info in report.sources for col in info.columns}
     missing = sorted(required - {col for col in available})
-    detail = f"{len(files)} files parsed; missing columns: {', '.join(missing) if missing else 'none'}"
-    min_date = events["Date"].min() if not events.empty else None
-    max_date = events["Date"].max() if not events.empty else None
+    detail = (
+        f"{len(sources)} files parsed; missing columns: {', '.join(missing) if missing else 'none'}"
+    )
     return [
         {
             "name": "gdelt_conflict",
-            "status": "FOUND" if not events.empty else "EMPTY",
-            "path": str(corpus_dir),
+            "status": "FOUND" if report.min_date else "EMPTY",
+            "path": str(corpus_dir or raw_events_dir),
             "detail": detail,
-            "rows": int(len(events)),
-            "start_date": min_date,
-            "end_date": max_date,
+            "rows": int(sum(info.rows for info in report.sources)),
+            "start_date": report.min_date,
+            "end_date": report.max_date,
         }
     ]
 

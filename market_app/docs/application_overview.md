@@ -31,9 +31,12 @@ batch modes remain in the codebase but are disabled in offline runs to prevent a
 3. **Data provider ready**:
    - Offline: set `MARKET_APP_NASDAQ_DAILY_DIR` (or the config path) to point to per-ticker CSVs.
 4. **Corpus optional**: set `MARKET_APP_CORPUS_ROOT` or `MARKET_APP_GDELT_CONFLICT_DIR` to enable
-   GDELT conflict context features.
+   GDELT conflict context features. Add raw Events ZIPs under `corpus/gdelt_events_raw/` for
+   post-2021 extension (manual downloads only).
 5. **Run tests** (`pytest`) to validate the offline fixtures.
-6. **Execute the pipeline** (e.g., `run_all.ps1` or `python -m market_monitor run`).
+6. **Validate/build corpus** (`python -m market_monitor corpus validate/build`) and optionally
+   run `python -m market_monitor evaluate` for offline evaluation.
+7. **Execute the pipeline** (e.g., `run_all.ps1` or `python -m market_monitor run`).
 
 ## What It Does *Not* Do
 

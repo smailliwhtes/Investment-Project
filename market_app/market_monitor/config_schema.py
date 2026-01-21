@@ -64,6 +64,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "corpus": {
         "root_dir": "",
         "gdelt_conflict_dir": "",
+        "gdelt_events_raw_dir": "gdelt_events_raw",
         "features": {
             "rootcode_top_n": 8,
             "country_top_k": 8,
@@ -73,6 +74,15 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "spike_stddev": 2.0,
             "forward_days": [1, 5, 20],
         },
+    },
+    "evaluation": {
+        "symbols": [],
+        "lookback_days": 252,
+        "forward_return_days": 5,
+        "classification_threshold": 0.02,
+        "walk_forward_folds": 3,
+        "min_history_days": 252,
+        "mode": "both",
     },
     "score": {
         "weights": {
@@ -182,6 +192,7 @@ def _load_env_overrides() -> dict[str, Any]:
     )
     corpus_root = os.getenv("MARKET_APP_CORPUS_ROOT")
     gdelt_dir = os.getenv("MARKET_APP_GDELT_CONFLICT_DIR")
+    gdelt_raw_dir = os.getenv("MARKET_APP_GDELT_EVENTS_RAW_DIR")
     offline = _parse_bool(os.getenv("OFFLINE_MODE"))
 
     if root:
@@ -194,6 +205,8 @@ def _load_env_overrides() -> dict[str, Any]:
         overrides["corpus"]["root_dir"] = corpus_root
     if gdelt_dir:
         overrides["corpus"]["gdelt_conflict_dir"] = gdelt_dir
+    if gdelt_raw_dir:
+        overrides["corpus"]["gdelt_events_raw_dir"] = gdelt_raw_dir
     if offline is not None:
         overrides["data"]["offline_mode"] = offline
     return overrides

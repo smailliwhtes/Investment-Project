@@ -215,6 +215,18 @@ def _check_external_data_paths(config, root: Path, messages: list[DoctorMessage]
                 ],
             )
         )
+    if corpus_paths.gdelt_events_raw_dir and not corpus_paths.gdelt_events_raw_dir.exists():
+        messages.append(
+            DoctorMessage(
+                level="WARN",
+                title="GDELT raw events directory missing",
+                detail=f"Raw events directory not found at {corpus_paths.gdelt_events_raw_dir}.",
+                fix_steps=[
+                    "Create corpus/gdelt_events_raw and drop manual GDELT event zip files there.",
+                    "Leave empty if you do not need post-2021 updates.",
+                ],
+            )
+        )
 
 
 def _check_gate_sanity(config, messages: list[DoctorMessage]) -> None:
@@ -347,6 +359,7 @@ def _print_data_directories(
     print(f"  silver_prices_dir: {data_paths.silver_prices_dir}")
     print(f"  corpus_root_dir: {corpus_paths.root_dir}")
     print(f"  gdelt_conflict_dir: {corpus_paths.gdelt_conflict_dir}")
+    print(f"  gdelt_events_raw_dir: {corpus_paths.gdelt_events_raw_dir}")
     print(f"  bulk_raw_dir: {raw_dir}")
     print(f"  bulk_curated_dir: {curated_dir}")
     print(f"  bulk_manifest_dir: {manifest_dir}")

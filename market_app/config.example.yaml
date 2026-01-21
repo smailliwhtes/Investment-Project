@@ -98,6 +98,7 @@ paths:
 corpus:
   root_dir: ''
   gdelt_conflict_dir: ''
+  gdelt_events_raw_dir: gdelt_events_raw
   features:
     rootcode_top_n: 8
     country_top_k: 8
@@ -108,6 +109,14 @@ corpus:
     - 1
     - 5
     - 20
+evaluation:
+  symbols: []
+  lookback_days: 252
+  forward_return_days: 5
+  classification_threshold: 0.02
+  walk_forward_folds: 3
+  min_history_days: 252
+  mode: both
 bulk:
   paths:
     raw_dir: data/raw

@@ -70,10 +70,44 @@ The corpus pipeline ingests locally stored GDELT conflict event CSVs and produce
 features, analogs, and event-impact summaries. The pipeline is entirely offline and will skip
 corpus enrichment if the corpus folder is empty or missing.
 
-- Drop any GDELT conflict CSV exports into the corpus folder.
-- Daily features are written to `outputs/corpus/daily_features.csv`.
+- Drop the Kaggle GDELT conflict CSV into your corpus folder (this is the scalable historical base).
+- Optional post-2021 extension: place manually downloaded GDELT Events ZIPs under
+  `corpus/gdelt_events_raw/` (offline only).
+- Daily features are written to `outputs/corpus/daily_features.csv` and
+  `outputs/corpus/daily_features.parquet`.
 - Analogs report: `outputs/corpus/analogs_report.md`
 - Event impact library: `outputs/corpus/event_impact_library.csv` (when baseline/watchlist data exist)
+
+The GDELT web Event Record Exporter is capped to 20,000 results per query and is not used for
+full-history builds. Prefer the Kaggle CSV and raw Events ZIPs for offline scale.
+
+### Corpus CLI
+
+```powershell
+python -m market_monitor corpus validate --config config.yaml
+python -m market_monitor corpus build --config config.yaml
+```
+
+### Corpus Folder Layout (Offline)
+
+```
+<corpus_root>/
+  gdelt_conflict_1971_2021.csv
+  gdelt_events_raw/
+    20220101.export.CSV.zip
+    20220102.export.CSV.zip
+```
+
+### Offline Evaluation
+
+```powershell
+python -m market_monitor evaluate --config config.yaml
+```
+
+Outputs:
+
+- `outputs/eval/eval_metrics.csv`
+- `outputs/eval/eval_report.md`
 
 ## Bulk CSV Downloader (Design + Stubs)
 
@@ -98,9 +132,14 @@ Each run writes:
 - `outputs/predictions_<run_id>.csv` (if prediction enabled)
 - `outputs/run_report.md` + `outputs/run_report_<run_id>.md`
 - `outputs/corpus/daily_features.csv` (if corpus configured)
+- `outputs/corpus/daily_features.parquet` (if corpus configured)
 - `outputs/corpus/analogs_report.md` (if corpus configured)
 - `outputs/corpus/event_impact_library.csv` (if corpus configured)
 - `outputs/corpus/corpus_manifest.json` (if corpus configured)
+- `outputs/corpus/corpus_index.json` (if corpus configured)
+- `outputs/corpus/corpus_validate.json` (if corpus configured)
+- `outputs/eval/eval_metrics.csv` (if evaluation run)
+- `outputs/eval/eval_report.md` (if evaluation run)
 - `outputs/model_card.md` (if prediction enabled)
 - `outputs/calibration_plot.png` (if prediction enabled)
 
@@ -116,6 +155,7 @@ Set either `config.yaml` or environment variables:
 - `MARKET_APP_SILVER_PRICES_DIR`
 - `MARKET_APP_CORPUS_ROOT`
 - `MARKET_APP_GDELT_CONFLICT_DIR` (optional override)
+- `MARKET_APP_GDELT_EVENTS_RAW_DIR` (optional override)
 - `OFFLINE_MODE` (true/false, defaults to true)
 
 See `.env.example` and `config.example.yaml` for templates. The Kaggle folders should be placed
