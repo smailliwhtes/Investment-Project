@@ -36,6 +36,34 @@ Write-Host "[stage] upgrading pip"
 Write-Host "[stage] installing requirements"
 & $VenvPy -m pip install -r ".\requirements.txt" 1>$null
 
+$UseFixtures = $false
+if (-not $env:MARKET_APP_NASDAQ_DAILY_DIR) {
+  $ConfigHasPath = & $VenvPy - <<'PY'
+import yaml
+from pathlib import Path
+config_path = Path(r".\config.yaml")
+if not config_path.exists():
+    print("MISSING")
+    raise SystemExit(0)
+data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+paths = data.get("data", {}).get("paths", {})
+value = paths.get("nasdaq_daily_dir")
+print("SET" if value else "EMPTY")
+PY
+  if ($ConfigHasPath -eq "EMPTY" -or $ConfigHasPath -eq "MISSING") {
+    $UseFixtures = $true
+  }
+}
+
+if ($UseFixtures) {
+  Write-Host "[stage] using fixture data paths"
+  $env:MARKET_APP_NASDAQ_DAILY_DIR = (Resolve-Path ".\tests\fixtures\ohlcv")
+  if (-not $env:MARKET_APP_GDELT_CONFLICT_DIR) {
+    $env:MARKET_APP_GDELT_CONFLICT_DIR = (Resolve-Path ".\tests\fixtures\corpus")
+  }
+  $WatchlistOverride = (Resolve-Path ".\tests\fixtures\watchlist.txt")
+}
+
 Write-Host "[stage] running tests"
 & $VenvPy -m pytest -q
 if ($LASTEXITCODE -ne 0) {
@@ -62,7 +90,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "[stage] running watchlist pipeline"
-& $VenvPy -m market_monitor run --config $Config --mode watchlist --outdir $RunDir
+if ($WatchlistOverride) {
+  & $VenvPy -m market_monitor run --config $Config --mode watchlist --outdir $RunDir --watchlist $WatchlistOverride
+} else {
+  & $VenvPy -m market_monitor run --config $Config --mode watchlist --outdir $RunDir
+}
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[error] Pipeline run failed. See logs in .\outputs\logs"
   exit $LASTEXITCODE
@@ -86,6 +118,26 @@ foreach ($pattern in $Expected) {
   if ($found.Length -le 0) {
     Write-Host "[error] Output file is empty ($($found.FullName))"
     exit 1
+  }
+}
+
+if ($env:MARKET_APP_GDELT_CONFLICT_DIR) {
+  $CorpusExpected = @(
+    "corpus\daily_features.csv",
+    "corpus\analogs_report.md",
+    "corpus\corpus_manifest.json"
+  )
+  foreach ($pattern in $CorpusExpected) {
+    $path = Join-Path $RunDir $pattern
+    if (-not (Test-Path $path)) {
+      Write-Host "[error] Missing expected corpus output ($pattern) in $RunDir"
+      exit 1
+    }
+    $file = Get-Item $path
+    if ($file.Length -le 0) {
+      Write-Host "[error] Corpus output file is empty ($path)"
+      exit 1
+    }
   }
 }
 

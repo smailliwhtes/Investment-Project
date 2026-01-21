@@ -38,9 +38,16 @@ data:
     nasdaq_daily_dir: C:\\Users\\<USER>\\Desktop\\Kaggle_datasets\\NASDAQ_Daily
     silver_prices_dir: C:\\Users\\<USER>\\Desktop\\Kaggle_datasets\\silver_prices_data
 gates:
-  price_max: 10.0
-  min_adv20_dollar: 1000000
-  max_zero_volume_frac: 0.1
+  price_min: null
+  price_max: null
+  risk_flags:
+    penny_like: 1.0
+    illiquid_adv20_dollar: 1000000
+    short_history_days: 252
+    extreme_vol_annual: 1.2
+    gap_atr: 2.0
+    zero_volume_frac: 0.2
+    missing_day_rate: 0.2
 score:
   weights:
     trend: 0.22
@@ -88,6 +95,19 @@ paths:
   state_file: data/state/batch_state.json
   outputs_dir: outputs
   logs_dir: outputs/logs
+corpus:
+  root_dir: ''
+  gdelt_conflict_dir: ''
+  features:
+    rootcode_top_n: 8
+    country_top_k: 8
+  analogs:
+    top_n: 8
+    spike_stddev: 2.0
+    forward_days:
+    - 1
+    - 5
+    - 20
 bulk:
   paths:
     raw_dir: data/raw

@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 
+from market_monitor.offline import OfflineModeError, is_offline, require_online
 from market_monitor.providers.base import (
     HistoryProvider,
     ProviderCapabilities,
@@ -8,6 +9,10 @@ from market_monitor.providers.base import (
     Quote,
 )
 from market_monitor.providers.http import RetryConfig, request_with_backoff
+
+
+if is_offline():
+    raise OfflineModeError("Offline mode enabled; blocked import of TwelveDataProvider.")
 
 
 class TwelveDataProvider(HistoryProvider):
@@ -21,6 +26,7 @@ class TwelveDataProvider(HistoryProvider):
         retry_config: RetryConfig | None = None,
         session: requests.Session | None = None,
     ) -> None:
+        require_online("TwelveDataProvider init")
         self.api_key = api_key
         self.base_url = base_url
         self.retry_config = retry_config

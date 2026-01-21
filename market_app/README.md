@@ -2,11 +2,11 @@
 
 Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. It **does not** place orders or provide investment recommendations. Outputs are focused on:
 
-- Eligibility gates (with reason codes)
+- Eligibility status (with reason codes)
 - Monitor priority score (1–10) with component breakdown
 - Risk flags (RED/AMBER with reason codes)
 - Scenario sensitivity (defense/tech/metals)
-- Optional historical analog distributions (future extension)
+- Offline corpus context + historical analog summaries
 
 ## One-Command Run (PowerShell)
 
@@ -51,8 +51,8 @@ python -m market_monitor preflight --config config.yaml
 Market Monitor uses staged ingestion to reduce API load:
 
 - **Stage 0**: Universe filtering (no OHLCV)
-- **Stage 1**: Micro-history (N1=7) to apply `price_max` gate and proxy liquidity
-- **Stage 2**: Short history (N2=60) for true gates (ADV20$, zero volume, history sufficiency)
+- **Stage 1**: Micro-history (N1=7) to validate data presence
+- **Stage 2**: Short history (N2=60) for data status and risk flags
 - **Stage 3**: Deep history (N3=600) for full features, risk flags, and scoring
 
 ## Providers (Offline-Only)
@@ -63,6 +63,17 @@ This release supports **offline-only** watchlist runs using:
 
 Online providers remain in the codebase for future milestones, but offline mode is the only supported
 mode here. Any network access attempts are hard-failed during offline runs and tests.
+
+## Offline Corpus: GDELT Conflict Events (Local CSV)
+
+The corpus pipeline ingests locally stored GDELT conflict event CSVs and produces daily context
+features, analogs, and event-impact summaries. The pipeline is entirely offline and will skip
+corpus enrichment if the corpus folder is empty or missing.
+
+- Drop any GDELT conflict CSV exports into the corpus folder.
+- Daily features are written to `outputs/corpus/daily_features.csv`.
+- Analogs report: `outputs/corpus/analogs_report.md`
+- Event impact library: `outputs/corpus/event_impact_library.csv` (when baseline/watchlist data exist)
 
 ## Bulk CSV Downloader (Design + Stubs)
 
@@ -86,16 +97,25 @@ Each run writes:
 - `outputs/run_manifest.json`
 - `outputs/predictions_<run_id>.csv` (if prediction enabled)
 - `outputs/run_report.md` + `outputs/run_report_<run_id>.md`
+- `outputs/corpus/daily_features.csv` (if corpus configured)
+- `outputs/corpus/analogs_report.md` (if corpus configured)
+- `outputs/corpus/event_impact_library.csv` (if corpus configured)
+- `outputs/corpus/corpus_manifest.json` (if corpus configured)
 - `outputs/model_card.md` (if prediction enabled)
 - `outputs/calibration_plot.png` (if prediction enabled)
 
 ## External Data Paths (Offline)
+
+`config.yaml` is the canonical configuration. `config.json` is deprecated for this offline-only
+milestone and will be ignored in favor of `config.yaml` defaults.
 
 Set either `config.yaml` or environment variables:
 
 - `MARKET_APP_DATA_ROOT`
 - `MARKET_APP_NASDAQ_DAILY_DIR`
 - `MARKET_APP_SILVER_PRICES_DIR`
+- `MARKET_APP_CORPUS_ROOT`
+- `MARKET_APP_GDELT_CONFLICT_DIR` (optional override)
 - `OFFLINE_MODE` (true/false, defaults to true)
 
 See `.env.example` and `config.example.yaml` for templates. The Kaggle folders should be placed
@@ -186,9 +206,18 @@ Copy `.env.example` to `.env` and set paths as needed:
 
 - `MARKET_APP_NASDAQ_DAILY_DIR`
 - `MARKET_APP_SILVER_PRICES_DIR` (optional)
+- `MARKET_APP_CORPUS_ROOT` (optional)
+- `MARKET_APP_GDELT_CONFLICT_DIR` (optional)
 - `OFFLINE_MODE` (true/false)
 
 API keys are ignored in offline mode and are retained only for future milestones.
+
+## Data Sources (Offline Only)
+
+Data must be downloaded manually and stored locally. Reference materials:
+
+- GDELT 2.1 Event Database Codebook (fields + schema): https://www.gdeltproject.org/data.html
+- GDELT 2.1 Event data (conflict event extracts): https://www.gdeltproject.org/data.html
 
 ## Acceptance Test (Fresh Clone)
 

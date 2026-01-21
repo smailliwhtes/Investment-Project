@@ -84,7 +84,7 @@ These stubs live under `market_monitor/bulk/`.
 Suggested CLI interface for bulk CSV runs:
 
 ```
-python -m market_monitor bulk-download --config config.json --sources stooq,treasury
+python -m market_monitor bulk-download --config config.yaml --sources stooq,treasury
 ```
 
 This would:

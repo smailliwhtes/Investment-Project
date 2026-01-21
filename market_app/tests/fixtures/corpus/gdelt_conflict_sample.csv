@@ -1,0 +1,6 @@
+GlobalEventID,SQLDATE,EventCode,EventRootCode,QuadClass,GoldsteinScale,AvgTone,NumMentions,NumSources,NumArticles,Actor1CountryCode,Actor2CountryCode,ActionGeo_CountryCode
+1001,20200101,190,19,4,-6.0,-2.5,10,5,3,USA,RUS,USA
+1002,20200101,195,19,4,-4.0,-1.0,8,4,2,USA,CHN,USA
+1002,20200101,195,19,4,-4.0,-1.0,8,4,2,USA,CHN,USA
+1003,20200102,173,17,3,-2.0,-0.5,6,3,1,GBR,FRA,GBR
+1004,20990101,190,19,4,-5.0,-3.0,12,6,4,USA,RUS,USA
