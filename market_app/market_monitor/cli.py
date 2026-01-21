@@ -5,10 +5,14 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import requests
 
 from market_monitor.config_schema import ConfigError, load_config, write_default_config
-from market_monitor.data_paths import resolve_data_paths
+from market_monitor.corpus import (
+    build_corpus_manifest,
+    discover_corpus_files,
+    run_corpus_pipeline,
+)
+from market_monitor.data_paths import resolve_corpus_paths, resolve_data_paths
 from market_monitor.doctor import run_doctor
 from market_monitor.bulk import (
     BulkManifest,
@@ -18,22 +22,24 @@ from market_monitor.bulk import (
     standardize_directory,
     write_manifest,
 )
-from market_monitor.io import ELIGIBLE_COLUMNS, FEATURE_COLUMNS, SCORED_COLUMNS, write_csv
+from market_monitor.io import (
+    ELIGIBLE_COLUMNS,
+    build_feature_columns,
+    build_scored_columns,
+    write_csv,
+)
 from market_monitor.logging_utils import JsonlLogger, get_console_logger
 from market_monitor.paths import find_repo_root, resolve_path
-from market_monitor.providers.alphavantage import AlphaVantageProvider
 from market_monitor.providers.base import (
     BudgetManager,
     HistoryProvider,
     ProviderAccessError,
     ProviderError,
 )
-from market_monitor.providers.finnhub import FinnhubProvider
 from market_monitor.providers.nasdaq_daily import NasdaqDailyProvider, NasdaqDailySource
 from market_monitor.providers.http import RetryConfig
-from market_monitor.providers.stooq import StooqProvider
-from market_monitor.providers.twelvedata import TwelveDataProvider
 from market_monitor.macro import load_silver_series
+from market_monitor.hash_utils import hash_manifest
 from market_monitor.manifest import build_run_manifest, resolve_git_commit, run_id_from_inputs
 from market_monitor.offline import set_offline_mode
 from market_monitor.preflight import run_preflight
@@ -64,6 +70,16 @@ class LimitedProvider(HistoryProvider):
     def get_quote(self, symbol: str):
         self.budget.consume()
         return self.provider.get_quote(symbol)
+
+    def load_symbol_data(self, symbol: str):
+        if not hasattr(self.provider, "load_symbol_data"):
+            raise ProviderError("Provider does not support load_symbol_data.")
+        return self.provider.load_symbol_data(symbol)
+
+    def resolve_symbol_file(self, symbol: str):
+        if hasattr(self.provider, "resolve_symbol_file"):
+            return self.provider.resolve_symbol_file(symbol)
+        return None
 
 
 class FallbackProvider(HistoryProvider):
@@ -104,7 +120,6 @@ def _build_provider(config: dict[str, Any], logger, root: Path) -> HistoryProvid
         base_delay_s=float(throttling_cfg.get("base_delay_s", 0.3)),
         jitter_s=float(throttling_cfg.get("jitter_s", 0.2)),
     )
-    session = requests.Session()
     sleep_ms = int(float(throttling_cfg.get("base_delay_s", 0.3)) * 1000)
 
     def build(name: str) -> HistoryProvider:
@@ -117,21 +132,37 @@ def _build_provider(config: dict[str, Any], logger, root: Path) -> HistoryProvid
                 NasdaqDailySource(directory=paths.nasdaq_daily_dir, cache_dir=cache_dir)
             )
         if name == "stooq":
+            from market_monitor.providers.stooq import StooqProvider
+            import requests
+
+            session = requests.Session()
             return StooqProvider(sleep_ms=sleep_ms, retry_config=retry_config, session=session)
         if name == "twelvedata":
+            from market_monitor.providers.twelvedata import TwelveDataProvider
+            import requests
+
             api_key = os.getenv("TWELVEDATA_API_KEY")
             if not api_key:
                 raise ProviderError("TWELVEDATA_API_KEY is missing")
+            session = requests.Session()
             return TwelveDataProvider(api_key, retry_config=retry_config, session=session)
         if name == "alphavantage":
+            from market_monitor.providers.alphavantage import AlphaVantageProvider
+            import requests
+
             api_key = os.getenv("ALPHAVANTAGE_API_KEY")
             if not api_key:
                 raise ProviderError("ALPHAVANTAGE_API_KEY is missing")
+            session = requests.Session()
             return AlphaVantageProvider(api_key, retry_config=retry_config, session=session)
         if name == "finnhub":
+            from market_monitor.providers.finnhub import FinnhubProvider
+            import requests
+
             api_key = os.getenv("FINNHUB_API_KEY")
             if not api_key:
                 raise ProviderError("FINNHUB_API_KEY is missing")
+            session = requests.Session()
             return FinnhubProvider(api_key, retry_config=retry_config, session=session)
         raise ProviderError(f"Unknown provider {name}")
 
@@ -174,14 +205,12 @@ def run_pipeline(args: argparse.Namespace) -> int:
         overrides: dict[str, Any] = {}
         if args.provider:
             overrides.setdefault("data", {})["provider"] = args.provider
+        if getattr(args, "price_min", None) is not None:
+            overrides.setdefault("gates", {})["price_min"] = args.price_min
         if args.price_max is not None:
             overrides.setdefault("gates", {})["price_max"] = args.price_max
-        if args.min_adv20_dollar is not None:
-            overrides.setdefault("gates", {})["min_adv20_dollar"] = args.min_adv20_dollar
         if args.history_min_days is not None:
             overrides.setdefault("staging", {})["history_min_days"] = args.history_min_days
-        if args.max_zero_volume_frac is not None:
-            overrides.setdefault("gates", {})["max_zero_volume_frac"] = args.max_zero_volume_frac
         if args.outdir:
             overrides.setdefault("paths", {})["outputs_dir"] = args.outdir
         if args.cache_dir:
@@ -257,11 +286,22 @@ def run_pipeline(args: argparse.Namespace) -> int:
         universe_df = universe_df.iloc[start:end]
         cursor_file.write_text(str(end), encoding="utf-8")
 
+    corpus_paths = resolve_corpus_paths(config, root)
+    corpus_files = (
+        build_corpus_manifest(discover_corpus_files(corpus_paths.gdelt_conflict_dir))["files"]
+        if corpus_paths.gdelt_conflict_dir
+        else []
+    )
+    corpus_manifest_hash = None
+    if corpus_files:
+        corpus_manifest_hash = hash_manifest({"files": corpus_files})
+
     run_id = run_id_from_inputs(
         timestamp=run_start,
         config_hash=config_hash,
         watchlist_path=watchlist_path if args.mode == "watchlist" else None,
         watchlist_df=universe_df,
+        corpus_manifest_hash=corpus_manifest_hash,
     )
 
     outputs_dir = resolve_path(root, config["paths"]["outputs_dir"])
@@ -295,6 +335,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
             run_id=run_id,
             run_timestamp=run_timestamp,
             logger=logger,
+            corpus_dir=corpus_paths.gdelt_conflict_dir,
         )
 
     stage1_df, stage2_df, stage3_df, summary = stage_pipeline(
@@ -312,14 +353,35 @@ def run_pipeline(args: argparse.Namespace) -> int:
         score_frame(stage3_df, config["score"]["weights"]) if not stage3_df.empty else stage3_df
     )
 
+    corpus_outputs_dir = outputs_dir / "corpus"
+    corpus_run = run_corpus_pipeline(
+        corpus_dir=corpus_paths.gdelt_conflict_dir,
+        outputs_dir=corpus_outputs_dir,
+        config=config,
+        provider=provider,
+        watchlist=universe_df["symbol"].tolist(),
+        logger=logger,
+    )
+    context_columns = []
+    if corpus_run.daily_features is not None and not stage3_df.empty:
+        context = corpus_run.daily_features.copy()
+        context = context.rename(columns={col: f"context_{col}" for col in context.columns if col != "Date"})
+        context_columns = [col for col in context.columns if col != "Date"]
+        scored = scored.merge(
+            context,
+            left_on="as_of_date",
+            right_on="Date",
+            how="left",
+        ).drop(columns=["Date"])
+
     features_path = outputs_dir / f"features_{run_id}.csv"
     scored_path = outputs_dir / f"scored_{run_id}.csv"
     eligible_path = outputs_dir / f"eligible_{run_id}.csv"
     report_path = outputs_dir / "run_report.md"
     report_archive = outputs_dir / f"run_report_{run_id}.md"
 
-    write_csv(scored, scored_path, SCORED_COLUMNS)
-    write_csv(scored, features_path, FEATURE_COLUMNS)
+    write_csv(scored, scored_path, build_scored_columns(context_columns))
+    write_csv(scored, features_path, build_feature_columns(context_columns))
     eligible = (
         scored[["symbol", "name", "eligible", "gate_fail_codes", "notes"]]
         if not scored.empty
@@ -334,6 +396,12 @@ def run_pipeline(args: argparse.Namespace) -> int:
         "nasdaq_daily_found": str(bool(paths.nasdaq_daily_dir and paths.nasdaq_daily_dir.exists())),
         "silver_prices_dir": str(paths.silver_prices_dir) if paths.silver_prices_dir else "unset",
         "silver_prices_found": str(bool(paths.silver_prices_dir and paths.silver_prices_dir.exists())),
+        "gdelt_conflict_dir": str(corpus_paths.gdelt_conflict_dir)
+        if corpus_paths.gdelt_conflict_dir
+        else "unset",
+        "gdelt_conflict_found": str(
+            bool(corpus_paths.gdelt_conflict_dir and corpus_paths.gdelt_conflict_dir.exists())
+        ),
     }
 
     prediction_panel = None
@@ -376,6 +444,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
         data_usage=data_usage,
         prediction_panel=prediction_panel,
         prediction_metrics=prediction_metrics,
+        context_summary=_build_context_summary(corpus_run),
     )
     write_report(
         report_archive,
@@ -386,6 +455,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
         data_usage=data_usage,
         prediction_panel=prediction_panel,
         prediction_metrics=prediction_metrics,
+        context_summary=_build_context_summary(corpus_run),
     )
 
     run_end = datetime.now(timezone.utc)
@@ -401,6 +471,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
         scored=scored,
         preflight=preflight,
         git_commit=resolve_git_commit(root),
+        corpus_manifest=corpus_run.manifest if corpus_run else None,
     )
     (outputs_dir / "run_manifest.json").write_text(
         manifest.to_json(indent=2),
@@ -410,6 +481,38 @@ def run_pipeline(args: argparse.Namespace) -> int:
     json_logger.log("summary", {"counts": summary})
     logger.info(f"Outputs written to {outputs_dir}")
     return 0
+
+
+def _build_context_summary(corpus_run) -> dict[str, Any] | None:
+    if corpus_run is None or corpus_run.daily_features is None or corpus_run.daily_features.empty:
+        return None
+    latest = corpus_run.daily_features.iloc[-1].to_dict()
+    analog_outcomes = corpus_run.analog_outcomes or []
+    outcome_summary = {}
+    if analog_outcomes:
+        df = pd.DataFrame(analog_outcomes)
+        outcome_summary = (
+            df.groupby(["symbol", "forward_days"])["forward_return"].mean().reset_index().to_dict("records")
+        )
+    return {
+        "latest_date": latest.get("Date"),
+        "latest_metrics": {
+            key: value
+            for key, value in latest.items()
+            if key
+            in {
+                "conflict_event_count_total",
+                "goldstein_mean",
+                "tone_mean",
+                "mentions_sum",
+                "sources_sum",
+                "articles_sum",
+            }
+        },
+        "analogs": corpus_run.analogs or [],
+        "event_impact_rows": len(corpus_run.event_impact) if corpus_run.event_impact is not None else 0,
+        "analog_outcomes": outcome_summary,
+    }
 
 
 def run_bulk_plan(args: argparse.Namespace) -> int:
@@ -557,6 +660,7 @@ def run_preflight_command(args: argparse.Namespace) -> int:
         watchlist_path=watchlist_path,
         watchlist_df=watchlist_df,
     )
+    corpus_paths = resolve_corpus_paths(config, root)
 
     run_preflight(
         watchlist_df,
@@ -565,6 +669,7 @@ def run_preflight_command(args: argparse.Namespace) -> int:
         run_id=run_id,
         run_timestamp=run_timestamp,
         logger=logger,
+        corpus_dir=corpus_paths.gdelt_conflict_dir,
     )
     logger.info(f"[preflight] report written to {outputs_dir}")
     return 0
@@ -618,10 +723,9 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--watchlist")
     run_parser.add_argument("--themes")
     run_parser.add_argument("--provider")
+    run_parser.add_argument("--price-min", type=float)
     run_parser.add_argument("--price-max", type=float)
-    run_parser.add_argument("--min-adv20-dollar", type=float)
     run_parser.add_argument("--history-min-days", type=int)
-    run_parser.add_argument("--max-zero-volume-frac", type=float)
     run_parser.add_argument("--outdir")
     run_parser.add_argument("--cache-dir")
     run_parser.add_argument("--batch-size", type=int)

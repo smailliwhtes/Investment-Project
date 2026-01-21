@@ -2,7 +2,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from market_monitor.io import ELIGIBLE_COLUMNS, FEATURE_COLUMNS, SCORED_COLUMNS, write_csv
+from market_monitor.io import (
+    ELIGIBLE_COLUMNS,
+    build_feature_columns,
+    build_scored_columns,
+    write_csv,
+)
 from market_monitor.providers.base import HistoryProvider, ProviderCapabilities
 from market_monitor.report import write_report
 from market_monitor.scoring import score_frame
@@ -33,7 +38,11 @@ def test_smoke_pipeline(tmp_path: Path):
             "stage3_deep_days": 120,
             "history_min_days": 60,
         },
-        "gates": {"price_max": 10.0, "min_adv20_dollar": 1000, "max_zero_volume_frac": 1.0},
+        "gates": {
+            "price_min": None,
+            "price_max": None,
+            "risk_flags": {"illiquid_adv20_dollar": 1000},
+        },
         "themes": {"defense": {"symbols": [], "keywords": []}},
         "data": {"max_workers": 1},
     }
@@ -68,8 +77,8 @@ def test_smoke_pipeline(tmp_path: Path):
 
     outputs_dir = tmp_path / "outputs"
     outputs_dir.mkdir(parents=True, exist_ok=True)
-    write_csv(scored, outputs_dir / "features_test.csv", FEATURE_COLUMNS)
-    write_csv(scored, outputs_dir / "scored_test.csv", SCORED_COLUMNS)
+    write_csv(scored, outputs_dir / "features_test.csv", build_feature_columns())
+    write_csv(scored, outputs_dir / "scored_test.csv", build_scored_columns())
     write_csv(
         scored[["symbol", "name", "eligible", "gate_fail_codes", "notes"]],
         outputs_dir / "eligible_test.csv",

@@ -39,8 +39,9 @@ class NasdaqDailyProvider(HistoryProvider):
 
         df = self._load_symbol(symbol)
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_parquet(cache_path, index=False)
-        return CacheResult(df, self._freshness_days(cache_path), cache_path, False)
+        wrote = self._write_cache(df, cache_path)
+        freshness = self._freshness_days(cache_path) if wrote else 0.0
+        return CacheResult(df, freshness, cache_path, False)
 
     def get_history(self, symbol: str, days: int) -> pd.DataFrame:
         cache_path = self._cache_path(symbol)
@@ -49,7 +50,7 @@ class NasdaqDailyProvider(HistoryProvider):
         else:
             df = self._load_symbol(symbol)
             cache_path.parent.mkdir(parents=True, exist_ok=True)
-            df.to_parquet(cache_path, index=False)
+            self._write_cache(df, cache_path)
         if days > 0:
             return df.tail(days).copy()
         return df.copy()
@@ -61,6 +62,16 @@ class NasdaqDailyProvider(HistoryProvider):
     def _freshness_days(self, path: Path) -> float:
         delta = pd.Timestamp.utcnow() - pd.Timestamp(path.stat().st_mtime, unit="s")
         return float(delta.total_seconds() / 86400.0)
+
+    @staticmethod
+    def _write_cache(df: pd.DataFrame, cache_path: Path) -> bool:
+        try:
+            df.to_parquet(cache_path, index=False)
+        except ImportError:
+            if cache_path.exists():
+                cache_path.unlink(missing_ok=True)
+            return False
+        return True
 
     def _load_symbol(self, symbol: str) -> pd.DataFrame:
         df, _ = self.load_symbol_data(symbol)

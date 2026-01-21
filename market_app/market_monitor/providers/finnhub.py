@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import requests
 
+from market_monitor.offline import OfflineModeError, is_offline, require_online
 from market_monitor.providers.base import (
     HistoryProvider,
     ProviderAccessError,
@@ -12,6 +13,10 @@ from market_monitor.providers.base import (
     Quote,
 )
 from market_monitor.providers.http import RetryConfig, request_with_backoff
+
+
+if is_offline():
+    raise OfflineModeError("Offline mode enabled; blocked import of FinnhubProvider.")
 
 
 class FinnhubProvider(HistoryProvider):
@@ -25,6 +30,7 @@ class FinnhubProvider(HistoryProvider):
         retry_config: RetryConfig | None = None,
         session: requests.Session | None = None,
     ) -> None:
+        require_online("FinnhubProvider init")
         self.api_key = api_key
         self.base_url = base_url
         self.retry_config = retry_config

@@ -4,7 +4,7 @@
 
 ## Quick Map (Defaults)
 
-These defaults are driven by `config.json`.
+These defaults are driven by `config.yaml`.
 
 | Purpose | Config Key | Default Path | Notes |
 | --- | --- | --- | --- |
@@ -29,7 +29,7 @@ These are **monitoring-only** utilities and do not make recommendations.
 
 ## What Gets Downloaded
 
-The current bulk sources in `config.json`:
+The current bulk sources in `config.yaml`:
 
 - **Stooq** (`stooq`): per-symbol daily CSVs using a symbol template (example target: `https://stooq.pl/q/d/l/?s=AAPL.us&i=d`).
 - **Treasury Yield Curve** (`treasury_yield_curve`): static CSV from a fixed URL.
@@ -42,7 +42,7 @@ The planner decides between:
 
 ## How Often Data Refreshes
 
-- **Provider cache** (`data/cache/`): refreshed when cached files are older than `data.max_cache_age_days` in `config.json`.
+- **Provider cache** (`data/cache/`): refreshed when cached files are older than `data.max_cache_age_days` in `config.yaml`.
 - **Bulk downloads**: run on demand. Each run overwrites the target file if it already exists (deterministic path). Manifests capture the plan for each run.
 - **Curated outputs**: regenerated when you run `bulk-standardize`.
 
@@ -66,18 +66,18 @@ Use them to replay or audit the same download plan.
 The doctor command performs **lightweight** reachability checks (HEAD/Range GET) for each bulk source:
 
 ```powershell
-python -m market_monitor doctor --config config.json
+python -m market_monitor doctor --config config.yaml
 ```
 
 To skip connectivity checks in offline mode:
 
 ```powershell
 $env:MM_OFFLINE = "1"
-python -m market_monitor doctor --config config.json
+python -m market_monitor doctor --config config.yaml
 ```
 
 To treat connectivity warnings as errors (CI/acceptance testing):
 
 ```powershell
-python -m market_monitor doctor --config config.json --strict
+python -m market_monitor doctor --config config.yaml --strict
 ```

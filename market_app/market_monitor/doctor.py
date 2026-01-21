@@ -3,23 +3,14 @@ from __future__ import annotations
 import json
 import os
 import sys
-from importlib import metadata
 from dataclasses import dataclass
 from pathlib import Path
 
-import requests
-
 from market_monitor.bulk import load_bulk_sources
 from market_monitor.config_schema import ConfigError, load_config
-from market_monitor.data_paths import resolve_data_paths
+from market_monitor.data_paths import resolve_corpus_paths, resolve_data_paths
 from market_monitor.paths import find_repo_root, resolve_path
 from market_monitor.offline import set_offline_mode
-from market_monitor.providers import (
-    AlphaVantageProvider,
-    FinnhubProvider,
-    StooqProvider,
-    TwelveDataProvider,
-)
 from market_monitor.providers.nasdaq_daily import NasdaqDailyProvider, NasdaqDailySource
 from market_monitor.universe import read_watchlist
 from market_monitor.providers.base import HistoryProvider, ProviderError
@@ -184,6 +175,7 @@ def _check_env_vars(config, messages: list[DoctorMessage]) -> None:
 
 def _check_external_data_paths(config, root: Path, messages: list[DoctorMessage]) -> None:
     paths = resolve_data_paths(config, root)
+    corpus_paths = resolve_corpus_paths(config, root)
     if config["data"].get("offline_mode", False):
         if not paths.nasdaq_daily_dir or not paths.nasdaq_daily_dir.exists():
             messages.append(
@@ -211,43 +203,43 @@ def _check_external_data_paths(config, root: Path, messages: list[DoctorMessage]
                 ],
             )
         )
+    if corpus_paths.gdelt_conflict_dir and not corpus_paths.gdelt_conflict_dir.exists():
+        messages.append(
+            DoctorMessage(
+                level="WARN",
+                title="Corpus directory missing",
+                detail=f"Corpus directory not found at {corpus_paths.gdelt_conflict_dir}.",
+                fix_steps=[
+                    "Verify MARKET_APP_GDELT_CONFLICT_DIR in config.yaml or env.",
+                    "Leave unset if you do not want corpus enrichment.",
+                ],
+            )
+        )
 
 
 def _check_gate_sanity(config, messages: list[DoctorMessage]) -> None:
     gates = config["gates"]
-    if gates["price_max"] < 1:
+    price_min = gates.get("price_min")
+    price_max = gates.get("price_max")
+    if price_min is not None and price_min < 1:
         messages.append(
             DoctorMessage(
                 level="WARN",
-                title="Price gate may be too strict",
-                detail=f"price_max is {gates['price_max']}, which may exclude most symbols.",
+                title="Price floor may be too strict",
+                detail=f"price_min is {price_min}, which may exclude most symbols.",
                 fix_steps=[
-                    "Consider raising price_max (e.g., 5.0 or 10.0).",
-                    "Run a small watchlist scan to validate eligibility.",
+                    "Consider lowering price_min or setting it to null.",
                 ],
             )
         )
-    if gates["min_adv20_dollar"] > 50_000_000:
+    if price_max is not None and price_max < 1:
         messages.append(
             DoctorMessage(
                 level="WARN",
-                title="Liquidity gate may be too strict",
-                detail=f"min_adv20_dollar is {gates['min_adv20_dollar']:,}, which may filter everything.",
+                title="Price ceiling may be too strict",
+                detail=f"price_max is {price_max}, which may exclude most symbols.",
                 fix_steps=[
-                    "Consider lowering min_adv20_dollar for smaller-cap coverage.",
-                    "Run a watchlist scan to validate eligibility.",
-                ],
-            )
-        )
-    if gates["max_zero_volume_frac"] < 0.01:
-        messages.append(
-            DoctorMessage(
-                level="WARN",
-                title="Zero-volume gate may be too strict",
-                detail=f"max_zero_volume_frac is {gates['max_zero_volume_frac']}, which may filter thinly traded symbols.",
-                fix_steps=[
-                    "Consider raising max_zero_volume_frac (e.g., 0.05 to 0.10).",
-                    "Run a watchlist scan to validate eligibility.",
+                    "Consider raising price_max or setting it to null.",
                 ],
             )
         )
@@ -269,16 +261,24 @@ def _check_provider_health(
     provider_name = config["data"]["provider"]
     provider: HistoryProvider | None = None
     if provider_name == "stooq":
+        from market_monitor.providers.stooq import StooqProvider
+
         provider = StooqProvider(retry_config=retry_cfg)
     elif provider_name == "twelvedata":
+        from market_monitor.providers.twelvedata import TwelveDataProvider
+
         api_key = os.getenv("TWELVEDATA_API_KEY")
         if api_key:
             provider = TwelveDataProvider(api_key, retry_config=retry_cfg)
     elif provider_name == "alphavantage":
+        from market_monitor.providers.alphavantage import AlphaVantageProvider
+
         api_key = os.getenv("ALPHAVANTAGE_API_KEY")
         if api_key:
             provider = AlphaVantageProvider(api_key, retry_config=retry_cfg)
     elif provider_name == "finnhub":
+        from market_monitor.providers.finnhub import FinnhubProvider
+
         api_key = os.getenv("FINNHUB_API_KEY")
         if api_key:
             provider = FinnhubProvider(api_key, retry_config=retry_cfg)
@@ -297,7 +297,7 @@ def _check_provider_health(
                 fix_steps=[
                     "Check your API key and account entitlements.",
                     "Wait a minute and retry if you hit a rate limit.",
-                    "Switch provider in config.json if the issue persists.",
+                    "Switch provider in config.yaml if the issue persists.",
                 ],
             )
         )
@@ -332,6 +332,7 @@ def _print_data_directories(
     raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
     curated_dir = resolve_path(root, bulk_paths.get("curated_dir", "data/curated"))
     manifest_dir = resolve_path(root, bulk_paths.get("manifest_dir", "data/manifests"))
+    corpus_paths = resolve_corpus_paths(config, root)
 
     print("[doctor] Data directories")
     print(f"  offline_mode: {config.get('data', {}).get('offline_mode', False)}")
@@ -344,6 +345,8 @@ def _print_data_directories(
     print(f"  market_app_data_root: {data_paths.market_app_data_root}")
     print(f"  nasdaq_daily_dir: {data_paths.nasdaq_daily_dir}")
     print(f"  silver_prices_dir: {data_paths.silver_prices_dir}")
+    print(f"  corpus_root_dir: {corpus_paths.root_dir}")
+    print(f"  gdelt_conflict_dir: {corpus_paths.gdelt_conflict_dir}")
     print(f"  bulk_raw_dir: {raw_dir}")
     print(f"  bulk_curated_dir: {curated_dir}")
     print(f"  bulk_manifest_dir: {manifest_dir}")
@@ -370,6 +373,8 @@ def _check_bulk_sources(
         base_delay_s=float(throttling.get("base_delay_s", 0.3)),
         jitter_s=float(throttling.get("jitter_s", 0.2)),
     )
+    import requests
+
     session = requests.Session()
     results: list[ConnectivityResult] = []
 

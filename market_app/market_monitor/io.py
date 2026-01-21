@@ -2,11 +2,12 @@ from pathlib import Path
 
 import pandas as pd
 
-FEATURE_COLUMNS = [
+BASE_FEATURE_COLUMNS = [
     "run_id",
     "run_timestamp_utc",
     "config_hash",
     "provider_name",
+    "as_of_date",
     "adjusted_mode",
     "symbol",
     "name",
@@ -73,7 +74,7 @@ FEATURE_COLUMNS = [
     "silver_trend_quality_6m",
 ]
 
-SCORED_COLUMNS = FEATURE_COLUMNS + [
+BASE_SCORED_COLUMNS = BASE_FEATURE_COLUMNS + [
     "eligible",
     "gate_fail_codes",
     "risk_level",
@@ -121,3 +122,13 @@ def write_csv(df: pd.DataFrame, path: Path, columns: list[str]) -> None:
     if len(float_cols):
         cleaned[float_cols] = cleaned[float_cols].round(6)
     cleaned.to_csv(path, index=False)
+
+
+def build_feature_columns(extra_columns: list[str] | None = None) -> list[str]:
+    extras = sorted(extra_columns or [])
+    return BASE_FEATURE_COLUMNS + extras
+
+
+def build_scored_columns(extra_columns: list[str] | None = None) -> list[str]:
+    extras = sorted(extra_columns or [])
+    return BASE_SCORED_COLUMNS + extras

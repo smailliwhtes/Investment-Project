@@ -7,11 +7,14 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import pandas as pd
 
-from market_monitor.preflight import PreflightReport
+from market_monitor.hash_utils import hash_file, hash_manifest, hash_text
+
+if TYPE_CHECKING:
+    from market_monitor.preflight import PreflightReport
 
 
 def generate_run_id(
@@ -19,19 +22,13 @@ def generate_run_id(
     timestamp: datetime,
     config_hash: str,
     watchlist_hash: str,
+    corpus_manifest_hash: str | None = None,
 ) -> str:
     stamp = timestamp.strftime("%Y%m%d_%H%M%S")
-    digest = hashlib.sha256(f"{config_hash}:{watchlist_hash}".encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(
+        f"{config_hash}:{watchlist_hash}:{corpus_manifest_hash or ''}".encode("utf-8")
+    ).hexdigest()
     return f"{stamp}_{digest[:8]}"
-
-
-def hash_file(path: Path) -> str:
-    payload = path.read_bytes()
-    return hashlib.sha256(payload).hexdigest()
-
-
-def hash_text(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def resolve_git_commit(repo_root: Path) -> str | None:
@@ -103,6 +100,7 @@ def build_run_manifest(
     scored: pd.DataFrame,
     preflight: PreflightReport | None,
     git_commit: str | None,
+    corpus_manifest: dict[str, Any] | None = None,
 ) -> RunManifest:
     watchlist_file_hash = None
     if watchlist_path and watchlist_path.exists():
@@ -123,6 +121,19 @@ def build_run_manifest(
             except OSError:
                 continue
 
+    corpus_files = []
+    if corpus_manifest:
+        for entry in corpus_manifest.get("files", []):
+            corpus_files.append(
+                {
+                    "path": entry.get("path"),
+                    "sha256": entry.get("sha256"),
+                    "rows": entry.get("rows"),
+                    "min_date": entry.get("min_date"),
+                    "max_date": entry.get("max_date"),
+                }
+            )
+
     eligible_count = int(scored["eligible"].sum()) if "eligible" in scored.columns else 0
     counts = {
         "symbols_requested": int(len(watchlist_df)),
@@ -130,6 +141,10 @@ def build_run_manifest(
         "symbols_processed": int(summary.get("stage3", 0)),
         "symbols_eligible": eligible_count,
     }
+
+    risk_summary = {}
+    if "risk_level" in scored.columns and not scored.empty:
+        risk_summary = scored["risk_level"].value_counts(dropna=False).to_dict()
 
     payload = {
         "run_id": run_id,
@@ -142,8 +157,11 @@ def build_run_manifest(
         "watchlist_file_hash": watchlist_file_hash,
         "watchlist_hash": watchlist_hash,
         "input_files": input_files,
+        "corpus_files": corpus_files,
         "counts": counts,
         "summary": summary,
+        "risk_summary": risk_summary,
+        "corpus_manifest": corpus_manifest,
         "versions": _collect_versions(),
     }
     return RunManifest(payload=payload)
@@ -155,9 +173,15 @@ def run_id_from_inputs(
     config_hash: str,
     watchlist_path: Path | None,
     watchlist_df: pd.DataFrame,
+    corpus_manifest_hash: str | None = None,
 ) -> str:
     if watchlist_path and watchlist_path.exists():
         watchlist_hash = hash_file(watchlist_path)
     else:
         watchlist_hash = _watchlist_hash(watchlist_df)
-    return generate_run_id(timestamp=timestamp, config_hash=config_hash, watchlist_hash=watchlist_hash)
+    return generate_run_id(
+        timestamp=timestamp,
+        config_hash=config_hash,
+        watchlist_hash=watchlist_hash,
+        corpus_manifest_hash=corpus_manifest_hash,
+    )

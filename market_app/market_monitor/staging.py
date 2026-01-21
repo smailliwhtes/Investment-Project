@@ -106,7 +106,12 @@ def stage_pipeline(
             last_price = float(df["Close"].iloc[-1])
             features = compute_features(df)
             features["last_price"] = last_price
-            if last_price > gates_cfg["price_max"]:
+            eligible_by_price, _ = apply_gates(
+                features,
+                gates_cfg.get("price_min"),
+                gates_cfg.get("price_max"),
+            )
+            if not eligible_by_price:
                 continue
             stage1_survivors.append(
                 {
@@ -149,13 +154,12 @@ def stage_pipeline(
             status, reason_codes = _compute_data_status(
                 int(features.get("history_days", 0)), staging_cfg["history_min_days"]
             )
-            eligible, gate_fail = apply_gates(
+            eligible_by_price, gate_fail = apply_gates(
                 features,
-                gates_cfg["price_max"],
-                gates_cfg["min_adv20_dollar"],
-                gates_cfg["max_zero_volume_frac"],
-                staging_cfg["history_min_days"],
+                gates_cfg.get("price_min"),
+                gates_cfg.get("price_max"),
             )
+            eligible = bool(status != "DATA_UNAVAILABLE" and eligible_by_price)
             if eligible:
                 stage2_survivors.append(
                     {
@@ -204,10 +208,17 @@ def stage_pipeline(
             )
             theme_tags, theme_confidence, theme_unknown = tag_themes(symbol, name, themes_cfg)
             scenario = scenario_scores(theme_tags)
-            risk_level, red, amber = assess_risk(features, adjusted_mode=adjusted_mode)
+            risk_level, red, amber = assess_risk(
+                features,
+                adjusted_mode=adjusted_mode,
+                risk_cfg=gates_cfg.get("risk_flags", {}),
+            )
             notes = "Eligible for monitoring" if status == "OK" else "Data issue"
             confidence_score = _confidence_score(features, theme_confidence)
             silver_payload = _maybe_attach_silver(theme_tags, symbol, silver_macro)
+            as_of_date = None
+            if "Date" in df.columns and not df.empty:
+                as_of_date = pd.to_datetime(df["Date"].iloc[-1], errors="coerce")
             stage3_rows.append(
                 {
                     **run_meta,
@@ -227,6 +238,7 @@ def stage_pipeline(
                     "gate_fail_codes": "",
                     "notes": notes,
                     "confidence_score": confidence_score,
+                    "as_of_date": as_of_date.strftime("%Y-%m-%d") if as_of_date is not None else None,
                     **features,
                     **scenario,
                     **silver_payload,

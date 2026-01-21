@@ -49,9 +49,30 @@ DEFAULT_CONFIG: dict[str, Any] = {
         },
     },
     "gates": {
-        "price_max": 10.0,
-        "min_adv20_dollar": 1_000_000,
-        "max_zero_volume_frac": 0.10,
+        "price_min": None,
+        "price_max": None,
+        "risk_flags": {
+            "penny_like": 1.0,
+            "illiquid_adv20_dollar": 1_000_000,
+            "short_history_days": 252,
+            "extreme_vol_annual": 1.2,
+            "gap_atr": 2.0,
+            "zero_volume_frac": 0.2,
+            "missing_day_rate": 0.2,
+        },
+    },
+    "corpus": {
+        "root_dir": "",
+        "gdelt_conflict_dir": "",
+        "features": {
+            "rootcode_top_n": 8,
+            "country_top_k": 8,
+        },
+        "analogs": {
+            "top_n": 8,
+            "spike_stddev": 2.0,
+            "forward_days": [1, 5, 20],
+        },
     },
     "score": {
         "weights": {
@@ -151,7 +172,7 @@ def _parse_bool(value: str | None) -> bool | None:
 
 
 def _load_env_overrides() -> dict[str, Any]:
-    overrides: dict[str, Any] = {"data": {"paths": {}}}
+    overrides: dict[str, Any] = {"data": {"paths": {}}, "corpus": {}}
     root = os.getenv("MARKET_APP_DATA_ROOT")
     nasdaq = os.getenv("MARKET_APP_NASDAQ_DAILY_DIR") or os.getenv("NASDAQ_DAILY_DIR")
     silver = (
@@ -159,6 +180,8 @@ def _load_env_overrides() -> dict[str, Any]:
         or os.getenv("SILVER_PRICES_DIR")
         or os.getenv("SILVER_PRICES_CSV")
     )
+    corpus_root = os.getenv("MARKET_APP_CORPUS_ROOT")
+    gdelt_dir = os.getenv("MARKET_APP_GDELT_CONFLICT_DIR")
     offline = _parse_bool(os.getenv("OFFLINE_MODE"))
 
     if root:
@@ -167,6 +190,10 @@ def _load_env_overrides() -> dict[str, Any]:
         overrides["data"]["paths"]["nasdaq_daily_dir"] = nasdaq
     if silver:
         overrides["data"]["paths"]["silver_prices_dir"] = silver
+    if corpus_root:
+        overrides["corpus"]["root_dir"] = corpus_root
+    if gdelt_dir:
+        overrides["corpus"]["gdelt_conflict_dir"] = gdelt_dir
     if offline is not None:
         overrides["data"]["offline_mode"] = offline
     return overrides
@@ -207,6 +234,10 @@ def load_config(path: Path, overrides: dict[str, Any] | None = None) -> ConfigRe
     if overrides:
         config = _deep_merge(config, overrides)
 
+    if config["data"].get("offline_mode", False):
+        config["data"]["provider"] = "nasdaq_daily"
+        config["data"]["fallback_chain"] = []
+
     _validate_config(config)
     return ConfigResult(config=config, config_hash=_hash_config(config))
 
@@ -224,7 +255,7 @@ def _require(config: dict[str, Any], keys: list[str]) -> None:
     for key in keys:
         if key not in node:
             raise ConfigError(
-                f"Config missing {'.'.join(keys)}. Set it in config.json or pass a CLI override."
+                f"Config missing {'.'.join(keys)}. Set it in config.yaml or pass a CLI override."
             )
         node = node[key]
 
@@ -261,11 +292,18 @@ def _validate_config(config: dict[str, Any]) -> None:
         if config["staging"][stage_key] <= 0:
             raise ConfigError(f"staging.{stage_key} must be > 0.")
 
-    if config["gates"]["price_max"] <= 0:
-        raise ConfigError("gates.price_max must be > 0.")
+    price_min = config["gates"].get("price_min")
+    price_max = config["gates"].get("price_max")
+    if price_min is not None and price_min <= 0:
+        raise ConfigError("gates.price_min must be > 0 when set.")
+    if price_max is not None and price_max <= 0:
+        raise ConfigError("gates.price_max must be > 0 when set.")
+    if price_min is not None and price_max is not None and price_min > price_max:
+        raise ConfigError("gates.price_min must be <= gates.price_max.")
 
-    if config["gates"]["max_zero_volume_frac"] < 0:
-        raise ConfigError("gates.max_zero_volume_frac must be >= 0.")
+    risk_cfg = config["gates"].get("risk_flags", {})
+    if risk_cfg.get("zero_volume_frac") is not None and risk_cfg["zero_volume_frac"] < 0:
+        raise ConfigError("gates.risk_flags.zero_volume_frac must be >= 0.")
 
     if config["data"]["max_workers"] <= 0:
         raise ConfigError("data.max_workers must be > 0.")

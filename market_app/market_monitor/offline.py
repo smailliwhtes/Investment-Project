@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import os
+
 
 class OfflineModeError(RuntimeError):
     pass
 
 
-_OFFLINE_MODE = False
+_OFFLINE_MODE = os.getenv("OFFLINE_MODE", "").strip().lower() in {"1", "true", "yes"}
 
 
 def set_offline_mode(enabled: bool) -> None:

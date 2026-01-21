@@ -12,6 +12,12 @@ class DataPaths:
     silver_prices_dir: Path | None
 
 
+@dataclass(frozen=True)
+class CorpusPaths:
+    root_dir: Path | None
+    gdelt_conflict_dir: Path | None
+
+
 def _normalize_path(path_str: str | None, *, root: Path | None, repo_root: Path) -> Path | None:
     if not path_str:
         return None
@@ -35,3 +41,14 @@ def resolve_data_paths(config: dict, repo_root: Path) -> DataPaths:
         nasdaq_daily_dir=nasdaq,
         silver_prices_dir=silver,
     )
+
+
+def resolve_corpus_paths(config: dict, repo_root: Path) -> CorpusPaths:
+    corpus_cfg = config.get("corpus", {})
+    root_str = corpus_cfg.get("root_dir")
+    root = _normalize_path(root_str, root=None, repo_root=repo_root) if root_str else None
+    gdelt_dir = corpus_cfg.get("gdelt_conflict_dir")
+    gdelt = _normalize_path(gdelt_dir, root=root, repo_root=repo_root)
+    if gdelt is None and root is not None:
+        gdelt = root
+    return CorpusPaths(root_dir=root, gdelt_conflict_dir=gdelt)

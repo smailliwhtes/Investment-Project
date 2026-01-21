@@ -15,6 +15,7 @@ def write_report(
     data_usage: dict[str, str] | None = None,
     prediction_panel: pd.DataFrame | None = None,
     prediction_metrics: dict[str, float] | None = None,
+    context_summary: dict[str, object] | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -44,6 +45,8 @@ def write_report(
                 f"- NASDAQ data found: {data_usage.get('nasdaq_daily_found')}",
                 f"- MARKET_APP_SILVER_PRICES_DIR: {data_usage.get('silver_prices_dir')}",
                 f"- Silver data found: {data_usage.get('silver_prices_found')}",
+                f"- MARKET_APP_GDELT_CONFLICT_DIR: {data_usage.get('gdelt_conflict_dir')}",
+                f"- GDELT corpus found: {data_usage.get('gdelt_conflict_found')}",
                 "",
                 "## Missing Field Handling",
                 "",
@@ -74,6 +77,9 @@ def write_report(
 
     if prediction_panel is not None and not prediction_panel.empty:
         lines.extend(_prediction_diagnostics(prediction_panel, prediction_metrics or {}))
+
+    if context_summary:
+        lines.extend(_context_section(context_summary))
 
     lines.append("")
     lines.append("## Notes")
@@ -144,4 +150,56 @@ def _prediction_diagnostics(panel: pd.DataFrame, metrics: dict[str, float]) -> l
                 ]
             )
 
+    return lines
+
+
+def _context_section(context_summary: dict[str, object]) -> list[str]:
+    latest_date = context_summary.get("latest_date", "unknown")
+    metrics = context_summary.get("latest_metrics", {}) or {}
+    analogs = context_summary.get("analogs", []) or []
+    analog_outcomes = context_summary.get("analog_outcomes", []) or []
+    event_impact_rows = context_summary.get("event_impact_rows", 0)
+    lines = [
+        "",
+        "## Context & Analogs",
+        "",
+        f"- Latest context date: {latest_date}",
+        f"- Event impact rows: {event_impact_rows}",
+        "",
+        "### Latest Context Snapshot",
+        "",
+    ]
+    if metrics:
+        for key, value in metrics.items():
+            lines.append(f"- {key}: {value}")
+    else:
+        lines.append("- No context metrics available.")
+
+    lines.extend(
+        [
+            "",
+            "### Nearest Historical Analogs",
+            "",
+        ]
+    )
+    if analogs:
+        lines.append("| Rank | Date | Similarity |")
+        lines.append("| --- | --- | --- |")
+        for entry in analogs:
+            lines.append(
+                f"| {entry.get('rank')} | {entry.get('date')} | {entry.get('similarity'):.4f} |"
+            )
+    else:
+        lines.append("No analogs available.")
+
+    lines.extend(["", "### Analog Outcome Distributions (Baseline)", ""])
+    if analog_outcomes:
+        lines.append("| Symbol | Forward Days | Mean Forward Return |")
+        lines.append("| --- | --- | --- |")
+        for row in analog_outcomes:
+            lines.append(
+                f"| {row.get('symbol')} | {row.get('forward_days')} | {row.get('forward_return'):.4f} |"
+            )
+    else:
+        lines.append("No analog outcome summaries available.")
     return lines
