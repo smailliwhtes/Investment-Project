@@ -16,6 +16,7 @@ class DataPaths:
 class CorpusPaths:
     root_dir: Path | None
     gdelt_conflict_dir: Path | None
+    gdelt_events_raw_dir: Path | None
 
 
 def _normalize_path(path_str: str | None, *, root: Path | None, repo_root: Path) -> Path | None:
@@ -49,6 +50,10 @@ def resolve_corpus_paths(config: dict, repo_root: Path) -> CorpusPaths:
     root = _normalize_path(root_str, root=None, repo_root=repo_root) if root_str else None
     gdelt_dir = corpus_cfg.get("gdelt_conflict_dir")
     gdelt = _normalize_path(gdelt_dir, root=root, repo_root=repo_root)
+    raw_dir = corpus_cfg.get("gdelt_events_raw_dir")
+    gdelt_raw = _normalize_path(raw_dir, root=root, repo_root=repo_root)
     if gdelt is None and root is not None:
         gdelt = root
-    return CorpusPaths(root_dir=root, gdelt_conflict_dir=gdelt)
+    if gdelt_raw is None and root is not None:
+        gdelt_raw = (root / "gdelt_events_raw").resolve()
+    return CorpusPaths(root_dir=root, gdelt_conflict_dir=gdelt, gdelt_events_raw_dir=gdelt_raw)

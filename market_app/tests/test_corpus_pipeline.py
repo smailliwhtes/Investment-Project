@@ -27,3 +27,15 @@ def test_corpus_daily_aggregation() -> None:
     assert daily.loc["2020-01-02", "conflict_event_count_rootcode_other"] == 1
     assert daily.loc["2020-01-01", "goldstein_mean"] == -5.0
     assert daily.loc["2020-01-02", "tone_mean"] == -0.5
+
+
+def test_corpus_missing_quadclass_graceful() -> None:
+    events = pd.DataFrame(
+        {
+            "Date": ["2020-01-01", "2020-01-01"],
+            "EventRootCode": ["19", "19"],
+            "GoldsteinScale": [-1.0, -2.0],
+        }
+    )
+    daily = aggregate_daily_features(events, rootcode_top_n=1, country_top_k=1)
+    assert not any(col.startswith("conflict_event_count_quadclass_") for col in daily.columns)

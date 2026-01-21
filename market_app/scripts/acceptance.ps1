@@ -82,6 +82,20 @@ $RunId = (Get-Date).ToUniversalTime().ToString("yyyyMMdd_HHmmss")
 $RunDir = Join-Path $OutRoot "run_$RunId"
 if (-not (Test-Path $RunDir)) { New-Item -ItemType Directory -Path $RunDir | Out-Null }
 
+Write-Host "[stage] running corpus validate"
+& $VenvPy -m market_monitor corpus validate --config $Config --outdir $RunDir
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[error] Corpus validation failed. Fix issues and rerun .\scripts\acceptance.ps1"
+  exit $LASTEXITCODE
+}
+
+Write-Host "[stage] running corpus build"
+& $VenvPy -m market_monitor corpus build --config $Config --outdir $RunDir
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[error] Corpus build failed. Fix issues and rerun .\scripts\acceptance.ps1"
+  exit $LASTEXITCODE
+}
+
 Write-Host "[stage] running preflight"
 & $VenvPy -m market_monitor preflight --config $Config --outdir $RunDir
 if ($LASTEXITCODE -ne 0) {
@@ -124,8 +138,11 @@ foreach ($pattern in $Expected) {
 if ($env:MARKET_APP_GDELT_CONFLICT_DIR) {
   $CorpusExpected = @(
     "corpus\daily_features.csv",
+    "corpus\daily_features.parquet",
     "corpus\analogs_report.md",
-    "corpus\corpus_manifest.json"
+    "corpus\corpus_manifest.json",
+    "corpus\corpus_index.json",
+    "corpus\corpus_validate.json"
   )
   foreach ($pattern in $CorpusExpected) {
     $path = Join-Path $RunDir $pattern
@@ -138,6 +155,30 @@ if ($env:MARKET_APP_GDELT_CONFLICT_DIR) {
       Write-Host "[error] Corpus output file is empty ($path)"
       exit 1
     }
+  }
+}
+
+Write-Host "[stage] running evaluation"
+& $VenvPy -m market_monitor evaluate --config $Config --outdir $RunDir
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[error] Evaluation failed. Fix issues and rerun .\scripts\acceptance.ps1"
+  exit $LASTEXITCODE
+}
+
+$EvalExpected = @(
+  "eval\eval_metrics.csv",
+  "eval\eval_report.md"
+)
+foreach ($pattern in $EvalExpected) {
+  $path = Join-Path $RunDir $pattern
+  if (-not (Test-Path $path)) {
+    Write-Host "[error] Missing expected eval output ($pattern) in $RunDir"
+    exit 1
+  }
+  $file = Get-Item $path
+  if ($file.Length -le 0) {
+    Write-Host "[error] Eval output file is empty ($path)"
+    exit 1
   }
 }
 

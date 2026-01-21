@@ -7,8 +7,11 @@ from typing import Any
 
 
 def hash_file(path: Path) -> str:
-    payload = path.read_bytes()
-    return hashlib.sha256(payload).hexdigest()
+    hasher = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
 
 
 def hash_text(text: str) -> str:

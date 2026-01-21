@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -8,9 +9,13 @@ import pandas as pd
 
 from market_monitor.config_schema import ConfigError, load_config, write_default_config
 from market_monitor.corpus import (
+    build_corpus_daily_store,
+    build_corpus_index,
     build_corpus_manifest,
-    discover_corpus_files,
+    discover_corpus_sources,
     run_corpus_pipeline,
+    validate_corpus_sources,
+    verify_md5_for_zip,
 )
 from market_monitor.data_paths import resolve_corpus_paths, resolve_data_paths
 from market_monitor.doctor import run_doctor
@@ -44,6 +49,7 @@ from market_monitor.manifest import build_run_manifest, resolve_git_commit, run_
 from market_monitor.offline import set_offline_mode
 from market_monitor.preflight import run_preflight
 from market_monitor.prediction import build_panel, latest_predictions, train_and_predict
+from market_monitor.evaluate import run_evaluation
 from market_monitor.report import write_report
 from market_monitor.scoring import score_frame
 from market_monitor.staging import stage_pipeline
@@ -287,14 +293,17 @@ def run_pipeline(args: argparse.Namespace) -> int:
         cursor_file.write_text(str(end), encoding="utf-8")
 
     corpus_paths = resolve_corpus_paths(config, root)
-    corpus_files = (
-        build_corpus_manifest(discover_corpus_files(corpus_paths.gdelt_conflict_dir))["files"]
-        if corpus_paths.gdelt_conflict_dir
-        else []
+    corpus_sources = discover_corpus_sources(
+        corpus_paths.gdelt_conflict_dir,
+        corpus_paths.gdelt_events_raw_dir,
+    )
+    corpus_manifest = build_corpus_manifest(
+        [source.path for source in corpus_sources if source.source_type == "csv"],
+        [source.path for source in corpus_sources if source.source_type == "zip"],
     )
     corpus_manifest_hash = None
-    if corpus_files:
-        corpus_manifest_hash = hash_manifest({"files": corpus_files})
+    if corpus_manifest.get("files") or corpus_manifest.get("raw_event_zips"):
+        corpus_manifest_hash = hash_manifest(corpus_manifest)
 
     run_id = run_id_from_inputs(
         timestamp=run_start,
@@ -336,6 +345,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
             run_timestamp=run_timestamp,
             logger=logger,
             corpus_dir=corpus_paths.gdelt_conflict_dir,
+            raw_events_dir=corpus_paths.gdelt_events_raw_dir,
         )
 
     stage1_df, stage2_df, stage3_df, summary = stage_pipeline(
@@ -356,6 +366,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
     corpus_outputs_dir = outputs_dir / "corpus"
     corpus_run = run_corpus_pipeline(
         corpus_dir=corpus_paths.gdelt_conflict_dir,
+        raw_events_dir=corpus_paths.gdelt_events_raw_dir,
         outputs_dir=corpus_outputs_dir,
         config=config,
         provider=provider,
@@ -401,6 +412,12 @@ def run_pipeline(args: argparse.Namespace) -> int:
         else "unset",
         "gdelt_conflict_found": str(
             bool(corpus_paths.gdelt_conflict_dir and corpus_paths.gdelt_conflict_dir.exists())
+        ),
+        "gdelt_events_raw_dir": str(corpus_paths.gdelt_events_raw_dir)
+        if corpus_paths.gdelt_events_raw_dir
+        else "unset",
+        "gdelt_events_raw_found": str(
+            bool(corpus_paths.gdelt_events_raw_dir and corpus_paths.gdelt_events_raw_dir.exists())
         ),
     }
 
@@ -670,9 +687,182 @@ def run_preflight_command(args: argparse.Namespace) -> int:
         run_timestamp=run_timestamp,
         logger=logger,
         corpus_dir=corpus_paths.gdelt_conflict_dir,
+        raw_events_dir=corpus_paths.gdelt_events_raw_dir,
     )
     logger.info(f"[preflight] report written to {outputs_dir}")
     return 0
+
+
+def _load_config_for_command(args: argparse.Namespace, *, root: Path) -> tuple[dict[str, Any], str]:
+    config_path = resolve_path(root, args.config)
+    config_result = load_config(config_path)
+    return config_result.config, config_result.config_hash
+
+
+def run_corpus_build(args: argparse.Namespace) -> int:
+    root = find_repo_root()
+    try:
+        config, _ = _load_config_for_command(args, root=root)
+    except ConfigError as exc:
+        print(f"[error] {exc}")
+        return 2
+    logger = get_console_logger(args.log_level)
+    if not bool(config["data"].get("offline_mode", False)):
+        logger.error("Offline mode is required for corpus builds. Set data.offline_mode=true.")
+        return 3
+    set_offline_mode(True)
+
+    corpus_paths = resolve_corpus_paths(config, root)
+    sources = discover_corpus_sources(
+        corpus_paths.gdelt_conflict_dir,
+        corpus_paths.gdelt_events_raw_dir,
+    )
+    if not sources:
+        logger.warning("[corpus] No corpus sources found; skipping build.")
+        return 0
+
+    outputs_dir = resolve_path(root, args.outdir or config["paths"]["outputs_dir"]) / "corpus"
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+    features_cfg = config.get("corpus", {}).get("features", {})
+    settings = {
+        "rootcode_top_n": int(features_cfg.get("rootcode_top_n", 8)),
+        "country_top_k": int(features_cfg.get("country_top_k", 8)),
+    }
+    daily_features, infos, manifest_payload, _, cache_hit = build_corpus_daily_store(
+        sources,
+        outputs_dir=outputs_dir,
+        settings=settings,
+        logger=logger,
+    )
+
+    index_path = outputs_dir / "corpus_index.json"
+    index_payload = build_corpus_index(sources, index_path)
+    manifest = {
+        "corpus_dir": str(corpus_paths.root_dir or corpus_paths.gdelt_conflict_dir or "unset"),
+        "files": [
+            {
+                "path": str(info.path),
+                "sha256": info.checksum,
+                "rows": info.rows,
+                "min_date": info.min_date,
+                "max_date": info.max_date,
+            }
+            for info in infos
+        ],
+    }
+    for entry in manifest["files"]:
+        cached = next((item for item in index_payload["files"] if item["path"] == entry["path"]), None)
+        if cached is not None and (entry["rows"] or entry["min_date"] or entry["max_date"] or not cache_hit):
+            cached.update(
+                {
+                    "rows": entry["rows"],
+                    "min_date": entry["min_date"],
+                    "max_date": entry["max_date"],
+                }
+            )
+    index_path.write_text(json.dumps(index_payload, indent=2, sort_keys=True), encoding="utf-8")
+    manifest["raw_event_zips"] = manifest_payload.get("raw_event_zips", [])
+    if "settings" in manifest_payload:
+        manifest["settings"] = manifest_payload["settings"]
+    (outputs_dir / "corpus_manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    if daily_features.empty:
+        logger.warning("[corpus] No daily features generated.")
+        return 0
+    logger.info(f"[corpus] daily features rows: {len(daily_features)}")
+    return 0
+
+
+def run_corpus_validate(args: argparse.Namespace) -> int:
+    root = find_repo_root()
+    try:
+        config, _ = _load_config_for_command(args, root=root)
+    except ConfigError as exc:
+        print(f"[error] {exc}")
+        return 2
+    logger = get_console_logger(args.log_level)
+    if not bool(config["data"].get("offline_mode", False)):
+        logger.error("Offline mode is required for corpus validation. Set data.offline_mode=true.")
+        return 3
+    set_offline_mode(True)
+
+    corpus_paths = resolve_corpus_paths(config, root)
+    sources = discover_corpus_sources(
+        corpus_paths.gdelt_conflict_dir,
+        corpus_paths.gdelt_events_raw_dir,
+    )
+    if not sources:
+        logger.warning("[corpus] No corpus sources found; nothing to validate.")
+        return 0
+
+    features_cfg = config.get("corpus", {}).get("features", {})
+    report = validate_corpus_sources(
+        sources,
+        rootcode_top_n=int(features_cfg.get("rootcode_top_n", 8)),
+        country_top_k=int(features_cfg.get("country_top_k", 8)),
+    )
+    md5_issues = []
+    for source in sources:
+        if source.source_type == "zip":
+            ok, detail = verify_md5_for_zip(source.path)
+            if not ok and detail:
+                md5_issues.append(detail)
+
+    outputs_dir = resolve_path(root, args.outdir or config["paths"]["outputs_dir"]) / "corpus"
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+    report_path = outputs_dir / "corpus_validate.json"
+    payload = {
+        "dedupe_rate": report.dedupe_rate,
+        "duplicate_reasons": report.duplicate_reasons,
+        "min_date": report.min_date,
+        "max_date": report.max_date,
+        "feature_flags": report.feature_flags,
+        "files": [
+            {
+                "path": str(info.path),
+                "rows": info.rows,
+                "min_date": info.min_date,
+                "max_date": info.max_date,
+                "columns": info.columns,
+            }
+            for info in report.sources
+        ],
+        "md5_issues": md5_issues,
+    }
+    report_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    logger.info(f"[corpus] validation report written to {report_path}")
+    missing_flags = [name for name, enabled in report.feature_flags.items() if not enabled]
+    if missing_flags:
+        logger.warning("[corpus] missing feature columns: " + ", ".join(sorted(missing_flags)))
+    if md5_issues:
+        logger.warning("[corpus] md5 issues detected: " + "; ".join(md5_issues))
+    return 0
+
+
+def run_evaluate_command(args: argparse.Namespace) -> int:
+    root = find_repo_root()
+    try:
+        config, _ = _load_config_for_command(args, root=root)
+    except ConfigError as exc:
+        print(f"[error] {exc}")
+        return 2
+    logger = get_console_logger(args.log_level)
+    if not bool(config["data"].get("offline_mode", False)):
+        logger.error("Offline mode is required for evaluation. Set data.offline_mode=true.")
+        return 3
+    set_offline_mode(True)
+    provider = _build_provider(config, logger, root)
+    corpus_paths = resolve_corpus_paths(config, root)
+    outputs_dir = resolve_path(root, args.outdir or config["paths"]["outputs_dir"]) / "eval"
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+    return run_evaluation(
+        config=config,
+        provider=provider,
+        corpus_paths=corpus_paths,
+        outputs_dir=outputs_dir,
+        logger=logger,
+    )
 
 
 def _load_bulk_symbols(config: dict[str, Any], root: Path, args: argparse.Namespace) -> pd.Series:
@@ -771,6 +961,23 @@ def build_parser() -> argparse.ArgumentParser:
     bulk_standardize_parser.add_argument("--value-column")
     bulk_standardize_parser.add_argument("--log-level", default="INFO")
 
+    corpus_parser = sub.add_parser("corpus", help="Corpus ingestion utilities")
+    corpus_sub = corpus_parser.add_subparsers(dest="corpus_command")
+    corpus_build_parser = corpus_sub.add_parser("build", help="Build corpus daily feature store")
+    corpus_build_parser.add_argument("--config", default="config.yaml")
+    corpus_build_parser.add_argument("--outdir")
+    corpus_build_parser.add_argument("--log-level", default="INFO")
+
+    corpus_validate_parser = corpus_sub.add_parser("validate", help="Validate corpus inputs")
+    corpus_validate_parser.add_argument("--config", default="config.yaml")
+    corpus_validate_parser.add_argument("--outdir")
+    corpus_validate_parser.add_argument("--log-level", default="INFO")
+
+    evaluate_parser = sub.add_parser("evaluate", help="Run offline evaluation harness")
+    evaluate_parser.add_argument("--config", default="config.yaml")
+    evaluate_parser.add_argument("--outdir")
+    evaluate_parser.add_argument("--log-level", default="INFO")
+
     return parser
 
 
@@ -801,6 +1008,13 @@ def main() -> int:
     if args.command == "preflight":
         return run_preflight_command(args)
 
+    if args.command == "corpus":
+        if args.corpus_command == "build":
+            return run_corpus_build(args)
+        if args.corpus_command == "validate":
+            return run_corpus_validate(args)
+        return 2
+
     if args.command == "bulk-plan":
         return run_bulk_plan(args)
 
@@ -809,6 +1023,9 @@ def main() -> int:
 
     if args.command == "bulk-standardize":
         return run_bulk_standardize(args)
+
+    if args.command == "evaluate":
+        return run_evaluate_command(args)
 
     return 1
 
