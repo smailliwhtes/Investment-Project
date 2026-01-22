@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+if importlib.util.find_spec("importlib.metadata") is None:
+    import importlib_metadata as importlib_metadata
+else:
+    from importlib import metadata as importlib_metadata
 
 from market_monitor.bulk import load_bulk_sources
 from market_monitor.config_schema import ConfigError, load_config
@@ -36,7 +42,9 @@ class ConnectivityResult:
 def run_doctor(config_path: Path, *, offline: bool = False, strict: bool = False) -> int:
     print("[doctor] Market Monitor diagnostics")
     messages: list[DoctorMessage] = []
-    root = find_repo_root()
+    config_path = config_path.resolve()
+    base_dir = config_path.parent
+    root = find_repo_root(base_dir)
     offline_flag = os.getenv("OFFLINE_MODE")
     offline = (
         offline
@@ -88,9 +96,9 @@ def run_doctor(config_path: Path, *, offline: bool = False, strict: bool = False
     config = result.config
     offline = offline or config["data"].get("offline_mode", False)
     set_offline_mode(bool(offline))
-    logs_dir = resolve_path(root, config["paths"]["logs_dir"])
+    logs_dir = resolve_path(base_dir, config["paths"]["logs_dir"])
 
-    watchlist_path = resolve_path(root, config["paths"]["watchlist_file"])
+    watchlist_path = resolve_path(base_dir, config["paths"]["watchlist_file"])
     if not watchlist_path.exists():
         messages.append(
             DoctorMessage(
@@ -104,19 +112,19 @@ def run_doctor(config_path: Path, *, offline: bool = False, strict: bool = False
             )
         )
 
-    outputs_dir = resolve_path(root, config["paths"]["outputs_dir"])
+    outputs_dir = resolve_path(base_dir, config["paths"]["outputs_dir"])
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
-    cache_dir = resolve_path(root, config["paths"]["cache_dir"])
+    cache_dir = resolve_path(base_dir, config["paths"]["cache_dir"])
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     logs_dir.mkdir(parents=True, exist_ok=True)
 
-    _print_data_directories(config, root, outputs_dir, logs_dir, cache_dir)
+    _print_data_directories(config, base_dir, outputs_dir, logs_dir, cache_dir)
     _print_runtime_info()
-    _print_symbol_coverage(config, root, messages)
+    _print_symbol_coverage(config, base_dir, messages)
     _check_env_vars(config, messages)
-    _check_external_data_paths(config, root, messages)
+    _check_external_data_paths(config, base_dir, messages)
     _check_gate_sanity(config, messages)
     provider_status, provider_detail = _check_provider_health(
         config, messages, offline=offline, strict=strict
@@ -551,8 +559,8 @@ def _print_runtime_info() -> None:
     print(f"  python: {sys.version.split()[0]}")
     for pkg in ("pandas", "numpy", "requests"):
         try:
-            version = metadata.version(pkg)
-        except metadata.PackageNotFoundError:
+            version = importlib_metadata.version(pkg)
+        except importlib_metadata.PackageNotFoundError:
             version = "not installed"
         print(f"  {pkg}: {version}")
 

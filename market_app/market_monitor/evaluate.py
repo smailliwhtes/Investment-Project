@@ -180,13 +180,13 @@ def run_evaluation(
     provider,
     corpus_paths,
     outputs_dir: Path,
+    base_dir: Path,
     logger,
 ) -> int:
     eval_cfg = config.get("evaluation", {})
     symbols = eval_cfg.get("symbols") or []
     if not symbols:
-        repo_root = outputs_dir.parent.parent
-        watchlist_path = resolve_path(repo_root, config["paths"]["watchlist_file"])
+        watchlist_path = resolve_path(base_dir, config["paths"]["watchlist_file"])
         symbols = read_watchlist(watchlist_path)["symbol"].tolist()
     if not symbols:
         logger.error("[eval] No symbols available for evaluation.")
