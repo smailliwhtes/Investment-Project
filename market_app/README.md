@@ -176,6 +176,9 @@ Tests are offline-friendly and run against fixtures in `tests/fixtures`.
 .\scripts\acceptance.ps1
 ```
 
+Note: Do not commit outputs/data/venv artifacts; acceptance runs a git hygiene guard. If you hit a
+Codex diff size limit, run `.\scripts\git_hygiene_check.ps1` and ensure forbidden paths are untracked.
+
 The acceptance script creates a venv, installs requirements quietly, runs pytest, runs doctor + preflight,
 executes an offline watchlist pipeline, and verifies outputs + manifest.
 
