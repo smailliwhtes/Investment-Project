@@ -841,9 +841,10 @@ def run_corpus_validate(args: argparse.Namespace) -> int:
 
 
 def run_evaluate_command(args: argparse.Namespace) -> int:
-    root = find_repo_root()
+    config_path = Path(args.config).resolve()
+    base_dir = config_path.parent
     try:
-        config, _ = _load_config_for_command(args, root=root)
+        config = load_config(config_path).config
     except ConfigError as exc:
         print(f"[error] {exc}")
         return 2
@@ -852,15 +853,16 @@ def run_evaluate_command(args: argparse.Namespace) -> int:
         logger.error("Offline mode is required for evaluation. Set data.offline_mode=true.")
         return 3
     set_offline_mode(True)
-    provider = _build_provider(config, logger, root)
-    corpus_paths = resolve_corpus_paths(config, root)
-    outputs_dir = resolve_path(root, args.outdir or config["paths"]["outputs_dir"]) / "eval"
+    provider = _build_provider(config, logger, base_dir)
+    corpus_paths = resolve_corpus_paths(config, base_dir)
+    outputs_dir = resolve_path(base_dir, args.outdir or config["paths"]["outputs_dir"]) / "eval"
     outputs_dir.mkdir(parents=True, exist_ok=True)
     return run_evaluation(
         config=config,
         provider=provider,
         corpus_paths=corpus_paths,
         outputs_dir=outputs_dir,
+        base_dir=base_dir,
         logger=logger,
     )
 
