@@ -9,6 +9,13 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location (Resolve-Path "$Root\..")
 
+Write-Host "[stage] checking git hygiene"
+& (Join-Path $Root "git_hygiene_check.ps1")
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[error] Git hygiene check failed. Fix tracked outputs/data/venv and rerun."
+  exit $LASTEXITCODE
+}
+
 function Get-PythonSpec {
   $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
   if ($pyLauncher) {
@@ -34,7 +41,7 @@ if (-not (Test-Path $VenvPy)) {
 Write-Host "[stage] upgrading pip"
 & $VenvPy -m pip install --upgrade pip 1>$null
 Write-Host "[stage] installing requirements"
-& $VenvPy -m pip install -r ".\requirements.txt" 1>$null
+& $VenvPy -m pip install -r ".\requirements.txt" | Out-Null
 
 $UseFixtures = $false
 if (-not $env:MARKET_APP_NASDAQ_DAILY_DIR) {

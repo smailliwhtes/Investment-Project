@@ -1,0 +1,10 @@
+data:
+  offline_mode: true
+  provider: nasdaq_daily
+  paths:
+    nasdaq_daily_dir: tests/fixtures/ohlcv
+paths:
+  watchlist_file: tests/fixtures/watchlist.txt
+  outputs_dir: outputs
+  cache_dir: data/cache
+  logs_dir: outputs/logs
