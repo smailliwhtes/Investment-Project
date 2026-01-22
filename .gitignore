@@ -1,0 +1,12 @@
+﻿# --- local artifacts (do not commit) ---
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.coverage
+**/htmlcov/
+**/outputs/
+**/data/raw/
+**/data/processed/
+**/_backup*/
