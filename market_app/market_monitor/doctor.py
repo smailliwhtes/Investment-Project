@@ -181,9 +181,9 @@ def _check_env_vars(config, messages: list[DoctorMessage]) -> None:
             )
 
 
-def _check_external_data_paths(config, root: Path, messages: list[DoctorMessage]) -> None:
-    paths = resolve_data_paths(config, root)
-    corpus_paths = resolve_corpus_paths(config, root)
+def _check_external_data_paths(config, base_dir: Path, messages: list[DoctorMessage]) -> None:
+    paths = resolve_data_paths(config, base_dir)
+    corpus_paths = resolve_corpus_paths(config, base_dir)
     if config["data"].get("offline_mode", False):
         if not paths.nasdaq_daily_dir or not paths.nasdaq_daily_dir.exists():
             messages.append(
@@ -341,27 +341,27 @@ def _check_provider_health(
 
 def _print_data_directories(
     config: dict[str, object],
-    root: Path,
+    base_dir: Path,
     outputs_dir: Path,
     logs_dir: Path,
     cache_dir: Path,
 ) -> None:
     paths_cfg = config["paths"]
-    data_paths = resolve_data_paths(config, root)
+    data_paths = resolve_data_paths(config, base_dir)
     bulk_paths = config.get("bulk", {}).get("paths", {})
-    raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
-    curated_dir = resolve_path(root, bulk_paths.get("curated_dir", "data/curated"))
-    manifest_dir = resolve_path(root, bulk_paths.get("manifest_dir", "data/manifests"))
-    corpus_paths = resolve_corpus_paths(config, root)
+    raw_dir = resolve_path(base_dir, bulk_paths.get("raw_dir", "data/raw"))
+    curated_dir = resolve_path(base_dir, bulk_paths.get("curated_dir", "data/curated"))
+    manifest_dir = resolve_path(base_dir, bulk_paths.get("manifest_dir", "data/manifests"))
+    corpus_paths = resolve_corpus_paths(config, base_dir)
 
     print("[doctor] Data directories")
     print(f"  offline_mode: {config.get('data', {}).get('offline_mode', False)}")
     print(f"  outputs_dir: {outputs_dir}")
     print(f"  logs_dir: {logs_dir}")
     print(f"  cache_dir: {cache_dir}")
-    print(f"  watchlist_file: {resolve_path(root, paths_cfg['watchlist_file'])}")
-    print(f"  universe_csv: {resolve_path(root, paths_cfg['universe_csv'])}")
-    print(f"  state_file: {resolve_path(root, paths_cfg['state_file'])}")
+    print(f"  watchlist_file: {resolve_path(base_dir, paths_cfg['watchlist_file'])}")
+    print(f"  universe_csv: {resolve_path(base_dir, paths_cfg['universe_csv'])}")
+    print(f"  state_file: {resolve_path(base_dir, paths_cfg['state_file'])}")
     print(f"  market_app_data_root: {data_paths.market_app_data_root}")
     print(f"  nasdaq_daily_dir: {data_paths.nasdaq_daily_dir}")
     print(f"  silver_prices_dir: {data_paths.silver_prices_dir}")
@@ -565,21 +565,24 @@ def _print_runtime_info() -> None:
         print(f"  {pkg}: {version}")
 
 
-def _print_symbol_coverage(config: dict[str, object], root: Path, messages: list[DoctorMessage]) -> None:
+def _print_symbol_coverage(config: dict[str, object], base_dir: Path, messages: list[DoctorMessage]) -> None:
     if not config["data"].get("offline_mode", False):
         return
 
-    data_paths = resolve_data_paths(config, root)
+    data_paths = resolve_data_paths(config, base_dir)
     if not data_paths.nasdaq_daily_dir or not data_paths.nasdaq_daily_dir.exists():
         return
 
-    watchlist_path = resolve_path(root, config["paths"]["watchlist_file"])
+    watchlist_path = resolve_path(base_dir, config["paths"]["watchlist_file"])
     if not watchlist_path.exists():
         return
 
     watchlist = read_watchlist(watchlist_path)
     provider = NasdaqDailyProvider(
-        NasdaqDailySource(directory=data_paths.nasdaq_daily_dir, cache_dir=resolve_path(root, config["paths"]["cache_dir"]))
+        NasdaqDailySource(
+            directory=data_paths.nasdaq_daily_dir,
+            cache_dir=resolve_path(base_dir, config["paths"]["cache_dir"]),
+        )
     )
     found = 0
     missing = 0

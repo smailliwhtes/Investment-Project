@@ -170,6 +170,30 @@ pytest
 
 Tests are offline-friendly and run against fixtures in `tests/fixtures`.
 
+## Fixtures (Deterministic Offline Data)
+
+Fixture inputs live under `tests/fixtures` so the offline pipeline is repeatable without network
+access or API keys:
+
+- `tests/fixtures/watchlist.txt` (AAA/BBB/SPY)
+- `tests/fixtures/data/universe_universe.csv`
+- `tests/fixtures/data/state/batch_state.json`
+- `tests/fixtures/ohlcv/{AAA,BBB,SPY}.csv` (deterministic 300-row OHLCV)
+
+To regenerate the OHLCV fixtures deterministically:
+
+```powershell
+python -m market_monitor.fixtures.ohlcv_generator --outdir tests/fixtures/ohlcv
+```
+
+Canonical offline fixtures one-liner:
+
+```powershell
+python -m market_monitor doctor --config tests/fixtures/minimal_config.yaml --offline
+python -m market_monitor run --config tests/fixtures/minimal_config.yaml --mode watchlist --outdir $env:TEMP\market_audit --offline
+python -m market_monitor evaluate --config tests/fixtures/minimal_config.yaml --outdir $env:TEMP\market_audit --offline
+```
+
 ## Acceptance Script (Offline)
 
 ```powershell

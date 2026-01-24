@@ -19,7 +19,7 @@ class CorpusPaths:
     gdelt_events_raw_dir: Path | None
 
 
-def _normalize_path(path_str: str | None, *, root: Path | None, repo_root: Path) -> Path | None:
+def _normalize_path(path_str: str | None, *, root: Path | None, base_dir: Path) -> Path | None:
     if not path_str:
         return None
     expanded = Path(os.path.expandvars(os.path.expanduser(path_str)))
@@ -27,16 +27,16 @@ def _normalize_path(path_str: str | None, *, root: Path | None, repo_root: Path)
         return expanded
     if root is not None:
         return (root / expanded).resolve()
-    return (repo_root / expanded).resolve()
+    return (base_dir / expanded).resolve()
 
 
-def resolve_data_paths(config: dict, repo_root: Path) -> DataPaths:
+def resolve_data_paths(config: dict, base_dir: Path) -> DataPaths:
     paths_cfg = config.get("data", {}).get("paths", {})
     root_str = paths_cfg.get("market_app_data_root")
-    root = _normalize_path(root_str, root=None, repo_root=repo_root) if root_str else None
-    nasdaq = _normalize_path(paths_cfg.get("nasdaq_daily_dir"), root=root, repo_root=repo_root)
+    root = _normalize_path(root_str, root=None, base_dir=base_dir) if root_str else None
+    nasdaq = _normalize_path(paths_cfg.get("nasdaq_daily_dir"), root=root, base_dir=base_dir)
     silver_setting = paths_cfg.get("silver_prices_dir") or paths_cfg.get("silver_prices_csv")
-    silver = _normalize_path(silver_setting, root=root, repo_root=repo_root)
+    silver = _normalize_path(silver_setting, root=root, base_dir=base_dir)
     return DataPaths(
         market_app_data_root=root,
         nasdaq_daily_dir=nasdaq,
@@ -44,14 +44,14 @@ def resolve_data_paths(config: dict, repo_root: Path) -> DataPaths:
     )
 
 
-def resolve_corpus_paths(config: dict, repo_root: Path) -> CorpusPaths:
+def resolve_corpus_paths(config: dict, base_dir: Path) -> CorpusPaths:
     corpus_cfg = config.get("corpus", {})
     root_str = corpus_cfg.get("root_dir")
-    root = _normalize_path(root_str, root=None, repo_root=repo_root) if root_str else None
+    root = _normalize_path(root_str, root=None, base_dir=base_dir) if root_str else None
     gdelt_dir = corpus_cfg.get("gdelt_conflict_dir")
-    gdelt = _normalize_path(gdelt_dir, root=root, repo_root=repo_root)
+    gdelt = _normalize_path(gdelt_dir, root=root, base_dir=base_dir)
     raw_dir = corpus_cfg.get("gdelt_events_raw_dir")
-    gdelt_raw = _normalize_path(raw_dir, root=root, repo_root=repo_root)
+    gdelt_raw = _normalize_path(raw_dir, root=root, base_dir=base_dir)
     if gdelt is None and root is not None:
         gdelt = root
     if gdelt_raw is None and root is not None:
