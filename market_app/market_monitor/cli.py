@@ -112,7 +112,7 @@ class FallbackProvider(HistoryProvider):
         return self.primary.get_quote(symbol)
 
 
-def _build_provider(config: dict[str, Any], logger, root: Path) -> HistoryProvider:
+def _build_provider(config: dict[str, Any], logger, base_dir: Path) -> HistoryProvider:
     provider_name = config["data"]["provider"]
     offline_mode = config["data"].get("offline_mode", False)
     if offline_mode and provider_name != "nasdaq_daily":
@@ -130,10 +130,10 @@ def _build_provider(config: dict[str, Any], logger, root: Path) -> HistoryProvid
 
     def build(name: str) -> HistoryProvider:
         if name == "nasdaq_daily":
-            paths = resolve_data_paths(config, root)
+            paths = resolve_data_paths(config, base_dir)
             if not paths.nasdaq_daily_dir:
                 raise ProviderError("MARKET_APP_NASDAQ_DAILY_DIR is not configured.")
-            cache_dir = resolve_path(root, config["paths"]["cache_dir"])
+            cache_dir = resolve_path(base_dir, config["paths"]["cache_dir"])
             return NasdaqDailyProvider(
                 NasdaqDailySource(directory=paths.nasdaq_daily_dir, cache_dir=cache_dir)
             )
@@ -204,9 +204,15 @@ def _build_provider(config: dict[str, Any], logger, root: Path) -> HistoryProvid
     return LimitedProvider(provider, BudgetManager(max_requests))
 
 
+def _resolve_config_paths(config_arg: str) -> tuple[Path, Path, Path]:
+    config_path = Path(config_arg).expanduser().resolve()
+    base_dir = config_path.parent
+    repo_root = find_repo_root(base_dir)
+    return config_path, base_dir, repo_root
+
+
 def run_pipeline(args: argparse.Namespace) -> int:
-    root = find_repo_root()
-    config_path = resolve_path(root, args.config)
+    config_path, base_dir, repo_root = _resolve_config_paths(args.config)
     try:
         overrides: dict[str, Any] = {}
         if args.provider:
@@ -221,6 +227,8 @@ def run_pipeline(args: argparse.Namespace) -> int:
             overrides.setdefault("paths", {})["outputs_dir"] = args.outdir
         if args.cache_dir:
             overrides.setdefault("paths", {})["cache_dir"] = args.cache_dir
+        if getattr(args, "offline", False):
+            overrides.setdefault("data", {})["offline_mode"] = True
         if args.max_workers is not None:
             overrides.setdefault("data", {})["max_workers"] = args.max_workers
 
@@ -242,7 +250,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
     run_start = datetime.now(timezone.utc)
     run_timestamp = run_start.isoformat()
 
-    provider = _build_provider(config, logger, root)
+    provider = _build_provider(config, logger, base_dir)
 
     if config["data"].get("offline_mode", False) and args.mode != "watchlist":
         logger.error("Offline mode is enabled; only --mode watchlist is supported.")
@@ -250,14 +258,14 @@ def run_pipeline(args: argparse.Namespace) -> int:
 
     watchlist_path: Path | None = None
     if args.mode == "watchlist":
-        watchlist_path = resolve_path(root, args.watchlist or config["paths"]["watchlist_file"])
+        watchlist_path = resolve_path(base_dir, args.watchlist or config["paths"]["watchlist_file"])
         universe_df = read_watchlist(watchlist_path)
         if universe_df.empty:
             logger.error(f"Watchlist is empty or missing at {watchlist_path}.")
             return 3
     else:
         universe_df = fetch_universe()
-        write_universe_csv(universe_df, resolve_path(root, config["paths"]["universe_csv"]))
+        write_universe_csv(universe_df, resolve_path(base_dir, config["paths"]["universe_csv"]))
 
     universe_df = filter_universe(
         universe_df,
@@ -279,7 +287,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
 
     if args.mode == "batch":
         batch_size = args.batch_size or config["run"].get("max_symbols_per_run", 200)
-        cursor_file = resolve_path(root, args.batch_cursor_file or config["paths"]["state_file"])
+        cursor_file = resolve_path(base_dir, args.batch_cursor_file or config["paths"]["state_file"])
         cursor_file.parent.mkdir(parents=True, exist_ok=True)
         cursor = 0
         if cursor_file.exists():
@@ -292,7 +300,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
         universe_df = universe_df.iloc[start:end]
         cursor_file.write_text(str(end), encoding="utf-8")
 
-    corpus_paths = resolve_corpus_paths(config, root)
+    corpus_paths = resolve_corpus_paths(config, base_dir)
     corpus_sources = discover_corpus_sources(
         corpus_paths.gdelt_conflict_dir,
         corpus_paths.gdelt_events_raw_dir,
@@ -313,9 +321,9 @@ def run_pipeline(args: argparse.Namespace) -> int:
         corpus_manifest_hash=corpus_manifest_hash,
     )
 
-    outputs_dir = resolve_path(root, config["paths"]["outputs_dir"])
-    cache_dir = resolve_path(root, config["paths"]["cache_dir"])
-    logs_dir = resolve_path(root, config["paths"]["logs_dir"])
+    outputs_dir = resolve_path(base_dir, config["paths"]["outputs_dir"])
+    cache_dir = resolve_path(base_dir, config["paths"]["cache_dir"])
+    logs_dir = resolve_path(base_dir, config["paths"]["logs_dir"])
     outputs_dir.mkdir(parents=True, exist_ok=True)
     cache_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -328,7 +336,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
         "provider_name": provider.name,
     }
 
-    paths = resolve_data_paths(config, root)
+    paths = resolve_data_paths(config, base_dir)
     silver_macro = None
     if paths.silver_prices_dir:
         macro = load_silver_series(paths.silver_prices_dir)
@@ -487,7 +495,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
         summary=summary,
         scored=scored,
         preflight=preflight,
-        git_commit=resolve_git_commit(root),
+        git_commit=resolve_git_commit(repo_root),
         corpus_manifest=corpus_run.manifest if corpus_run else None,
     )
     (outputs_dir / "run_manifest.json").write_text(
@@ -533,8 +541,7 @@ def _build_context_summary(corpus_run) -> dict[str, Any] | None:
 
 
 def run_bulk_plan(args: argparse.Namespace) -> int:
-    root = find_repo_root()
-    config_path = resolve_path(root, args.config)
+    config_path, base_dir, _ = _resolve_config_paths(args.config)
     try:
         config = load_config(config_path).config
     except ConfigError as exc:
@@ -548,15 +555,15 @@ def run_bulk_plan(args: argparse.Namespace) -> int:
         allowed = {name.strip() for name in args.sources.split(",") if name.strip()}
         sources = [src for src in sources if src.name in allowed]
 
-    symbols = _load_bulk_symbols(config, root, args)
+    symbols = _load_bulk_symbols(config, base_dir, args)
     bulk_paths = config.get("bulk", {}).get("paths", {})
-    raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
-    manifest_dir = resolve_path(root, bulk_paths.get("manifest_dir", "data/manifests"))
+    raw_dir = resolve_path(base_dir, bulk_paths.get("raw_dir", "data/raw"))
+    manifest_dir = resolve_path(base_dir, bulk_paths.get("manifest_dir", "data/manifests"))
 
     tasks = build_download_plan(sources, symbols, raw_dir, use_archives=args.use_archives)
     manifest = BulkManifest.create(tasks)
     manifest_path = resolve_path(
-        root,
+        base_dir,
         args.manifest or (manifest_dir / f"bulk_manifest_{manifest.created_at_utc}.json"),
     )
     write_manifest(manifest_path, manifest)
@@ -565,8 +572,7 @@ def run_bulk_plan(args: argparse.Namespace) -> int:
 
 
 def run_bulk_download(args: argparse.Namespace) -> int:
-    root = find_repo_root()
-    config_path = resolve_path(root, args.config)
+    config_path, base_dir, _ = _resolve_config_paths(args.config)
     try:
         config = load_config(config_path).config
     except ConfigError as exc:
@@ -580,15 +586,15 @@ def run_bulk_download(args: argparse.Namespace) -> int:
         allowed = {name.strip() for name in args.sources.split(",") if name.strip()}
         sources = [src for src in sources if src.name in allowed]
 
-    symbols = _load_bulk_symbols(config, root, args)
+    symbols = _load_bulk_symbols(config, base_dir, args)
     bulk_paths = config.get("bulk", {}).get("paths", {})
-    raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
-    manifest_dir = resolve_path(root, bulk_paths.get("manifest_dir", "data/manifests"))
+    raw_dir = resolve_path(base_dir, bulk_paths.get("raw_dir", "data/raw"))
+    manifest_dir = resolve_path(base_dir, bulk_paths.get("manifest_dir", "data/manifests"))
 
     tasks = build_download_plan(sources, symbols, raw_dir, use_archives=args.use_archives)
     manifest = BulkManifest.create(tasks)
     manifest_path = resolve_path(
-        root,
+        base_dir,
         args.manifest or (manifest_dir / f"bulk_manifest_{manifest.created_at_utc}.json"),
     )
     write_manifest(manifest_path, manifest)
@@ -615,8 +621,7 @@ def run_bulk_download(args: argparse.Namespace) -> int:
 
 
 def run_bulk_standardize(args: argparse.Namespace) -> int:
-    root = find_repo_root()
-    config_path = resolve_path(root, args.config)
+    config_path, base_dir, _ = _resolve_config_paths(args.config)
     try:
         config = load_config(config_path).config
     except ConfigError as exc:
@@ -626,11 +631,15 @@ def run_bulk_standardize(args: argparse.Namespace) -> int:
     logger = get_console_logger(args.log_level)
     set_offline_mode(bool(config["data"].get("offline_mode", False)))
     bulk_paths = config.get("bulk", {}).get("paths", {})
-    raw_dir = resolve_path(root, bulk_paths.get("raw_dir", "data/raw"))
-    curated_dir = resolve_path(root, bulk_paths.get("curated_dir", "data/curated"))
+    raw_dir = resolve_path(base_dir, bulk_paths.get("raw_dir", "data/raw"))
+    curated_dir = resolve_path(base_dir, bulk_paths.get("curated_dir", "data/curated"))
 
-    input_dir = resolve_path(root, args.input_dir) if args.input_dir else raw_dir / args.source
-    output_dir = resolve_path(root, args.output_dir) if args.output_dir else curated_dir / args.source
+    input_dir = (
+        resolve_path(base_dir, args.input_dir) if args.input_dir else raw_dir / args.source
+    )
+    output_dir = (
+        resolve_path(base_dir, args.output_dir) if args.output_dir else curated_dir / args.source
+    )
 
     results = standardize_directory(
         input_dir,
@@ -644,8 +653,7 @@ def run_bulk_standardize(args: argparse.Namespace) -> int:
 
 
 def run_preflight_command(args: argparse.Namespace) -> int:
-    root = find_repo_root()
-    config_path = resolve_path(root, args.config)
+    config_path, base_dir, _ = _resolve_config_paths(args.config)
     try:
         config_result = load_config(config_path)
     except ConfigError as exc:
@@ -661,14 +669,14 @@ def run_preflight_command(args: argparse.Namespace) -> int:
         return 3
     set_offline_mode(offline_mode)
 
-    watchlist_path = resolve_path(root, args.watchlist or config["paths"]["watchlist_file"])
+    watchlist_path = resolve_path(base_dir, args.watchlist or config["paths"]["watchlist_file"])
     watchlist_df = read_watchlist(watchlist_path)
     if watchlist_df.empty:
         logger.error(f"Watchlist is empty or missing at {watchlist_path}.")
         return 3
 
-    provider = _build_provider(config, logger, root)
-    outputs_dir = resolve_path(root, args.outdir or config["paths"]["outputs_dir"])
+    provider = _build_provider(config, logger, base_dir)
+    outputs_dir = resolve_path(base_dir, args.outdir or config["paths"]["outputs_dir"])
     run_start = datetime.now(timezone.utc)
     run_timestamp = run_start.isoformat()
     run_id = run_id_from_inputs(
@@ -677,7 +685,7 @@ def run_preflight_command(args: argparse.Namespace) -> int:
         watchlist_path=watchlist_path,
         watchlist_df=watchlist_df,
     )
-    corpus_paths = resolve_corpus_paths(config, root)
+    corpus_paths = resolve_corpus_paths(config, base_dir)
 
     run_preflight(
         watchlist_df,
@@ -693,16 +701,15 @@ def run_preflight_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def _load_config_for_command(args: argparse.Namespace, *, root: Path) -> tuple[dict[str, Any], str]:
-    config_path = resolve_path(root, args.config)
+def _load_config_for_command(config_path: Path) -> tuple[dict[str, Any], str]:
     config_result = load_config(config_path)
     return config_result.config, config_result.config_hash
 
 
 def run_corpus_build(args: argparse.Namespace) -> int:
-    root = find_repo_root()
     try:
-        config, _ = _load_config_for_command(args, root=root)
+        config_path, base_dir, _ = _resolve_config_paths(args.config)
+        config, _ = _load_config_for_command(config_path)
     except ConfigError as exc:
         print(f"[error] {exc}")
         return 2
@@ -712,7 +719,7 @@ def run_corpus_build(args: argparse.Namespace) -> int:
         return 3
     set_offline_mode(True)
 
-    corpus_paths = resolve_corpus_paths(config, root)
+    corpus_paths = resolve_corpus_paths(config, base_dir)
     sources = discover_corpus_sources(
         corpus_paths.gdelt_conflict_dir,
         corpus_paths.gdelt_events_raw_dir,
@@ -721,7 +728,7 @@ def run_corpus_build(args: argparse.Namespace) -> int:
         logger.warning("[corpus] No corpus sources found; skipping build.")
         return 0
 
-    outputs_dir = resolve_path(root, args.outdir or config["paths"]["outputs_dir"]) / "corpus"
+    outputs_dir = resolve_path(base_dir, args.outdir or config["paths"]["outputs_dir"]) / "corpus"
     outputs_dir.mkdir(parents=True, exist_ok=True)
     features_cfg = config.get("corpus", {}).get("features", {})
     settings = {
@@ -775,9 +782,9 @@ def run_corpus_build(args: argparse.Namespace) -> int:
 
 
 def run_corpus_validate(args: argparse.Namespace) -> int:
-    root = find_repo_root()
     try:
-        config, _ = _load_config_for_command(args, root=root)
+        config_path, base_dir, _ = _resolve_config_paths(args.config)
+        config, _ = _load_config_for_command(config_path)
     except ConfigError as exc:
         print(f"[error] {exc}")
         return 2
@@ -787,7 +794,7 @@ def run_corpus_validate(args: argparse.Namespace) -> int:
         return 3
     set_offline_mode(True)
 
-    corpus_paths = resolve_corpus_paths(config, root)
+    corpus_paths = resolve_corpus_paths(config, base_dir)
     sources = discover_corpus_sources(
         corpus_paths.gdelt_conflict_dir,
         corpus_paths.gdelt_events_raw_dir,
@@ -809,7 +816,7 @@ def run_corpus_validate(args: argparse.Namespace) -> int:
             if not ok and detail:
                 md5_issues.append(detail)
 
-    outputs_dir = resolve_path(root, args.outdir or config["paths"]["outputs_dir"]) / "corpus"
+    outputs_dir = resolve_path(base_dir, args.outdir or config["paths"]["outputs_dir"]) / "corpus"
     outputs_dir.mkdir(parents=True, exist_ok=True)
     report_path = outputs_dir / "corpus_validate.json"
     payload = {
@@ -841,7 +848,7 @@ def run_corpus_validate(args: argparse.Namespace) -> int:
 
 
 def run_evaluate_command(args: argparse.Namespace) -> int:
-    config_path = Path(args.config).resolve()
+    config_path = Path(args.config).expanduser().resolve()
     base_dir = config_path.parent
     try:
         config = load_config(config_path).config
@@ -849,6 +856,8 @@ def run_evaluate_command(args: argparse.Namespace) -> int:
         print(f"[error] {exc}")
         return 2
     logger = get_console_logger(args.log_level)
+    if args.offline:
+        config.setdefault("data", {})["offline_mode"] = True
     if not bool(config["data"].get("offline_mode", False)):
         logger.error("Offline mode is required for evaluation. Set data.offline_mode=true.")
         return 3
@@ -867,7 +876,7 @@ def run_evaluate_command(args: argparse.Namespace) -> int:
     )
 
 
-def _load_bulk_symbols(config: dict[str, Any], root: Path, args: argparse.Namespace) -> pd.Series:
+def _load_bulk_symbols(config: dict[str, Any], base_dir: Path, args: argparse.Namespace) -> pd.Series:
     mode = args.mode or "watchlist"
     if mode == "universe":
         universe_df = fetch_universe()
@@ -879,7 +888,7 @@ def _load_bulk_symbols(config: dict[str, Any], root: Path, args: argparse.Namesp
         )
         return universe_df["symbol"]
 
-    watchlist_path = resolve_path(root, args.watchlist or config["paths"]["watchlist_file"])
+    watchlist_path = resolve_path(base_dir, args.watchlist or config["paths"]["watchlist_file"])
     universe_df = read_watchlist(watchlist_path)
     return universe_df["symbol"]
 
@@ -920,6 +929,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--history-min-days", type=int)
     run_parser.add_argument("--outdir")
     run_parser.add_argument("--cache-dir")
+    run_parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Force offline mode for this run (overrides config).",
+    )
     run_parser.add_argument("--batch-size", type=int)
     run_parser.add_argument("--batch-cursor-file")
     run_parser.add_argument("--max-workers", type=int)
@@ -978,6 +992,11 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_parser = sub.add_parser("evaluate", help="Run offline evaluation harness")
     evaluate_parser.add_argument("--config", default="config.yaml")
     evaluate_parser.add_argument("--outdir")
+    evaluate_parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Force offline mode for evaluation (overrides config).",
+    )
     evaluate_parser.add_argument("--log-level", default="INFO")
 
     return parser
