@@ -1,6 +1,6 @@
 param(
-  [string]$Config = ".\config.yaml",
-  [string]$OutRoot = ".\outputs\acceptance"
+  [string]$Config = ".\config\config.yaml",
+  [string]$OutRoot = ".\outputs\runs"
 )
 
 Set-StrictMode -Version Latest
@@ -45,29 +45,12 @@ Write-Host "[stage] installing requirements"
 
 $UseFixtures = $false
 if (-not $env:MARKET_APP_NASDAQ_DAILY_DIR) {
-  $ConfigHasPath = & $VenvPy - <<'PY'
-import yaml
-from pathlib import Path
-config_path = Path(r".\config.yaml")
-if not config_path.exists():
-    print("MISSING")
-    raise SystemExit(0)
-data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-paths = data.get("data", {}).get("paths", {})
-value = paths.get("nasdaq_daily_dir")
-print("SET" if value else "EMPTY")
-PY
-  if ($ConfigHasPath -eq "EMPTY" -or $ConfigHasPath -eq "MISSING") {
-    $UseFixtures = $true
-  }
+  $UseFixtures = $true
 }
 
 if ($UseFixtures) {
   Write-Host "[stage] using fixture data paths"
   $env:MARKET_APP_NASDAQ_DAILY_DIR = (Resolve-Path ".\tests\fixtures\ohlcv")
-  if (-not $env:MARKET_APP_GDELT_CONFLICT_DIR) {
-    $env:MARKET_APP_GDELT_CONFLICT_DIR = (Resolve-Path ".\tests\fixtures\corpus")
-  }
   $WatchlistOverride = (Resolve-Path ".\tests\fixtures\watchlist.txt")
 }
 
@@ -78,113 +61,39 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
-Write-Host "[stage] running doctor"
-& $VenvPy -m market_monitor doctor --config $Config --offline
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "[error] Doctor checks failed. Fix issues and rerun .\scripts\acceptance.ps1"
-  exit $LASTEXITCODE
-}
-
 $RunId = (Get-Date).ToUniversalTime().ToString("yyyyMMdd_HHmmss")
-$RunDir = Join-Path $OutRoot "run_$RunId"
+$RunDir = Join-Path $OutRoot $RunId
 if (-not (Test-Path $RunDir)) { New-Item -ItemType Directory -Path $RunDir | Out-Null }
 
-Write-Host "[stage] running corpus validate"
-& $VenvPy -m market_monitor corpus validate --config $Config --outdir $RunDir
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "[error] Corpus validation failed. Fix issues and rerun .\scripts\acceptance.ps1"
-  exit $LASTEXITCODE
-}
-
-Write-Host "[stage] running corpus build"
-& $VenvPy -m market_monitor corpus build --config $Config --outdir $RunDir
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "[error] Corpus build failed. Fix issues and rerun .\scripts\acceptance.ps1"
-  exit $LASTEXITCODE
-}
-
-Write-Host "[stage] running preflight"
-& $VenvPy -m market_monitor preflight --config $Config --outdir $RunDir
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "[error] Preflight failed. Fix issues and rerun .\scripts\acceptance.ps1"
-  exit $LASTEXITCODE
-}
-
-Write-Host "[stage] running watchlist pipeline"
+Write-Host "[stage] running blueprint wrapper"
 if ($WatchlistOverride) {
-  & $VenvPy -m market_monitor run --config $Config --mode watchlist --outdir $RunDir --watchlist $WatchlistOverride
-} else {
-  & $VenvPy -m market_monitor run --config $Config --mode watchlist --outdir $RunDir
+  $env:MARKET_APP_WATCHLIST_FILE = $WatchlistOverride
 }
+& $VenvPy -m market_app.cli --config $Config --offline --run_id $RunId --top_n 5 --conservative
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "[error] Pipeline run failed. See logs in .\outputs\logs"
+  Write-Host "[error] Pipeline run failed. See logs in outputs\runs\$RunId"
   exit $LASTEXITCODE
 }
 
 $Expected = @(
-  "features_*.csv",
-  "scored_*.csv",
-  "eligible_*.csv",
-  "run_report*.md",
-  "preflight_report.csv",
-  "preflight_report.md",
-  "run_manifest.json"
+  "universe.csv",
+  "classified.csv",
+  "features.csv",
+  "eligible.csv",
+  "scored.csv",
+  "regime.json",
+  "report.md",
+  "manifest.json"
 )
 foreach ($pattern in $Expected) {
-  $found = Get-ChildItem -Path $RunDir -Filter $pattern | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-  if (-not $found) {
-    Write-Host "[error] Missing expected output ($pattern) in $RunDir"
-    exit 1
-  }
-  if ($found.Length -le 0) {
-    Write-Host "[error] Output file is empty ($($found.FullName))"
-    exit 1
-  }
-}
-
-if ($env:MARKET_APP_GDELT_CONFLICT_DIR) {
-  $CorpusExpected = @(
-    "corpus\daily_features.csv",
-    "corpus\daily_features.parquet",
-    "corpus\analogs_report.md",
-    "corpus\corpus_manifest.json",
-    "corpus\corpus_index.json",
-    "corpus\corpus_validate.json"
-  )
-  foreach ($pattern in $CorpusExpected) {
-    $path = Join-Path $RunDir $pattern
-    if (-not (Test-Path $path)) {
-      Write-Host "[error] Missing expected corpus output ($pattern) in $RunDir"
-      exit 1
-    }
-    $file = Get-Item $path
-    if ($file.Length -le 0) {
-      Write-Host "[error] Corpus output file is empty ($path)"
-      exit 1
-    }
-  }
-}
-
-Write-Host "[stage] running evaluation"
-& $VenvPy -m market_monitor evaluate --config $Config --outdir $RunDir
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "[error] Evaluation failed. Fix issues and rerun .\scripts\acceptance.ps1"
-  exit $LASTEXITCODE
-}
-
-$EvalExpected = @(
-  "eval\eval_metrics.csv",
-  "eval\eval_report.md"
-)
-foreach ($pattern in $EvalExpected) {
   $path = Join-Path $RunDir $pattern
   if (-not (Test-Path $path)) {
-    Write-Host "[error] Missing expected eval output ($pattern) in $RunDir"
+    Write-Host "[error] Missing expected output ($pattern) in $RunDir"
     exit 1
   }
   $file = Get-Item $path
   if ($file.Length -le 0) {
-    Write-Host "[error] Eval output file is empty ($path)"
+    Write-Host "[error] Output file is empty ($path)"
     exit 1
   }
 }
