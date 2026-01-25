@@ -1,0 +1,52 @@
+offline: true
+run:
+  top_n: 5
+paths:
+  data_dir: "./tests/fixtures"
+  output_dir: "./tests/fixtures/outputs/runs"
+  model_dir: "./models"
+  text_corpus_dir: "./tests/fixtures"
+  watchlist_file: "./tests/fixtures/watchlist.txt"
+  nasdaq_daily_dir: "./tests/fixtures/ohlcv"
+macro:
+  lookback_years: 5
+  zscore_thresholds:
+    low: -1.0
+    high: 1.0
+  series:
+    - name: "term_spread"
+      file: "macro/term_spread.csv"
+themes:
+  theme_weights:
+    etf: 0.6
+    keywords: 0.3
+    sector: 0.1
+scoring:
+  gates:
+    min_price_above_sma200: true
+    min_adv20_dollar: 10
+    max_zero_volume_fraction: 0.5
+    max_missing_day_rate: 0.5
+  weights_conservative:
+    return_6m: 0.25
+    return_12m: 0.25
+    momentum: 0.15
+    volatility: -0.15
+    drawdown: -0.1
+    liquidity: 0.2
+  weights_opportunistic:
+    return_1m: 0.3
+    return_3m: 0.3
+    momentum: 0.2
+    volatility: -0.1
+    drawdown: -0.1
+    liquidity: 0.1
+  theme_bonus: 0.05
+regime_overlay:
+  contraction:
+    volatility_penalty: 1.2
+  expansion:
+    return_bonus: 1.2
+report:
+  include_scenario_section: true
+  include_analog_section: true

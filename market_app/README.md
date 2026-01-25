@@ -8,7 +8,18 @@ Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. 
 - Scenario sensitivity (defense/tech/metals)
 - Offline corpus context + historical analog summaries
 
-## One-Command Run (PowerShell)
+## One-Command Run (Blueprint Wrapper)
+
+From the repo root:
+
+```powershell
+.\scripts\run.ps1 -Config .\config\config.yaml
+```
+
+This runs the blueprint-compatible wrapper (`python -m market_app.cli`) and writes
+output artifacts to `outputs/runs/<run_id>/`.
+
+## Legacy One-Command Run (PowerShell)
 
 From the repo root (offline by default):
 
@@ -33,6 +44,10 @@ Optional flags (examples):
 ## CLI Usage
 
 ```powershell
+# Blueprint wrapper (preferred)
+python -m market_app.cli --config config/config.yaml --offline --run_id demo_run --top_n 15 --conservative
+
+# Legacy Market Monitor CLI
 # Validate config
 python -m market_monitor validate --config config.yaml
 

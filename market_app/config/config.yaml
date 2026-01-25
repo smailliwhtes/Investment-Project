@@ -1,0 +1,59 @@
+offline: true
+run:
+  top_n: 15
+paths:
+  data_dir: "./data"
+  output_dir: "./outputs/runs"
+  model_dir: "./models"
+  text_corpus_dir: "./data/text_corpus"
+  watchlist_file: "./inputs/watchlist.txt"
+  nasdaq_daily_dir: ""  # override via MARKET_APP_NASDAQ_DAILY_DIR
+macro:
+  lookback_years: 5
+  zscore_thresholds:
+    low: -1.0
+    high: 1.0
+  series:
+    - name: "term_spread"
+      file: "raw/macro/term_spread.csv"
+    - name: "cpi_yoy"
+      file: "raw/macro/cpi_yoy.csv"
+    - name: "vix"
+      file: "raw/macro/vix.csv"
+themes:
+  theme_weights:
+    etf: 0.6
+    keywords: 0.3
+    sector: 0.1
+scoring:
+  gates:
+    min_price_above_sma200: true
+    min_adv20_dollar: 5_000_000
+    max_zero_volume_fraction: 0.05
+    min_market_cap: null
+    max_missing_day_rate: 0.2
+  weights_conservative:
+    return_6m: 0.25
+    return_12m: 0.25
+    momentum: 0.15
+    volatility: -0.15
+    drawdown: -0.1
+    liquidity: 0.2
+  weights_opportunistic:
+    return_1m: 0.3
+    return_3m: 0.3
+    momentum: 0.2
+    volatility: -0.1
+    drawdown: -0.1
+    liquidity: 0.1
+  theme_bonus: 0.05
+regime_overlay:
+  contraction:
+    volatility_penalty: 1.2
+    liquidity_bonus: 1.3
+  expansion:
+    return_bonus: 1.2
+    momentum_bonus: 1.1
+report:
+  include_scenario_section: true
+  include_analog_section: true

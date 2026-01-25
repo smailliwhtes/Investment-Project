@@ -1,0 +1,271 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
+
+from market_monitor.corpus import run_corpus_pipeline
+from market_monitor.data_paths import resolve_corpus_paths, resolve_data_paths
+from market_monitor.hash_utils import hash_manifest
+from market_monitor.io import ELIGIBLE_COLUMNS, build_feature_columns, build_scored_columns, write_csv
+from market_monitor.logging_utils import JsonlLogger, get_console_logger
+from market_monitor.macro import load_silver_series
+from market_monitor.manifest import build_run_manifest, resolve_git_commit, run_id_from_inputs
+from market_monitor.offline import set_offline_mode
+from market_monitor.preflight import run_preflight
+from market_monitor.provider_factory import build_provider
+from market_monitor.report import write_report
+from market_monitor.scoring import score_frame
+from market_monitor.staging import stage_pipeline
+from market_monitor.universe import fetch_universe, filter_universe, read_watchlist, write_universe_csv
+
+
+@dataclass(frozen=True)
+class PipelineResult:
+    run_id: str
+    run_timestamp: str
+    run_start: datetime
+    run_end: datetime
+    universe_df: pd.DataFrame
+    scored_df: pd.DataFrame
+    eligible_df: pd.DataFrame
+    summary: dict[str, int]
+    provider: Any
+    output_dir: Path
+    config_hash: str
+
+
+def run_pipeline(
+    config: dict[str, Any],
+    *,
+    base_dir: Path,
+    mode: str,
+    watchlist_path: Path | None,
+    output_dir: Path,
+    run_id: str | None,
+    logger=None,
+    write_legacy_outputs: bool = True,
+    run_timestamp: str | None = None,
+) -> PipelineResult:
+    logger = logger or get_console_logger("INFO")
+    offline_mode = bool(config["data"].get("offline_mode", False))
+    if not offline_mode:
+        logger.error("Offline mode is required for this release. Set data.offline_mode=true.")
+        raise RuntimeError("Offline mode is required for this release.")
+    set_offline_mode(offline_mode)
+
+    run_start = datetime.now(timezone.utc)
+    run_timestamp = run_timestamp or run_start.isoformat()
+
+    provider = build_provider(config, logger, base_dir)
+
+    if offline_mode and mode != "watchlist":
+        logger.error("Offline mode is enabled; only watchlist mode is supported.")
+        raise RuntimeError("Offline mode only supports watchlist mode.")
+
+    if mode == "watchlist":
+        if watchlist_path is None:
+            watchlist_path = base_dir / config["paths"]["watchlist_file"]
+        universe_df = read_watchlist(watchlist_path)
+        if universe_df.empty:
+            raise RuntimeError(f"Watchlist is empty or missing at {watchlist_path}.")
+    else:
+        universe_df = fetch_universe()
+        write_universe_csv(universe_df, base_dir / config["paths"]["universe_csv"])
+
+    universe_df = filter_universe(
+        universe_df,
+        config["universe"]["allowed_security_types"],
+        config["universe"]["allowed_currencies"],
+        config["universe"]["include_etfs"],
+    )
+
+    corpus_paths = resolve_corpus_paths(config, base_dir)
+    corpus_sources = []
+    if corpus_paths.gdelt_conflict_dir or corpus_paths.gdelt_events_raw_dir:
+        corpus_sources = [
+            path for path in [corpus_paths.gdelt_conflict_dir, corpus_paths.gdelt_events_raw_dir] if path
+        ]
+    corpus_manifest_hash = None
+    if corpus_sources:
+        corpus_manifest_hash = hash_manifest({"files": [str(path) for path in corpus_sources]})
+
+    config_hash = config.get("config_hash") or "unknown"
+    if run_id is None:
+        run_id = run_id_from_inputs(
+            timestamp=run_start,
+            config_hash=config_hash,
+            watchlist_path=watchlist_path if mode == "watchlist" else None,
+            watchlist_df=universe_df,
+            corpus_manifest_hash=corpus_manifest_hash,
+        )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir = base_dir / config["paths"]["cache_dir"]
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir = base_dir / config["paths"]["logs_dir"]
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    json_logger = JsonlLogger(logs_dir / f"run_{run_id}.jsonl")
+    run_meta = {
+        "run_id": run_id,
+        "run_timestamp_utc": run_timestamp,
+        "config_hash": config_hash,
+        "provider_name": provider.name,
+    }
+
+    paths = resolve_data_paths(config, base_dir)
+    silver_macro = None
+    if paths.silver_prices_dir:
+        macro = load_silver_series(paths.silver_prices_dir)
+        if macro:
+            silver_macro = macro.features
+
+    preflight = None
+    if mode == "watchlist":
+        preflight = run_preflight(
+            universe_df,
+            provider,
+            output_dir,
+            run_id=run_id,
+            run_timestamp=run_timestamp,
+            logger=logger,
+            corpus_dir=corpus_paths.gdelt_conflict_dir,
+            raw_events_dir=corpus_paths.gdelt_events_raw_dir,
+        )
+
+    stage1_df, stage2_df, stage3_df, summary = stage_pipeline(
+        universe_df,
+        provider,
+        cache_dir,
+        config["data"]["max_cache_age_days"],
+        config,
+        run_meta,
+        logger,
+        silver_macro=silver_macro,
+    )
+
+    scored = score_frame(stage3_df, config["score"]["weights"]) if not stage3_df.empty else stage3_df
+
+    corpus_outputs_dir = output_dir / "corpus"
+    corpus_run = run_corpus_pipeline(
+        corpus_dir=corpus_paths.gdelt_conflict_dir,
+        raw_events_dir=corpus_paths.gdelt_events_raw_dir,
+        outputs_dir=corpus_outputs_dir,
+        config=config,
+        provider=provider,
+        watchlist=universe_df["symbol"].tolist(),
+        logger=logger,
+    )
+    context_columns = []
+    if corpus_run.daily_features is not None and not stage3_df.empty:
+        context = corpus_run.daily_features.copy()
+        context = context.rename(columns={col: f"context_{col}" for col in context.columns if col != "Date"})
+        context_columns = [col for col in context.columns if col != "Date"]
+        scored = scored.merge(
+            context,
+            left_on="as_of_date",
+            right_on="Date",
+            how="left",
+        ).drop(columns=["Date"])
+
+    eligible = (
+        scored[["symbol", "name", "eligible", "gate_fail_codes", "notes"]]
+        if not scored.empty
+        else pd.DataFrame(columns=ELIGIBLE_COLUMNS)
+    )
+
+    if write_legacy_outputs:
+        features_path = output_dir / f"features_{run_id}.csv"
+        scored_path = output_dir / f"scored_{run_id}.csv"
+        eligible_path = output_dir / f"eligible_{run_id}.csv"
+        report_path = output_dir / "run_report.md"
+        report_archive = output_dir / f"run_report_{run_id}.md"
+
+        write_csv(scored, scored_path, build_scored_columns(context_columns))
+        write_csv(scored, features_path, build_feature_columns(context_columns))
+        write_csv(eligible, eligible_path, ELIGIBLE_COLUMNS)
+
+        data_usage = {
+            "offline_mode": str(config["data"].get("offline_mode", False)),
+            "provider_name": provider.name,
+            "nasdaq_daily_dir": str(paths.nasdaq_daily_dir) if paths.nasdaq_daily_dir else "unset",
+            "nasdaq_daily_found": str(bool(paths.nasdaq_daily_dir and paths.nasdaq_daily_dir.exists())),
+            "silver_prices_dir": str(paths.silver_prices_dir) if paths.silver_prices_dir else "unset",
+            "silver_prices_found": str(bool(paths.silver_prices_dir and paths.silver_prices_dir.exists())),
+            "gdelt_conflict_dir": str(corpus_paths.gdelt_conflict_dir)
+            if corpus_paths.gdelt_conflict_dir
+            else "unset",
+            "gdelt_conflict_found": str(
+                bool(corpus_paths.gdelt_conflict_dir and corpus_paths.gdelt_conflict_dir.exists())
+            ),
+            "gdelt_events_raw_dir": str(corpus_paths.gdelt_events_raw_dir)
+            if corpus_paths.gdelt_events_raw_dir
+            else "unset",
+            "gdelt_events_raw_found": str(
+                bool(corpus_paths.gdelt_events_raw_dir and corpus_paths.gdelt_events_raw_dir.exists())
+            ),
+        }
+
+        write_report(
+            report_path,
+            summary,
+            scored,
+            run_id=run_id,
+            run_timestamp=run_timestamp,
+            data_usage=data_usage,
+            prediction_panel=None,
+            prediction_metrics=None,
+            context_summary=None,
+        )
+        write_report(
+            report_archive,
+            summary,
+            scored,
+            run_id=run_id,
+            run_timestamp=run_timestamp,
+            data_usage=data_usage,
+            prediction_panel=None,
+            prediction_metrics=None,
+            context_summary=None,
+        )
+
+        run_end = datetime.now(timezone.utc)
+        manifest = build_run_manifest(
+            run_id=run_id,
+            run_start=run_start,
+            run_end=run_end,
+            config=config,
+            config_hash=config_hash,
+            watchlist_path=watchlist_path if mode == "watchlist" else None,
+            watchlist_df=universe_df,
+            summary=summary,
+            scored=scored,
+            preflight=preflight,
+            git_commit=resolve_git_commit(base_dir),
+            corpus_manifest=corpus_run.manifest if corpus_run else None,
+        )
+        (output_dir / "run_manifest.json").write_text(
+            manifest.to_json(indent=2),
+            encoding="utf-8",
+        )
+        json_logger.log("summary", {"counts": summary})
+
+    run_end = datetime.now(timezone.utc)
+    logger.info(f"Outputs written to {output_dir}")
+    return PipelineResult(
+        run_id=run_id,
+        run_timestamp=run_timestamp,
+        run_start=run_start,
+        run_end=run_end,
+        universe_df=universe_df,
+        scored_df=scored,
+        eligible_df=eligible,
+        summary=summary,
+        provider=provider,
+        output_dir=output_dir,
+        config_hash=config_hash,
+    )
