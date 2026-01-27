@@ -25,6 +25,7 @@ from market_app.outputs import (
     normalize_features,
     write_csv,
 )
+from market_monitor.hash_utils import hash_file, hash_text
 from market_monitor.manifest import resolve_git_commit
 from market_monitor.paths import find_repo_root
 from market_monitor.pipeline import PipelineResult, run_pipeline
@@ -105,6 +106,30 @@ def _dependency_versions() -> dict[str, str]:
         except metadata.PackageNotFoundError:
             versions[name] = "unknown"
     return versions
+
+
+def _deterministic_run_id(
+    *,
+    config_hash: str,
+    watchlist_path: Path,
+    variant: str,
+    top_n: int,
+) -> str:
+    if watchlist_path.exists():
+        watchlist_hash = hash_file(watchlist_path)
+    else:
+        watchlist_hash = hash_text(watchlist_path.as_posix())
+    payload = json.dumps(
+        {
+            "config_hash": config_hash,
+            "watchlist_hash": watchlist_hash,
+            "variant": variant,
+            "top_n": top_n,
+        },
+        sort_keys=True,
+    )
+    digest = hash_text(payload)[:8]
+    return f"run_{digest}"
 
 
 def _collect_dataset_paths(config: dict[str, Any], base_dir: Path) -> list[Path]:
@@ -297,6 +322,9 @@ def run_cli(argv: list[str] | None = None) -> int:
     theme_rules = _load_watchlists(watchlists_path)
     variant = "opportunistic" if args.opportunistic else "conservative"
     weights = _select_weights(blueprint, opportunistic=bool(args.opportunistic))
+    watchlist_path = Path(blueprint["paths"]["watchlist_file"])
+    if not watchlist_path.is_absolute():
+        watchlist_path = (base_dir / watchlist_path).resolve()
     engine_config = map_to_engine_config(
         blueprint=blueprint,
         config_hash=config_result.config_hash,
@@ -306,16 +334,18 @@ def run_cli(argv: list[str] | None = None) -> int:
     )
     engine_config["data"]["offline_mode"] = offline
     top_n = args.top_n or blueprint["run"]["top_n"]
-    run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    run_timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    run_id = args.run_id or _deterministic_run_id(
+        config_hash=config_result.config_hash,
+        watchlist_path=watchlist_path,
+        variant=variant,
+        top_n=top_n,
+    )
 
     run_dir = (base_dir / blueprint["paths"]["output_dir"] / run_id).resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     logger = _configure_logging(config_dir / "logging.yaml", run_dir)
     logger.info("Starting blueprint-compatible run")
-
-    watchlist_path = Path(blueprint["paths"]["watchlist_file"])
-    if not watchlist_path.is_absolute():
-        watchlist_path = (base_dir / watchlist_path).resolve()
 
     pipeline_result: PipelineResult = run_pipeline(
         engine_config,
@@ -326,7 +356,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         run_id=run_id,
         logger=logger,
         write_legacy_outputs=True,
-        run_timestamp=run_id,
+        run_timestamp=run_timestamp,
     )
     universe = pipeline_result.universe_df.sort_values("symbol").reset_index(drop=True)
     classified = _build_classified(universe, theme_rules)
@@ -335,7 +365,7 @@ def run_cli(argv: list[str] | None = None) -> int:
     eligible_df, eligible_mask = apply_blueprint_gates(
         features, blueprint["scoring"]["gates"]
     )
-    regime = _build_regime(blueprint, base_dir, run_id)
+    regime = _build_regime(blueprint, base_dir, run_timestamp)
     forward_summary = compute_forward_outcome_summary(
         symbols=universe["symbol"].tolist(),
         provider=pipeline_result.provider,
@@ -358,7 +388,7 @@ def run_cli(argv: list[str] | None = None) -> int:
     build_report(
         run_dir / "report.md",
         run_id=run_id,
-        run_timestamp=run_id,
+        run_timestamp=run_timestamp,
         scored=scored,
         regime=regime,
         forward_summary=forward_summary,
@@ -366,7 +396,7 @@ def run_cli(argv: list[str] | None = None) -> int:
     )
     manifest = build_manifest(
         run_id=run_id,
-        run_timestamp=run_id,
+        run_timestamp=run_timestamp,
         config_hash=config_result.config_hash,
         git_sha=resolve_git_commit(base_dir),
         offline=offline,

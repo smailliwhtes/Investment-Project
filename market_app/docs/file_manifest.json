@@ -1,0 +1,5055 @@
+[
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": ".env",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": ".env.example",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": ".gitattributes",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": ".gitignore",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": ".pre-commit-config.yaml",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "AUDIT.md",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "FIX_PLAN.md",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "Finnhub_scripts.txt",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "README.md",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup/20260111_205832/config.json",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup/20260111_205832/doctor.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup/20260111_205832/requirements.txt",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_doctor_preflight/doctor_20260111_223421.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_domain_swap/runner_20260111_222903.py",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_fix/20260111_210644/config.json",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_fix/20260111_210644/doctor.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_fix/20260111_210644/scripts/runner.py",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_fix2/20260111_211117/doctor.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_limittexts/runner_20260111_223357.py",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_limittexts/runner_20260111_223816.py",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_progress/20260111_211834/doctor.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "now_local",
+      "ensure_dir",
+      "read_json",
+      "write_json",
+      "http_get_text",
+      "parse_pipe_table",
+      "normalize_symbol",
+      "to_stooq_symbol",
+      "stooq_csv_url",
+      "file_is_fresh",
+      "load_stooq_daily",
+      "download_stooq_daily",
+      "compute_features",
+      "gate_and_flags",
+      "score_symbol",
+      "load_watchlist",
+      "build_universe",
+      "select_batch",
+      "merge_update_csv",
+      "write_report",
+      "main"
+    ],
+    "path": "_backup_progress/20260111_211834/scripts/runner.py",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "_backup_stooq_limitfix/20260111_215719/config.json",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "_p",
+      "now_local",
+      "ensure_dir",
+      "read_json",
+      "write_json",
+      "http_get_text",
+      "parse_pipe_table",
+      "normalize_symbol",
+      "to_stooq_symbol",
+      "stooq_csv_url",
+      "file_is_fresh",
+      "load_stooq_daily",
+      "download_stooq_daily",
+      "compute_features",
+      "gate_and_flags",
+      "score_symbol",
+      "load_watchlist",
+      "build_universe",
+      "select_batch",
+      "merge_update_csv",
+      "write_report",
+      "main"
+    ],
+    "path": "_backup_stooq_limitfix/20260111_215719/runner.py",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "_p",
+      "now_local",
+      "ensure_dir",
+      "read_json",
+      "write_json",
+      "http_get_text",
+      "parse_pipe_table",
+      "normalize_symbol",
+      "to_stooq_symbol",
+      "stooq_csv_url",
+      "file_is_fresh",
+      "load_stooq_daily",
+      "download_stooq_daily",
+      "compute_features",
+      "gate_and_flags",
+      "score_symbol",
+      "load_watchlist",
+      "build_universe",
+      "select_batch",
+      "merge_update_csv",
+      "write_report",
+      "main"
+    ],
+    "path": "_backup_stooqlog/20260111_214613/runner.py",
+    "purpose": "Historical backup artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "acceptance_test.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config.example.yaml",
+    "purpose": "Configuration file for pipeline or tooling."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config.json",
+    "purpose": "Configuration file for pipeline or tooling."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config.json.bak",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config.json.bak_20260117_222949",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config.json.bak_20260117_224501",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config.json.bak_20260117_225034",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config.json.bak_20260117_230234",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config.json.bak_20260117_231512",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config.yaml",
+    "purpose": "Configuration file for pipeline or tooling."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config/config.yaml",
+    "purpose": "Configuration file for pipeline or tooling."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config/logging.yaml",
+    "purpose": "Configuration file for pipeline or tooling."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config/sources.yaml",
+    "purpose": "Configuration file for pipeline or tooling."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "config/watchlists.yaml",
+    "purpose": "Configuration file for pipeline or tooling."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data/state/batch_state.json",
+    "purpose": "Data asset or state snapshot."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data/universe/universe.csv",
+    "purpose": "Data asset or state snapshot."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data/watchlist.txt",
+    "purpose": "Data asset or state snapshot."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AAL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AALG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AAPB.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AAPD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AAPU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ABNB.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ABNG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ADBG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AENT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AFJK.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AGAE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AGMI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AGPU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIFU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIIO.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIMD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIOT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIPI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIPO.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIRG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIRJ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIRO.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIRR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIRS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIRT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AISP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AIXC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AKAM.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AMCI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AMDD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AMDG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AMDL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AMUU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AMZD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AMZU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AMZZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ANEL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AOSL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/APPX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ARAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ARBE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ARMG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ASMG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ASTL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ASTS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ATAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ATLX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AUMI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AVGG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AVGU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AVGX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AVL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AVS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/AVXX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BABX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BAER.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BAIG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BASG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BASV.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BBB.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BDGS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BDMD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BEG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BFRG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BGIN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BGL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BHAT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BIDG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BITS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BIYA.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BKCH.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BLDP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BLFY.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BLSG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BLZR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BMNG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BNZI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BOED.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BOEG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BOEU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BOTT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BOTZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BRFH.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BRKD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BRKU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BTGD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BUG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BULG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BULX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/BZAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CAKE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CALM.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CCLD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CCSI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CENX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CHAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CHGX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CHPS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CHPX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CIBR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CIFG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CLFD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CLOD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CLOU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CMGG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CNCG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/COIG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CONI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CONL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CONX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/COPJ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/COPP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/COTG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CPBI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CRCG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CRMG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CRSR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CRWG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CRWL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CSAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CSCL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CSCS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CTNT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CVNX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CYBR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/CZR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DJCO.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DKNX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DLLL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DLPN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DSY.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DTCR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DTSQ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DUOG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DVLT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/DYTA.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/EGAN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ELIL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ELIS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ELSE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ELVR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ETRL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FBL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FBOT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FHB.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FIGG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FIP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FLXS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FLY.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FOXF.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FRDD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FRDU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FTAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FTGC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FTXL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FUTG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/FWRD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GAIA.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GANX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GBUG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GCT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GDEN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GDFN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GDHG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GDYN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GEMG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GEMI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GEOS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GEVG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GFAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GGLL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GGLS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GIFI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GILT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GIND.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GKAT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GLDI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GLDY.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GLGG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GMGI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GMM.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GOU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GPIQ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GPIX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GPRE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GRAG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GRAL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GRDX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GRID.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GSGO.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GSUN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GTOP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GTPE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GUSE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GVLE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/GXAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HAIN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HCAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HFSP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HIMZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HODU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HOLO.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HOOG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HOOX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HOVR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HPAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HSPT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HUBC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HYLS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HYP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/HYPR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/IBOT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ICOP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/IDEF.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ILIT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ILPT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/INDI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/INFR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/INSE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/INTW.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/IONL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/IONX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/IONZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/IPAR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/IPGP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/IREG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ISUL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/JBLU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/JTAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/JYD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KALU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KAT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KBAB.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KBDU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KCHV.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KDK.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KITT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KJD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KLAG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KMLI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KPDD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KTOS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KUST.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/KXIN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LACG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LASE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LAWR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LCDL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LEXI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LINT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LITP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LLYZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LMAT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LMNX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LMTL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LMTS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LNAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LOTI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LPAA.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LPBB.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LSCC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/LULG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MBOT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MCHP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MDAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/METD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/METU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MLAC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MNSB.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MOOD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MPG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MPWR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MRAL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MRVI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MSAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MSDD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MSFD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MSFL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MSFU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MSS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MSTP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MSTX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MUD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MULL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MUU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MVLL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/MYNZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NATO.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NBIG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NBIL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NCEW.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NEMG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NETG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NEWZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NFXL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NFXS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NIKL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NIOG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NMFC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NNE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NOWL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NSCR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NSI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NSSC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NUG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NUGY.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NVD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NVDD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NVDG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NVDL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NVDS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NVDU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NVTS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/NXPI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/OCC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ODDS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ODYS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/OKLL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/OKTG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/OLLI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ON.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/OPEG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ORCS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ORCU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ORCX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/OSCG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/OSCX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/OTTR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PAGP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PAL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PALD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PALU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PANG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PANL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PAVS.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PBRG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PDDL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PDYN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PENN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PGJ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PLAY.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PLTD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PLTG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PLTU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PLTZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PRCT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PRFX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PROP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PSHG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PSWD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PTIR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/PYPG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/QBTZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/QCMD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/QCML.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/QCMU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/QPUX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/QTR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RAIN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RBIL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RCKT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RCT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RDTL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RFAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RFDI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RFEM.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RFEU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RFIL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RGLD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RGTX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RGTZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RING.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RJET.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RKLB.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RKLX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RKLZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RMCF.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/ROBT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RTAC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RTH.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RTXG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RVNL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RVSN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RXT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RYET.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/RZLV.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SAIA.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SAIH.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SAIL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SAMG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SARK.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SATG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SBGI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SBU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SDG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SEMY.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SERV.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SGML.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SHPD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SHPU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SIDU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SKRE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SKYU.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SKYY.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SLGB.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SLVO.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SLVR.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SMCI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SMCL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SMCX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SMCZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SMH.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SMHX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SMST.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SMX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SNAG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SNAL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SNCY.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SNFCA.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SOFX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SOUN.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SOUX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SOXQ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SOXX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SPAM.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SPEG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SPFI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SPOG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SRAD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/STAI.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/STLD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/STNC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/STRT.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/STRZ.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SUPP.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/SUPX.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TALK.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TBMC.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TDWD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TEM.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TERG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TILE.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TLF.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TSDD.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TSEM.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TSL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TSLG.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "data_cache/stooq/TSLL.csv",
+    "purpose": "Cached data sample (offline)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/application_overview.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/architecture.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/audit/FINDINGS.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/audit/REPO_AUDIT.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/audit/REPO_AUDIT_UPDATE.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/audit/file_manifest.json",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/blueprint_gap_analysis.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/bulk/WHERE_DATA_LIVES.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/bulk_downloader.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/data_provenance.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/offline_watchlist_checklist.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/product_roadmap.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "docs/usage.md",
+    "purpose": "Documentation or audit artifact."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "doctor.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "doctor.ps1.bak_20260117_144502",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "doctor.ps1.bak_20260117_232037",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "inputs/watchlist.txt",
+    "purpose": "Input watchlist or seed file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_app/__init__.py",
+    "purpose": "Compatibility package shim."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/__init__.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/__init__.py.bak_20260118_204345",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/__main__.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/bulk/__init__.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/bulk/__init__.py.bak_20260118_204345",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/bulk/__init__.py.bak_20260118_210025",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "DownloadSummary"
+    ],
+    "key_functions": [
+      "download_tasks",
+      "_extract_archive"
+    ],
+    "path": "market_monitor/bulk/downloader.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/bulk/downloader.py.bak_20260118_204345",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "BulkManifest"
+    ],
+    "key_functions": [
+      "write_manifest",
+      "read_manifest"
+    ],
+    "path": "market_monitor/bulk/manifest.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/bulk/models.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/bulk/models.py.bak_20260118_204838",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "build_download_plan"
+    ],
+    "path": "market_monitor/bulk/planner.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "load_bulk_sources"
+    ],
+    "path": "market_monitor/bulk/registry.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "StandardizeResult"
+    ],
+    "key_functions": [
+      "standardize_ohlcv_csv",
+      "standardize_timeseries_csv",
+      "standardize_directory",
+      "_map_columns"
+    ],
+    "path": "market_monitor/bulk/standardize.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "CacheResult",
+      "FileLock"
+    ],
+    "key_functions": [
+      "cache_key",
+      "load_cache",
+      "save_cache",
+      "freshness_days",
+      "merge_delta",
+      "get_or_fetch"
+    ],
+    "path": "market_monitor/cache.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [
+      "_resolve_config_paths",
+      "run_pipeline",
+      "_build_context_summary",
+      "run_bulk_plan",
+      "run_bulk_download",
+      "run_bulk_standardize",
+      "run_preflight_command",
+      "_load_config_for_command",
+      "run_corpus_build",
+      "run_corpus_validate",
+      "run_evaluate_command",
+      "_load_bulk_symbols",
+      "build_parser",
+      "main"
+    ],
+    "path": "market_monitor/cli.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "ConfigError",
+      "ConfigResult"
+    ],
+    "key_functions": [
+      "_deep_merge",
+      "_hash_config",
+      "_parse_bool",
+      "_load_env_overrides",
+      "_load_config_file",
+      "load_config",
+      "write_default_config",
+      "_require",
+      "_validate_config",
+      "_validate_bulk_section"
+    ],
+    "path": "market_monitor/config_schema.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/corpus/__init__.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "CorpusFileInfo",
+      "CorpusRun",
+      "CorpusSource",
+      "DedupeStats",
+      "CorpusValidationReport",
+      "_DedupeTracker",
+      "DailyFeatureAccumulator"
+    ],
+    "key_functions": [
+      "discover_corpus_files",
+      "discover_raw_event_zips",
+      "discover_corpus_sources",
+      "build_corpus_manifest",
+      "build_corpus_index",
+      "_checksum_bytes",
+      "_detect_delimiter",
+      "_detect_encoding",
+      "_read_csv_chunks",
+      "_normalize_name",
+      "_map_columns",
+      "_resolve_date_column",
+      "_parse_event_date",
+      "_normalize_taxonomy_fields",
+      "_canonicalize_chunk",
+      "_dedupe_chunk",
+      "_iter_csv_chunks",
+      "_iter_zip_chunks",
+      "load_events",
+      "aggregate_daily_features",
+      "_read_md5_manifest",
+      "_hash_md5_file",
+      "verify_md5_for_zip",
+      "build_daily_features_from_sources",
+      "validate_corpus_sources",
+      "_context_columns",
+      "_cosine_similarity",
+      "_compute_analogs",
+      "build_analogs_report",
+      "_load_symbol_returns",
+      "_compute_forward_return",
+      "build_analog_outcomes",
+      "build_event_impact_library",
+      "_load_cache_key",
+      "_write_cache_key",
+      "build_corpus_daily_store",
+      "run_corpus_pipeline"
+    ],
+    "path": "market_monitor/corpus/pipeline.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "DataPaths",
+      "CorpusPaths"
+    ],
+    "key_functions": [
+      "_normalize_path",
+      "resolve_data_paths",
+      "resolve_corpus_paths"
+    ],
+    "path": "market_monitor/data_paths.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "DoctorMessage",
+      "ConnectivityResult"
+    ],
+    "key_functions": [
+      "run_doctor",
+      "_check_env_vars",
+      "_check_external_data_paths",
+      "_check_gate_sanity",
+      "_check_provider_health",
+      "_print_data_directories",
+      "_print_provider_status",
+      "_check_bulk_sources",
+      "_resolve_bulk_probe_url",
+      "_probe_url",
+      "_format_probe_detail",
+      "_print_bulk_results",
+      "_read_cache_stats",
+      "_print_cache_stats",
+      "_print_runtime_info",
+      "_print_symbol_coverage",
+      "_print_messages"
+    ],
+    "path": "market_monitor/doctor.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "EvaluationSplit"
+    ],
+    "key_functions": [
+      "_forward_return",
+      "_build_market_panel",
+      "_join_corpus",
+      "enforce_no_lookahead",
+      "_feature_columns",
+      "build_walk_forward_splits",
+      "_evaluate_split",
+      "run_evaluation"
+    ],
+    "path": "market_monitor/evaluate.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "_safe_return",
+      "_sma",
+      "_ann_vol",
+      "_trend_quality",
+      "_ulcer_index",
+      "_drawdown_duration",
+      "compute_features"
+    ],
+    "path": "market_monitor/features.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/fixtures/__init__.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "FixtureSpec"
+    ],
+    "key_functions": [
+      "_symbol_offset",
+      "build_fixture_frame",
+      "write_fixture_ohlcv",
+      "main"
+    ],
+    "path": "market_monitor/fixtures/ohlcv_generator.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "apply_gates"
+    ],
+    "path": "market_monitor/gates.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "hash_file",
+      "hash_text",
+      "hash_manifest"
+    ],
+    "path": "market_monitor/hash_utils.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "_ensure_columns",
+      "write_csv",
+      "build_feature_columns",
+      "build_scored_columns"
+    ],
+    "path": "market_monitor/io.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "JsonlLogger"
+    ],
+    "key_functions": [
+      "get_console_logger"
+    ],
+    "path": "market_monitor/logging_utils.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "SilverMacro"
+    ],
+    "key_functions": [
+      "load_silver_series",
+      "_resolve_silver_file",
+      "compute_silver_features",
+      "_safe_return",
+      "_ann_vol",
+      "_max_drawdown",
+      "_trend_quality"
+    ],
+    "path": "market_monitor/macro.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "RunManifest"
+    ],
+    "key_functions": [
+      "generate_run_id",
+      "resolve_git_commit",
+      "_redact_config",
+      "_watchlist_hash",
+      "_collect_versions",
+      "build_run_manifest",
+      "run_id_from_inputs"
+    ],
+    "path": "market_monitor/manifest.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "OfflineModeError"
+    ],
+    "key_functions": [
+      "set_offline_mode",
+      "is_offline",
+      "require_online"
+    ],
+    "path": "market_monitor/offline.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "find_repo_root",
+      "resolve_path"
+    ],
+    "path": "market_monitor/paths.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "PipelineResult"
+    ],
+    "key_functions": [
+      "run_pipeline"
+    ],
+    "path": "market_monitor/pipeline.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "PredictionArtifacts"
+    ],
+    "key_functions": [
+      "build_panel",
+      "train_and_predict",
+      "latest_predictions",
+      "_feature_columns",
+      "_forward_return",
+      "_forward_drawdown",
+      "_return_intervals",
+      "_prob_intervals",
+      "_calibration_plot",
+      "_walk_forward_metrics",
+      "_model_card"
+    ],
+    "path": "market_monitor/prediction.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "PreflightSymbolReport",
+      "PreflightReport"
+    ],
+    "key_functions": [
+      "run_preflight",
+      "_load_symbol",
+      "_compute_symbol_stats",
+      "_check_datasets",
+      "_check_corpus",
+      "_write_preflight_reports"
+    ],
+    "path": "market_monitor/preflight.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "LimitedProvider",
+      "FallbackProvider"
+    ],
+    "key_functions": [
+      "build_provider"
+    ],
+    "path": "market_monitor/provider_factory.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/providers/__init__.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "AlphaVantageProvider"
+    ],
+    "key_functions": [],
+    "path": "market_monitor/providers/alphavantage.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "ProviderError",
+      "ProviderAccessError",
+      "ProviderLimitError",
+      "ProviderCapabilities",
+      "Quote",
+      "HistoryProvider",
+      "BudgetManager"
+    ],
+    "key_functions": [],
+    "path": "market_monitor/providers/base.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "FinnhubProvider"
+    ],
+    "key_functions": [],
+    "path": "market_monitor/providers/finnhub.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "RetryConfig"
+    ],
+    "key_functions": [
+      "request_with_backoff",
+      "_sleep_backoff"
+    ],
+    "path": "market_monitor/providers/http.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "NasdaqDailySource",
+      "NasdaqDailyProvider"
+    ],
+    "key_functions": [
+      "_symbol_variants",
+      "_normalize_symbol"
+    ],
+    "path": "market_monitor/providers/nasdaq_daily.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "StooqProvider"
+    ],
+    "key_functions": [],
+    "path": "market_monitor/providers/stooq.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "TwelveDataProvider"
+    ],
+    "key_functions": [],
+    "path": "market_monitor/providers/twelvedata.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "write_report",
+      "_prediction_diagnostics",
+      "_context_section"
+    ],
+    "path": "market_monitor/report.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/report.py.bak_20260118_205928",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/report.py.bak_20260118_212050",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "market_monitor/report.py.bak_20260118_212548",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "assess_risk",
+      "_is_nan"
+    ],
+    "path": "market_monitor/risk.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "scenario_scores"
+    ],
+    "path": "market_monitor/scenarios.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "score_frame",
+      "_nan_to_num",
+      "_safe_nanmean"
+    ],
+    "path": "market_monitor/scoring.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "_history_fetch",
+      "_compute_data_status",
+      "_apply_adjusted",
+      "stage_pipeline",
+      "_confidence_score",
+      "_maybe_attach_silver"
+    ],
+    "path": "market_monitor/staging.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "TaxonomyParseResult"
+    ],
+    "key_functions": [
+      "normalize_event_code",
+      "normalize_root_code",
+      "normalize_quad_class",
+      "parse_taxonomy_fields",
+      "is_valid_event_code",
+      "is_valid_root_code",
+      "is_valid_quad_class"
+    ],
+    "path": "market_monitor/taxonomy/__init__.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "tag_themes"
+    ],
+    "path": "market_monitor/themes.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [
+      "_parse_pipe_table",
+      "fetch_universe",
+      "read_watchlist",
+      "filter_universe",
+      "write_universe_csv"
+    ],
+    "path": "market_monitor/universe.py",
+    "purpose": "Core pipeline module (engine)."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "monitor.py",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "monitor_v2.py",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "mypy.ini",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "output/eligible_20260111.csv",
+    "purpose": "Output artifact (legacy or generated)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "output/eligible_20260111_163524.csv",
+    "purpose": "Output artifact (legacy or generated)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "output/features_20260111.csv",
+    "purpose": "Output artifact (legacy or generated)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "output/features_20260111_163524.csv",
+    "purpose": "Output artifact (legacy or generated)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "output/scored_20260111.csv",
+    "purpose": "Output artifact (legacy or generated)."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "output/scored_20260111_163524.csv",
+    "purpose": "Output artifact (legacy or generated)."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "py/append_json_row.py",
+    "purpose": "Utility tooling or ad-hoc helper script."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "py/compute_features.py",
+    "purpose": "Utility tooling or ad-hoc helper script."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "py/compute_features.py.bak_20260111_011044",
+    "purpose": "Utility tooling or ad-hoc helper script."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "py/compute_features.py.bak_20260111_131630",
+    "purpose": "Utility tooling or ad-hoc helper script."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "py/score_security.py",
+    "purpose": "Utility tooling or ad-hoc helper script."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "py/score_security.py.bak_20260111_011044",
+    "purpose": "Utility tooling or ad-hoc helper script."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "py/score_security.py.bak_20260111_131630",
+    "purpose": "Utility tooling or ad-hoc helper script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "pyproject.toml",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "requirements.txt",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "run.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "run_all.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "run_universe.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "run_universe.ps1.bak_20260111_131630",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "scripts/acceptance.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "scripts/git_hygiene_check.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "scripts/run.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "scripts/runner.py",
+    "purpose": "Automation helper script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "seed_watchlist.csv",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "seed_watchlist_dedup.csv",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "setup.ps1",
+    "purpose": "PowerShell automation script."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "src/market_app/__init__.py",
+    "purpose": "Blueprint wrapper module."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [],
+    "key_functions": [
+      "parse_args",
+      "_load_watchlists",
+      "_select_weights",
+      "_configure_logging",
+      "_dependency_versions",
+      "_deterministic_run_id",
+      "_collect_dataset_paths",
+      "_build_classified",
+      "_build_regime",
+      "_apply_regime_overlay",
+      "_prepare_features",
+      "_build_scored",
+      "run_cli",
+      "main"
+    ],
+    "path": "src/market_app/cli.py",
+    "purpose": "Blueprint wrapper module."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "ConfigResult"
+    ],
+    "key_functions": [
+      "_hash_config",
+      "_deep_merge",
+      "load_config",
+      "_validate_config",
+      "map_to_engine_config"
+    ],
+    "path": "src/market_app/config.py",
+    "purpose": "Blueprint wrapper module."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [
+      "Manifest"
+    ],
+    "key_functions": [
+      "write_csv",
+      "normalize_features",
+      "apply_blueprint_gates",
+      "build_risk_flags",
+      "compute_forward_outcome_summary",
+      "build_forward_outcome_column",
+      "build_report",
+      "build_manifest"
+    ],
+    "path": "src/market_app/outputs.py",
+    "purpose": "Blueprint wrapper module."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/conftest.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/blueprint_config.yaml",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/corpus/gdelt_conflict_sample.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/data/cache/nasdaq_daily/AAA.parquet",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/data/cache/nasdaq_daily/BBB.parquet",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/data/cache/nasdaq_daily/SPY.parquet",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/data/state/batch_state.json",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/data/universe_local.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/data/universe_universe.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/macro/term_spread.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/minimal_config.local.yaml",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/minimal_config.yaml",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/nasdaq_daily/AAA.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/nasdaq_daily/BBB.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/nasdaq_daily/BRK-B.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/nasdaq_daily/SORT.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/ohlcv.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/ohlcv/AAA.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/ohlcv/BBB.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/ohlcv/SPY.csv",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/watchlist.txt",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/watchlist_local.txt",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tests/fixtures/watchlists.yaml",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_manifest_round_trip"
+    ],
+    "path": "tests/test_bulk_manifest.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_build_download_plan_symbol_tasks",
+      "test_build_download_plan_archive_task"
+    ],
+    "path": "tests/test_bulk_planner.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_load_bulk_sources_defaults"
+    ],
+    "path": "tests/test_bulk_registry.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_standardize_ohlcv_csv",
+      "test_standardize_timeseries_csv"
+    ],
+    "path": "tests/test_bulk_standardize.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_cli_help",
+      "test_cli_preflight_minimal_config"
+    ],
+    "path": "tests/test_cli_wiring.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_config_paths_resolve_relative_to_config"
+    ],
+    "path": "tests/test_config_path_resolution.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "_fixture_path",
+      "test_corpus_load_events_dedup_and_future_dates",
+      "test_corpus_daily_aggregation",
+      "test_corpus_missing_quadclass_graceful"
+    ],
+    "path": "tests/test_corpus_pipeline.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_doctor_runs_minimal_config",
+      "test_evaluate_outdir_independent_of_inputs"
+    ],
+    "path": "tests/test_doctor_evaluate.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_enforce_no_lookahead_flags_future_corpus",
+      "test_evaluation_deterministic_metrics"
+    ],
+    "path": "tests/test_evaluate.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_compute_features_basic",
+      "test_feature_windows_and_liquidity"
+    ],
+    "path": "tests/test_features.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_golden_master_features_for_aaa"
+    ],
+    "path": "tests/test_features_golden_master.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_fixture_ohlcv_files_have_enough_rows"
+    ],
+    "path": "tests/test_fixture_ohlcv.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_run_and_evaluate_with_fixtures"
+    ],
+    "path": "tests/test_fixture_pipeline.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_gates_pass",
+      "test_gates_fail_price",
+      "test_gates_price_floor",
+      "test_gates_defaults_do_not_exclude"
+    ],
+    "path": "tests/test_gates.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "_write_temp_config",
+      "_copy_watchlists",
+      "test_market_app_cli_contract",
+      "test_market_app_variant_changes_score"
+    ],
+    "path": "tests/test_market_app_cli.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "_provider",
+      "test_provider_finds_symbol_with_dash_dot",
+      "test_provider_sorts_and_dedupes_dates",
+      "test_provider_missing_symbol"
+    ],
+    "path": "tests/test_nasdaq_daily_provider.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_offline_blocks_network_calls"
+    ],
+    "path": "tests/test_no_network.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_offline_watchlist_blocks_socket"
+    ],
+    "path": "tests/test_offline_watchlist_socket.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_write_csv_is_deterministic"
+    ],
+    "path": "tests/test_reproducibility.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "_sample_df",
+      "test_compute_features_with_events"
+    ],
+    "path": "tests/test_run_watchlist_features.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_scoring_deciles"
+    ],
+    "path": "tests/test_scoring.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [
+      "FixtureProvider"
+    ],
+    "key_functions": [
+      "test_smoke_pipeline"
+    ],
+    "path": "tests/test_smoke_run.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [
+      "test_taxonomy_normalization_examples",
+      "test_taxonomy_parse_fallbacks"
+    ],
+    "path": "tests/test_taxonomy.py",
+    "purpose": "Test module or test fixture data."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tmp_report.md",
+    "purpose": "Repository metadata or auxiliary file."
+  },
+  {
+    "cli_usage": "supporting",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "tools/__init__.py",
+    "purpose": "Utility tooling or ad-hoc helper script."
+  },
+  {
+    "cli_usage": "direct",
+    "key_classes": [
+      "ProviderStats"
+    ],
+    "key_functions": [
+      "_init_provider_stats",
+      "_read_watchlist",
+      "_stooq_reachable",
+      "_request_with_retry",
+      "_cache_path",
+      "_read_cached_history",
+      "_write_cache",
+      "_fetch_stooq_ohlcv",
+      "_fetch_twelvedata_ohlcv",
+      "_fetch_finnhub_quote",
+      "_max_drawdown",
+      "_safe_zscore",
+      "_ema",
+      "_rsi",
+      "_macd",
+      "_trend_regression_stats",
+      "_forecast_return",
+      "_hurst_exponent",
+      "_rolling_autocorr",
+      "_load_events",
+      "_event_impact_scores",
+      "compute_features",
+      "apply_gates",
+      "_series_or_zero",
+      "score_frame",
+      "_summarize_stats",
+      "_format_stats_markdown",
+      "main"
+    ],
+    "path": "tools/run_watchlist.py",
+    "purpose": "Utility tooling or ad-hoc helper script."
+  },
+  {
+    "cli_usage": "none",
+    "key_classes": [],
+    "key_functions": [],
+    "path": "watchlist.txt",
+    "purpose": "Repository metadata or auxiliary file."
+  }
+]
