@@ -19,6 +19,22 @@ From the repo root:
 This runs the blueprint-compatible wrapper (`python -m market_app.cli`) and writes
 output artifacts to `outputs/runs/<run_id>/`.
 
+## Makefile-Equivalent Commands (PowerShell)
+
+```powershell
+# install dependencies
+python -m pip install -r .\requirements.txt
+
+# run tests
+python -m pytest -q
+
+# run the blueprint wrapper (offline)
+.\scripts\run.ps1 -Config .\config\config.yaml -Offline -TopN 15 -Variant conservative
+
+# run acceptance (fresh clone flow)
+.\scripts\acceptance.ps1
+```
+
 ## Legacy One-Command Run (PowerShell)
 
 From the repo root (offline by default):
