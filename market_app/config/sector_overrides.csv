@@ -1,0 +1,19 @@
+symbol,sector_bucket,notes
+SPY,broad_market,Equities benchmark
+QQQ,broad_market,Nasdaq benchmark
+IWM,broad_market,Small cap benchmark
+GLD,precious_metals,Gold bullion
+SLV,precious_metals,Silver bullion
+GDX,mining,Gold miners
+GDXJ,mining,Junior gold miners
+REMX,rare_earths,Rare earths
+LIT,rare_earths,Strategic materials
+URA,mining,Uranium miners
+XLE,energy,Energy sector
+XOP,energy,Exploration and production
+XME,mining,Metals and mining
+ITA,defense_aerospace,Defense and aerospace
+XAR,defense_aerospace,Defense and aerospace
+TLT,treasuries_rates,Treasury rates
+IEF,treasuries_rates,Treasury rates
+SHY,treasuries_rates,Treasury rates
