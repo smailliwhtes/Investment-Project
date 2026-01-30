@@ -1,5 +1,32 @@
 # Repository Audit
 
+## Offline Market Monitor Inventory (2025-02-14)
+
+### Pipelines and current coverage
+- **OHLCV ingestion**: Offline NASDAQ daily CSV provider (per-symbol CSVs) for watchlist mode.
+  Stooq TXT pack support is now wired via the security master builder (`tools/build_security_master.py`). 
+- **Symbol universe / required symbols**: Existing watchlist input remains, plus a new
+  `config/universe_required.csv` seed file for a minimal required symbol set used during
+  security master builds.
+- **Metadata / security master**: Offline build path added (`market_monitor.metadata.security_master`)
+  to generate `out/security_master.csv`, enriched by Nasdaq Trader snapshots, SEC ticker mappings,
+  and cached SEC submissions SIC data when present.
+- **Corpus ingestion**: Offline GDELT corpus pipeline exists and is configurable via `config.yaml`
+  and `corpus.root_dir` (local CSVs only).
+- **One-command path**: Added `scripts/offline_one_command.ps1` for a fixtures-based run that builds
+  the security master and executes an offline monitor pass.
+
+### Offline metadata directories
+```
+incoming_metadata/
+  nasdaq_trader/
+  sec/
+    submissions/
+out/
+  security_master.csv
+  sic_codes.csv
+```
+
 ## Tree (all files)
 
 ```text
@@ -29332,4 +29359,3 @@ watchlist.txt
 **Entrypoints**: None detected
 **Inputs**: read_csv\(
 **Outputs**: mkdir\(
-

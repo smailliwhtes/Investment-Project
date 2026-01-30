@@ -95,6 +95,29 @@ This release supports **offline-only** watchlist runs using:
 Online providers remain in the codebase for future milestones, but offline mode is the only supported
 mode here. Any network access attempts are hard-failed during offline runs and tests.
 
+## Offline Security Master + Metadata Pack
+
+Build a canonical offline `security_master.csv` from the Stooq TXT pack and local metadata
+snapshots. This is the **metadata provisioning** layer that stays offline during normal runs.
+
+- Runbook: `docs/offline_metadata_pack.md`
+- MetaStock notes: `docs/stooq_metastock_notes.md`
+
+Quick start (fixtures):
+
+```powershell
+python tools/build_security_master.py --stooq-root tests/fixtures/stooq_txt --output out/security_master.csv --filter-required
+```
+
+## One Command (Offline Fixtures + Security Master)
+
+```powershell
+.\scripts\offline_one_command.ps1
+```
+
+This creates a venv, installs dependencies, builds `out/security_master.csv` from fixtures, and
+runs one offline monitor pass.
+
 ## Offline Corpus: GDELT Conflict Events (Local CSV)
 
 The corpus pipeline ingests locally stored GDELT conflict event CSVs and produces daily context
