@@ -1,12 +1,13 @@
 offline: true
 run:
   top_n: 15
+watchlist_path: "./watchlists/watchlist_core.csv"
 paths:
   data_dir: "./data"
   output_dir: "./outputs/runs"
   model_dir: "./models"
   text_corpus_dir: "./data/text_corpus"
-  watchlist_file: "./inputs/watchlist.txt"
+  watchlist_file: "./watchlists/watchlist_core.csv"
   nasdaq_daily_dir: ""  # override via MARKET_APP_NASDAQ_DAILY_DIR
 macro:
   lookback_years: 5

@@ -18,7 +18,7 @@ DEFAULT_BLUEPRINT_CONFIG: dict[str, Any] = {
         "output_dir": "./outputs/runs",
         "model_dir": "./models",
         "text_corpus_dir": "./data/text_corpus",
-        "watchlist_file": "./inputs/watchlist.txt",
+        "watchlist_file": "./watchlists/watchlist_core.csv",
         "nasdaq_daily_dir": "",
     },
     "macro": {

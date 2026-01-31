@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import csv
 from pathlib import Path
 
 import pandas as pd
@@ -47,11 +50,26 @@ def fetch_universe() -> pd.DataFrame:
 
 
 def read_watchlist(path: Path) -> pd.DataFrame:
-    symbols: list[str] = []
     if not path.exists():
         return pd.DataFrame(
-            columns=["symbol", "name", "exchange", "security_type", "status", "currency"]
+            columns=[
+                "symbol",
+                "name",
+                "exchange",
+                "security_type",
+                "status",
+                "currency",
+                "theme_bucket",
+                "asset_type",
+            ]
         )
+    if path.suffix.lower() == ".csv":
+        return _read_watchlist_csv(path)
+    return _read_watchlist_text(path)
+
+
+def _read_watchlist_text(path: Path) -> pd.DataFrame:
+    symbols: list[str] = []
     with path.open("r", encoding="utf-8") as handle:
         for line in handle:
             symbol = line.strip().split("#")[0].strip()
@@ -65,8 +83,97 @@ def read_watchlist(path: Path) -> pd.DataFrame:
             "security_type": "COMMON",
             "status": None,
             "currency": "USD",
+            "theme_bucket": None,
+            "asset_type": None,
         }
     )
+
+
+def _read_watchlist_csv(path: Path) -> pd.DataFrame:
+    required_headers = {"symbol", "theme_bucket", "asset_type"}
+    rows = []
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        if not reader.fieldnames:
+            raise ValueError("Watchlist CSV is missing headers.")
+        reader.fieldnames = [field.strip() for field in reader.fieldnames if field]
+        headers = {field for field in reader.fieldnames if field}
+        missing = required_headers - {field.lower() for field in headers}
+        if missing:
+            missing_list = ", ".join(sorted(missing))
+            raise ValueError(f"Watchlist CSV missing required headers: {missing_list}.")
+        header_map = {field.lower(): field for field in reader.fieldnames if field}
+
+        for row_number, row in enumerate(reader, start=2):
+            symbol = (row.get(header_map["symbol"]) or "").strip().upper()
+            if not symbol:
+                raise ValueError(f"Watchlist CSV missing symbol at row {row_number}.")
+            theme_bucket = (row.get(header_map["theme_bucket"]) or "").strip()
+            asset_raw = (row.get(header_map["asset_type"]) or "").strip()
+            asset_type = _normalize_asset_type(asset_raw, row_number)
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "theme_bucket": theme_bucket,
+                    "asset_type": asset_type,
+                }
+            )
+
+    if not rows:
+        return pd.DataFrame(
+            columns=[
+                "symbol",
+                "name",
+                "exchange",
+                "security_type",
+                "status",
+                "currency",
+                "theme_bucket",
+                "asset_type",
+            ]
+        )
+
+    df = pd.DataFrame(rows)
+    security_type = df["asset_type"].map(
+        lambda asset: "ETF" if asset in {"ETF", "ETN"} else "COMMON"
+    )
+    df = df.assign(
+        name=df["symbol"],
+        exchange=None,
+        security_type=security_type,
+        status=None,
+        currency="USD",
+    )
+    return df[
+        [
+            "symbol",
+            "name",
+            "exchange",
+            "security_type",
+            "status",
+            "currency",
+            "theme_bucket",
+            "asset_type",
+        ]
+    ]
+
+
+def _normalize_asset_type(value: str, row_number: int) -> str:
+    if not value:
+        raise ValueError(f"Watchlist CSV missing asset_type at row {row_number}.")
+    normalized = value.strip().lower()
+    allowed = {
+        "etf": "ETF",
+        "equity": "equity",
+        "trust": "trust",
+        "etn": "ETN",
+    }
+    if normalized not in allowed:
+        allowed_list = ", ".join(sorted(allowed.values()))
+        raise ValueError(
+            f"Invalid asset_type '{value}' at row {row_number}. Allowed values: {allowed_list}."
+        )
+    return allowed[normalized]
 
 
 def filter_universe(

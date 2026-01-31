@@ -7,6 +7,7 @@ import socket
 import time
 from dataclasses import dataclass
 from io import StringIO
+from pathlib import Path
 from typing import Iterable, Optional
 
 import numpy as np
@@ -14,6 +15,7 @@ import pandas as pd
 import requests
 
 from market_monitor.offline import require_online
+from market_monitor.universe import read_watchlist
 
 # --- .env autoload (optional) ---
 try:
@@ -57,6 +59,16 @@ def _init_provider_stats() -> dict:
 
 
 def _read_watchlist(path: str):
+    if Path(path).suffix.lower() == ".csv":
+        df = read_watchlist(Path(path))
+        symbols = df["symbol"].astype(str).tolist()
+        themes_joined = (
+            df.set_index("symbol")["theme_bucket"].fillna("").astype(str).to_dict()
+            if "theme_bucket" in df.columns
+            else {symbol: "" for symbol in symbols}
+        )
+        return symbols, themes_joined
+
     themes = {}
     order = []
     cur_theme = None

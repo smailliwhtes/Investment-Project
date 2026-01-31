@@ -114,7 +114,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "metals": {"symbols": [], "keywords": ["lithium", "copper", "uranium"]},
     },
     "paths": {
-        "watchlist_file": "inputs/watchlist.txt",
+        "watchlist_file": "watchlists/watchlist_core.csv",
         "universe_csv": "data/universe/universe.csv",
         "cache_dir": "data/cache",
         "state_file": "data/state/batch_state.json",
