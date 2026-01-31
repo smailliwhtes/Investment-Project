@@ -24,10 +24,5 @@ No financial advice. No buy/sell language.
 - One command to test: pytest (or documented subset)
 - Stable output contract: eligible.csv, scored.csv, report.md
 
-## Local paths (example environment)
-- Application root: C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app
-- US Markets historical data: C:\Users\micha\OneDrive\Desktop\Market_Files
-- Current corpus files: C:\Users\micha\OneDrive\Desktop\NLP Corpus
-
 
 Codex is explicitly intended to work from clear repo docs and run your tests/commands with verifiable terminal evidence.
