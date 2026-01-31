@@ -1,10 +1,5 @@
 param(
   [string]$Config = ".\config\config.yaml",
-  [string]$RunId = "",
-  [int]$TopN = 15,
-  [switch]$Offline,
-  [ValidateSet("conservative","opportunistic")]
-  [string]$Variant = "conservative",
   [string]$WatchlistPath = ""
 )
 
@@ -44,18 +39,10 @@ if (-not (Test-Path $ResolvedWatchlist)) {
   throw "Watchlist file not found: $ResolvedWatchlist"
 }
 
-Write-Host "[stage] provisioning data for watchlist"
-& (Join-Path $Root "provision_data.ps1") -Config $ResolvedConfig -WatchlistPath $ResolvedWatchlist
+Write-Host "[stage] provisioning data for watchlist: $ResolvedWatchlist"
+& $VenvPy -m market_monitor bulk-download --config $ResolvedConfig --mode watchlist --watchlist $ResolvedWatchlist
 if ($LASTEXITCODE -ne 0) {
-  throw "Provisioning failed with exit code $LASTEXITCODE."
+  throw "Data provisioning failed with exit code $LASTEXITCODE."
 }
 
-$args = @("-m","market_app.cli","--config",$Config,"--top_n",$TopN)
-if ($RunId) { $args += @("--run_id",$RunId) }
-if ($Offline) { $args += "--offline" }
-if ($Variant -eq "opportunistic") { $args += "--opportunistic" }
-else { $args += "--conservative" }
-
-$env:MARKET_APP_WATCHLIST_FILE = $ResolvedWatchlist
-
-& $VenvPy @args
+Write-Host "[done] watchlist provisioning complete"

@@ -2,6 +2,7 @@ run:
   asof_timezone: America/New_York
   max_symbols_per_run: 200
   batch_strategy: round_robin
+watchlist_path: watchlists/watchlist_core.csv
 universe:
   mode: watchlist
   include_etfs: true
@@ -89,7 +90,7 @@ themes:
     - copper
     - uranium
 paths:
-  watchlist_file: inputs/watchlist.txt
+  watchlist_file: watchlists/watchlist_core.csv
   universe_csv: data/universe/universe.csv
   cache_dir: data/cache
   state_file: data/state/batch_state.json

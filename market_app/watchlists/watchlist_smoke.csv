@@ -1,0 +1,4 @@
+symbol,theme_bucket,asset_type
+SPY,benchmark_us_equity,ETF
+TLT,us_treasuries_long_duration,ETF
+GLD,precious_metals_gold,ETF
