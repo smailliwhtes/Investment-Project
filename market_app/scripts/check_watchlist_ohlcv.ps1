@@ -13,11 +13,20 @@ Set-Location (Resolve-Path "$Root\..")
 $VenvPy = Join-Path $Root "..\.venv\Scripts\python.exe"
 if (-not (Test-Path $VenvPy)) { $VenvPy = "python" }
 
-if ($DataDir) {
-  $env:NASDAQ_DAILY_DIR = (Resolve-Path $DataDir).Path
+try {
+  if ($DataDir) {
+    $env:NASDAQ_DAILY_DIR = (Resolve-Path $DataDir).Path
+  }
+
+  $ArgsList = @("-m", "market_monitor.tools.check_watchlist_ohlcv", "--config", $Config)
+  if ($WatchlistPath) { $ArgsList += @("--watchlist", $WatchlistPath) }
+
+  & $VenvPy @ArgsList
+  if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+  }
+  exit 0
+} catch {
+  Write-Host "[error] $($_.Exception.Message)"
+  exit 1
 }
-
-$ArgsList = @("-m", "market_monitor.tools.check_watchlist_ohlcv", "--config", $Config)
-if ($WatchlistPath) { $ArgsList += @("--watchlist", $WatchlistPath) }
-
-& $VenvPy @ArgsList

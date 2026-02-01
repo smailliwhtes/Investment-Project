@@ -10,6 +10,41 @@ import yaml
 from market_monitor.cli import run_pipeline
 
 
+EXPECTED_ELIGIBLE_COLUMNS = [
+    "symbol",
+    "eligible",
+    "gate_fail_reasons",
+    "theme_bucket",
+    "asset_type",
+]
+
+EXPECTED_SCORED_COLUMNS = [
+    "symbol",
+    "score_1to10",
+    "risk_flags",
+    "explanation",
+    "theme_bucket",
+    "asset_type",
+]
+
+
+def _assert_pipe_delimited(series: pd.Series) -> None:
+    cleaned = series.fillna("").astype(str)
+    assert not cleaned.str.contains(";", regex=False).any()
+
+
+def _assert_bool_like(series: pd.Series) -> None:
+    normalized = series.fillna("").astype(str).str.lower()
+    allowed = {"true", "false", "0", "1"}
+    assert normalized.isin(allowed).all()
+
+
+def _assert_score_range(series: pd.Series) -> None:
+    numeric = pd.to_numeric(series, errors="coerce")
+    assert not numeric.isna().any()
+    assert ((numeric % 1 == 0) & numeric.between(1, 10)).all()
+
+
 def _build_synthetic_ohlcv(symbol: str, rows: int = 300) -> pd.DataFrame:
     dates = pd.date_range("2020-01-01", periods=rows, freq="B")
     base = 100 + (sum(ord(letter) for letter in symbol) % 25)
@@ -83,4 +118,17 @@ def test_watchlist_smoke_pipeline(tmp_path: Path) -> None:
     assert result == 0
     assert (outputs_dir / "run_manifest.json").exists()
     assert list(outputs_dir.glob("features_*.csv"))
-    assert list(outputs_dir.glob("scored_*.csv"))
+    eligible_files = list(outputs_dir.glob("eligible_*.csv"))
+    scored_files = list(outputs_dir.glob("scored_*.csv"))
+    assert eligible_files
+    assert scored_files
+
+    eligible_df = pd.read_csv(eligible_files[0])
+    scored_df = pd.read_csv(scored_files[0])
+
+    assert list(eligible_df.columns) == EXPECTED_ELIGIBLE_COLUMNS
+    assert list(scored_df.columns) == EXPECTED_SCORED_COLUMNS
+    _assert_bool_like(eligible_df["eligible"])
+    _assert_pipe_delimited(eligible_df["gate_fail_reasons"])
+    _assert_score_range(scored_df["score_1to10"])
+    _assert_pipe_delimited(scored_df["risk_flags"])

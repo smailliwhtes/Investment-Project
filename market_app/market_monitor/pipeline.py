@@ -10,7 +10,7 @@ import pandas as pd
 from market_monitor.corpus import run_corpus_pipeline
 from market_monitor.data_paths import resolve_corpus_paths, resolve_data_paths
 from market_monitor.hash_utils import hash_manifest
-from market_monitor.io import ELIGIBLE_COLUMNS, build_feature_columns, build_scored_columns, write_csv
+from market_monitor.io import build_feature_columns, write_csv
 from market_monitor.logging_utils import JsonlLogger, get_console_logger
 from market_monitor.macro import load_silver_series
 from market_monitor.manifest import build_run_manifest, resolve_git_commit, run_id_from_inputs
@@ -36,6 +36,151 @@ class PipelineResult:
     provider: Any
     output_dir: Path
     config_hash: str
+
+
+OUTPUT_ELIGIBLE_COLUMNS = [
+    "symbol",
+    "eligible",
+    "gate_fail_reasons",
+    "theme_bucket",
+    "asset_type",
+]
+
+OUTPUT_SCORED_COLUMNS = [
+    "symbol",
+    "score_1to10",
+    "risk_flags",
+    "explanation",
+    "theme_bucket",
+    "asset_type",
+]
+
+
+def _series_or_empty(df: pd.DataFrame, column: str) -> pd.Series:
+    if column in df.columns:
+        return df[column]
+    return pd.Series("", index=df.index)
+
+
+def _normalize_pipe_series(series: pd.Series) -> pd.Series:
+    return series.fillna("").astype(str).str.replace(";", "|", regex=False)
+
+
+def _combine_pipe_series(*series_list: pd.Series) -> pd.Series:
+    if not series_list:
+        return pd.Series(dtype=str)
+    combined = pd.Series("", index=series_list[0].index)
+    for series in series_list:
+        cleaned = _normalize_pipe_series(series)
+        combined = combined.mask((combined == "") & (cleaned != ""), cleaned)
+        combined = combined.mask((combined != "") & (cleaned != ""), combined + "|" + cleaned)
+    return combined
+
+
+def _attach_watchlist_metadata(df: pd.DataFrame, universe_df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df.assign(
+            theme_bucket=pd.Series(dtype=object),
+            asset_type=pd.Series(dtype=object),
+        )
+    meta = universe_df[["symbol", "theme_bucket", "asset_type"]].drop_duplicates()
+    return df.merge(meta, on="symbol", how="left")
+
+
+def _assert_columns_match(df: pd.DataFrame, expected: list[str], label: str) -> None:
+    actual = list(df.columns)
+    if actual != expected:
+        raise RuntimeError(
+            f"{label} schema mismatch. Expected columns {expected}, got {actual}."
+        )
+
+
+def _assert_bool_like(series: pd.Series, label: str) -> None:
+    if series.empty:
+        return
+    if pd.api.types.is_bool_dtype(series):
+        return
+    allowed = {True, False, 0, 1, "0", "1", "true", "false", "True", "False"}
+    invalid = series[~series.map(lambda value: value in allowed)]
+    if not invalid.empty:
+        sample = invalid.head(3).tolist()
+        raise RuntimeError(f"{label} must be boolean-like. Invalid values: {sample}")
+
+
+def _assert_score_range(series: pd.Series) -> None:
+    if series.empty:
+        return
+    numeric = pd.to_numeric(series, errors="coerce")
+    if numeric.isna().any():
+        raise RuntimeError("score_1to10 must be numeric with no missing values.")
+    if not ((numeric % 1 == 0) & numeric.between(1, 10)).all():
+        sample = numeric[~((numeric % 1 == 0) & numeric.between(1, 10))].head(3).tolist()
+        raise RuntimeError(f"score_1to10 must be int 1-10. Invalid values: {sample}")
+
+
+def _assert_pipe_delimited(series: pd.Series, label: str) -> None:
+    if series.empty:
+        return
+    cleaned = series.fillna("").astype(str)
+    if cleaned.str.contains(";", regex=False).any():
+        raise RuntimeError(f"{label} must be pipe-delimited strings (use '|').")
+
+
+def _build_contract_eligible(scored: pd.DataFrame, universe_df: pd.DataFrame) -> pd.DataFrame:
+    if scored.empty:
+        output = pd.DataFrame(columns=OUTPUT_ELIGIBLE_COLUMNS)
+        _assert_columns_match(output, OUTPUT_ELIGIBLE_COLUMNS, "eligible.csv")
+        return output
+    merged = _attach_watchlist_metadata(scored, universe_df)
+    eligible = _series_or_empty(merged, "eligible").fillna(False).astype(bool)
+    gate_fail = _normalize_pipe_series(_series_or_empty(merged, "gate_fail_codes"))
+    data_reason = _normalize_pipe_series(_series_or_empty(merged, "data_reason_codes"))
+    gate_fail = gate_fail.mask((gate_fail == "") & (data_reason != ""), data_reason)
+    gate_fail = gate_fail.mask(eligible, "")
+    output = pd.DataFrame(
+        {
+            "symbol": merged["symbol"],
+            "eligible": eligible,
+            "gate_fail_reasons": gate_fail,
+            "theme_bucket": _series_or_empty(merged, "theme_bucket").fillna(""),
+            "asset_type": _series_or_empty(merged, "asset_type").fillna(""),
+        }
+    )
+    _assert_columns_match(output, OUTPUT_ELIGIBLE_COLUMNS, "eligible.csv")
+    _assert_bool_like(output["eligible"], "eligible.csv eligible")
+    _assert_pipe_delimited(output["gate_fail_reasons"], "eligible.csv gate_fail_reasons")
+    return output
+
+
+def _build_contract_scored(scored: pd.DataFrame, universe_df: pd.DataFrame) -> pd.DataFrame:
+    if scored.empty:
+        output = pd.DataFrame(columns=OUTPUT_SCORED_COLUMNS)
+        _assert_columns_match(output, OUTPUT_SCORED_COLUMNS, "scored.csv")
+        return output
+    merged = _attach_watchlist_metadata(scored, universe_df)
+    if "monitor_score_1_10" not in merged.columns:
+        raise RuntimeError("scored.csv requires monitor_score_1_10 to build score_1to10.")
+    score_values = pd.to_numeric(merged["monitor_score_1_10"], errors="coerce")
+    _assert_score_range(score_values)
+    explanation = _series_or_empty(merged, "notes").fillna("")
+    explanation = explanation.mask(explanation == "", _series_or_empty(merged, "data_status").fillna(""))
+    risk_flags = _combine_pipe_series(
+        _series_or_empty(merged, "risk_red_codes"),
+        _series_or_empty(merged, "risk_amber_codes"),
+    )
+    output = pd.DataFrame(
+        {
+            "symbol": merged["symbol"],
+            "score_1to10": score_values.astype(int),
+            "risk_flags": risk_flags,
+            "explanation": explanation.astype(str),
+            "theme_bucket": _series_or_empty(merged, "theme_bucket").fillna(""),
+            "asset_type": _series_or_empty(merged, "asset_type").fillna(""),
+        }
+    )
+    _assert_columns_match(output, OUTPUT_SCORED_COLUMNS, "scored.csv")
+    _assert_pipe_delimited(output["risk_flags"], "scored.csv risk_flags")
+    return output
 
 
 def run_pipeline(
@@ -175,7 +320,7 @@ def run_pipeline(
     eligible = (
         scored[["symbol", "name", "eligible", "gate_fail_codes", "notes"]]
         if not scored.empty
-        else pd.DataFrame(columns=ELIGIBLE_COLUMNS)
+        else pd.DataFrame(columns=["symbol", "name", "eligible", "gate_fail_codes", "notes"])
     )
 
     if write_legacy_outputs:
@@ -185,9 +330,12 @@ def run_pipeline(
         report_path = output_dir / "run_report.md"
         report_archive = output_dir / f"run_report_{run_id}.md"
 
-        write_csv(scored, scored_path, build_scored_columns(context_columns))
+        scored_contract = _build_contract_scored(scored, universe_df)
+        eligible_contract = _build_contract_eligible(scored, universe_df)
+
+        write_csv(scored_contract, scored_path, OUTPUT_SCORED_COLUMNS)
         write_csv(scored, features_path, build_feature_columns(context_columns))
-        write_csv(eligible, eligible_path, ELIGIBLE_COLUMNS)
+        write_csv(eligible_contract, eligible_path, OUTPUT_ELIGIBLE_COLUMNS)
 
         data_usage = {
             "offline_mode": str(config["data"].get("offline_mode", False)),
