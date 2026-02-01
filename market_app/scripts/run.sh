@@ -127,6 +127,7 @@ for symbol in symbols:
 print(f"[ok] Wrote synthetic OHLCV for {len(symbols)} symbols to {data_dir}")
 PY
 
+export MARKET_APP_OHLCV_DIR="$DATA_DIR"
 export NASDAQ_DAILY_DIR="$DATA_DIR"
 
 TEMP_OUTDIR="${OUTDIR%/}/tmp_run"

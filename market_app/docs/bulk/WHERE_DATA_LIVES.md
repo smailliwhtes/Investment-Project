@@ -15,7 +15,9 @@ These defaults are driven by `config.yaml`.
 | Universe CSV | `paths.universe_csv` | `data/universe/universe.csv` | Nasdaq universe snapshot. |
 | Watchlist | `paths.watchlist_file` | `inputs/watchlist.txt` | One symbol per line. |
 | Batch cursor | `paths.state_file` | `data/state/batch_state.json` | Cursor for batch mode. |
-| Run outputs | `paths.outputs_dir` | `outputs/` | Reports + scored/eligible CSVs. |
+| Run outputs | `data_roots.outputs_dir` | `outputs/` | Reports + scored/eligible CSVs. |
+| OHLCV data | `data_roots.ohlcv_dir` | `data/ohlcv/` | Per-symbol OHLCV CSVs (offline required). |
+| GDELT data | `data_roots.gdelt_dir` | `corpus/` | Conflict CSV + raw event zips (optional). |
 
 ## Bulk Download Entry Points (Functional)
 

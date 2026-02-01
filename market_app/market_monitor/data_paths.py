@@ -31,10 +31,15 @@ def _normalize_path(path_str: str | None, *, root: Path | None, base_dir: Path) 
 
 
 def resolve_data_paths(config: dict, base_dir: Path) -> DataPaths:
+    data_roots = config.get("data_roots", {})
+    ohlcv_root = data_roots.get("ohlcv_dir")
     paths_cfg = config.get("data", {}).get("paths", {})
     root_str = paths_cfg.get("market_app_data_root")
     root = _normalize_path(root_str, root=None, base_dir=base_dir) if root_str else None
-    nasdaq = _normalize_path(paths_cfg.get("nasdaq_daily_dir"), root=root, base_dir=base_dir)
+    if ohlcv_root:
+        nasdaq = _normalize_path(ohlcv_root, root=None, base_dir=base_dir)
+    else:
+        nasdaq = _normalize_path(paths_cfg.get("nasdaq_daily_dir"), root=root, base_dir=base_dir)
     silver_setting = paths_cfg.get("silver_prices_dir") or paths_cfg.get("silver_prices_csv")
     silver = _normalize_path(silver_setting, root=root, base_dir=base_dir)
     return DataPaths(

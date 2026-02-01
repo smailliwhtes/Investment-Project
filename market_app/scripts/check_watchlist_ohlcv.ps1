@@ -15,7 +15,9 @@ if (-not (Test-Path $VenvPy)) { $VenvPy = "python" }
 
 try {
   if ($DataDir) {
-    $env:NASDAQ_DAILY_DIR = (Resolve-Path $DataDir).Path
+    $resolvedDataDir = (Resolve-Path $DataDir).Path
+    $env:MARKET_APP_OHLCV_DIR = $resolvedDataDir
+    $env:NASDAQ_DAILY_DIR = $resolvedDataDir
   }
 
   $ArgsList = @("-m", "market_monitor.tools.check_watchlist_ohlcv", "--config", $Config)

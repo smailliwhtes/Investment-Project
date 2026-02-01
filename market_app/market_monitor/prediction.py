@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import importlib
+import importlib.util
+import os
 from pathlib import Path
 from typing import Iterable
 
@@ -21,6 +24,71 @@ class PredictionArtifacts:
     calibration_bins: pd.DataFrame
     calibration_plot_path: Path | None
     model_card: str
+
+
+def _parse_bool(value: str | None) -> bool:
+    if value is None:
+        return False
+    value = value.strip().lower()
+    return value in {"1", "true", "yes", "y"}
+
+
+def _resolve_training_backend() -> str:
+    backend = os.getenv("MARKET_APP_PREDICTION_BACKEND", "sklearn").strip().lower()
+    return backend if backend else "sklearn"
+
+
+def _load_xgboost():
+    if importlib.util.find_spec("xgboost") is None:
+        return None
+    return importlib.import_module("xgboost")
+
+
+def _resolve_tree_method(xgb) -> tuple[str, bool]:
+    prefer_gpu = _parse_bool(os.getenv("MARKET_APP_ENABLE_GPU"))
+    has_cuda = False
+    cuda_check = getattr(xgb.core, "_has_cuda_support", None)
+    if callable(cuda_check):
+        has_cuda = bool(cuda_check())
+    if prefer_gpu and has_cuda:
+        return "gpu_hist", True
+    return "hist", False
+
+
+def _build_training_models():
+    backend = _resolve_training_backend()
+    if backend == "xgboost":
+        xgb = _load_xgboost()
+        if xgb is not None:
+            tree_method, used_gpu = _resolve_tree_method(xgb)
+            backend_label = f"xgboost ({tree_method})" if used_gpu else "xgboost (cpu)"
+            ridge = xgb.XGBRegressor(
+                n_estimators=200,
+                max_depth=4,
+                learning_rate=0.08,
+                subsample=0.9,
+                colsample_bytree=0.9,
+                random_state=42,
+                tree_method=tree_method,
+            )
+            logit = xgb.XGBClassifier(
+                n_estimators=200,
+                max_depth=4,
+                learning_rate=0.08,
+                subsample=0.9,
+                colsample_bytree=0.9,
+                random_state=42,
+                tree_method=tree_method,
+                eval_metric="logloss",
+            )
+            return backend_label, ridge, logit
+
+    ridge = Ridge(alpha=1.0)
+    logit = LogisticRegression(max_iter=200)
+    fallback_label = "sklearn"
+    if backend == "xgboost":
+        fallback_label = "sklearn (xgboost unavailable)"
+    return fallback_label, ridge, logit
 
 
 def build_panel(
@@ -99,10 +167,8 @@ def train_and_predict(
     y_return = panel["forward_return_20d"].to_numpy()
     y_drawdown = panel["drawdown_exceed"].to_numpy()
 
-    ridge = Ridge(alpha=1.0)
+    training_backend, ridge, logit = _build_training_models()
     ridge.fit(X_scaled, y_return)
-
-    logit = LogisticRegression(max_iter=200)
     logit.fit(X_scaled, y_drawdown)
 
     pred_return = ridge.predict(X_scaled)
@@ -130,6 +196,7 @@ def train_and_predict(
         metrics,
         folds,
         embargo_days,
+        training_backend,
     )
 
     return PredictionArtifacts(
@@ -272,6 +339,7 @@ def _model_card(
     metrics: dict[str, float],
     folds: int,
     embargo_days: int,
+    training_backend: str,
 ) -> str:
     lines = [
         "# Model Card",
@@ -283,6 +351,7 @@ def _model_card(
         f"- Samples: {len(panel)}",
         f"- Unique symbols: {panel['symbol'].nunique()}",
         f"- Feature count: {len(feature_cols)}",
+        f"- Training backend: {training_backend}",
         "",
         "## Targets",
         "- forward_return_20d (ridge regression)",
