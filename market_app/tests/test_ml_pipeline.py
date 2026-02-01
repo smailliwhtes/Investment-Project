@@ -81,6 +81,7 @@ def test_ml_train_predict_and_merge(tmp_path: Path) -> None:
     artifacts, pipeline = ml_train.train_model(
         dataset,
         folds=2,
+        gap=0,
         model_type="sklearn_gb",
         random_seed=7,
         model_params={},
@@ -101,11 +102,17 @@ def test_ml_train_predict_and_merge(tmp_path: Path) -> None:
     assert (ml_dir / "metrics.json").exists()
     assert (ml_dir / "feature_importance.csv").exists()
     assert (ml_dir / "train_manifest.json").exists()
+    assert (ml_dir / "report.md").exists()
     assert (ml_dir / "predictions_by_day.parquet").exists()
     assert (ml_dir / "predictions_latest.csv").exists()
 
     latest = pd.read_csv(ml_dir / "predictions_latest.csv")
     assert set(latest.columns) == {"symbol", "day", "yhat"}
+
+    report_text = (ml_dir / "report.md").read_text(encoding="utf-8")
+    assert artifacts.model_id in report_text
+    assert artifacts.featureset_id in report_text
+    assert "fold 1" in report_text
 
     scored = pd.DataFrame({"symbol": ["AAA", "BBB"]})
     merged = _attach_ml_predictions(scored, output_dir)

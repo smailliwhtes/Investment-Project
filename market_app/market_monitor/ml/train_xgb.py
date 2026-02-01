@@ -26,6 +26,7 @@ class TrainingArtifacts:
     metrics: dict[str, Any]
     feature_importance: pd.DataFrame
     train_manifest: dict[str, Any]
+    decile_table: list[dict[str, Any]]
 
 
 def _parse_bool(value: str | None) -> bool:
@@ -127,6 +128,7 @@ def train_model(
     dataset: DatasetInfo,
     *,
     folds: int,
+    gap: int,
     model_type: str,
     random_seed: int,
     model_params: dict[str, Any],
@@ -137,8 +139,9 @@ def train_model(
     df = df.sort_values([dataset.day_column, dataset.symbol_column])
     feature_cols = dataset.features
 
-    splits = build_walk_forward_splits(df[dataset.day_column].unique(), folds)
+    splits = build_walk_forward_splits(df[dataset.day_column].unique(), folds, gap=gap)
     metrics: list[dict[str, Any]] = []
+    fold_predictions: list[dict[str, float]] = []
 
     X_all = df[feature_cols].to_numpy()
     y_all = df[dataset.label].to_numpy()
@@ -164,6 +167,10 @@ def train_model(
                 "val_days": [split.val_days[0], split.val_days[-1]],
                 **fold_metrics,
             }
+        )
+        fold_predictions.extend(
+            {"y_true": float(true), "y_pred": float(pred)}
+            for true, pred in zip(y_val, y_pred)
         )
 
     model = _build_model(model_type, random_seed, model_params)
@@ -192,6 +199,26 @@ def train_model(
         "aggregate": aggregate,
     }
 
+    decile_table: list[dict[str, Any]] = []
+    if fold_predictions:
+        pred_df = pd.DataFrame(fold_predictions)
+        try:
+            pred_df["decile"] = pd.qcut(
+                pred_df["y_pred"], 10, labels=False, duplicates="drop"
+            ).astype(int) + 1
+        except ValueError:
+            pred_df["decile"] = 1
+        grouped = pred_df.groupby("decile", sort=True)
+        decile_table = [
+            {
+                "decile": int(decile),
+                "count": int(len(group)),
+                "mean_pred": float(group["y_pred"].mean()),
+                "mean_actual": float(group["y_true"].mean()),
+            }
+            for decile, group in grouped
+        ]
+
     model_step = final_pipeline.named_steps["model"]
     feature_importance = _collect_feature_importance(model_step, feature_cols)
 
@@ -217,6 +244,7 @@ def train_model(
             }
             for split in splits
         ],
+        "gap": gap,
         "model_type": model_type,
         "model_params": model_params,
         "seed": random_seed,
@@ -228,6 +256,7 @@ def train_model(
         metrics=metrics_payload,
         feature_importance=feature_importance,
         train_manifest=train_manifest,
+        decile_table=decile_table,
     ), final_pipeline
 
 
@@ -273,9 +302,62 @@ def _write_artifacts(
                 "metrics": "ml/metrics.json",
                 "feature_importance": "ml/feature_importance.csv",
                 "model": "ml/model.json",
+                "report": "ml/report.md",
             }
         },
     )
+    _write_report(output_dir=output_dir, artifacts=artifacts)
+
+
+def _write_report(*, output_dir: Path, artifacts: TrainingArtifacts) -> None:
+    ml_dir = output_dir / "ml"
+    coverage = artifacts.train_manifest.get("coverage", {})
+    split_bounds = artifacts.train_manifest.get("split_boundaries", [])
+    metrics = artifacts.metrics
+
+    lines = [
+        "# ML Evaluation Report",
+        "",
+        "## Overview",
+        f"- dataset_window: {coverage.get('min_day')} -> {coverage.get('max_day')}",
+        f"- horizon_days: {artifacts.train_manifest.get('horizon_days')}",
+        f"- featureset_id: {artifacts.featureset_id}",
+        f"- model_id: {artifacts.model_id}",
+        f"- gap: {artifacts.train_manifest.get('gap')}",
+        "",
+        "## Walk-forward folds",
+    ]
+    for split in split_bounds:
+        lines.append(
+            f"- fold {split['fold']}: train {split['train_start']} -> {split['train_end']} | "
+            f"val {split['val_start']} -> {split['val_end']}"
+        )
+    lines.extend(["", "## Metrics"])
+    for fold in metrics.get("folds", []):
+        lines.append(
+            f"- fold {fold['fold']}: rmse={fold['rmse']:.4f}, mae={fold['mae']:.4f}, "
+            f"r2={fold['r2']:.4f} (train {fold['train_days'][0]} -> {fold['train_days'][1]}, "
+            f"val {fold['val_days'][0]} -> {fold['val_days'][1]})"
+        )
+    aggregate = metrics.get("aggregate", {})
+    lines.append(
+        f"- aggregate: rmse={aggregate.get('rmse', 0.0):.4f}, "
+        f"mae={aggregate.get('mae', 0.0):.4f}, r2={aggregate.get('r2', 0.0):.4f}"
+    )
+
+    lines.extend(["", "## Prediction deciles (validation folds)"])
+    if artifacts.decile_table:
+        lines.append("| decile | count | mean_pred | mean_actual |")
+        lines.append("| --- | --- | --- | --- |")
+        for row in artifacts.decile_table:
+            lines.append(
+                f"| {row['decile']} | {row['count']} | "
+                f"{row['mean_pred']:.6f} | {row['mean_actual']:.6f} |"
+            )
+    else:
+        lines.append("No validation predictions available to compute deciles.")
+
+    (ml_dir / "report.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -284,6 +366,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", required=True, help="Run output directory (outputs/<run_id>).")
     parser.add_argument("--horizon-days", type=int, default=5, help="Forward return horizon (days).")
     parser.add_argument("--folds", type=int, default=3, help="Number of walk-forward folds.")
+    parser.add_argument("--gap", type=int, default=0, help="Embargo gap between train and validation.")
     parser.add_argument(
         "--model-type",
         default="xgboost",
@@ -314,6 +397,7 @@ def main() -> int:
     artifacts, pipeline = train_model(
         dataset,
         folds=args.folds,
+        gap=args.gap,
         model_type=args.model_type,
         random_seed=args.seed,
         model_params=model_params,

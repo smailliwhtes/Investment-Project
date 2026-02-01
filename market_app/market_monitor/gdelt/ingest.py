@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from market_monitor.gdelt.utils import (
     parse_day,
     utc_now_iso,
 )
+from market_monitor.gdelt.doctor import warn_if_unusable
 
 
 @dataclass
@@ -36,13 +38,17 @@ class IngestResult:
     max_day: str | None
 
 
-def _resolve_schema_columns(schema_type: str, has_header: bool) -> list[str] | None:
+def _resolve_schema_columns(
+    schema_type: str,
+    has_header: bool,
+    column_count: int,
+) -> list[str] | None:
     if has_header:
         return None
     if schema_type == "events":
-        return EVENTS_HEADER_COLUMNS
+        return EVENTS_HEADER_COLUMNS[:column_count]
     if schema_type == "gkg":
-        return GKG_HEADER_COLUMNS
+        return GKG_HEADER_COLUMNS[:column_count]
     return None
 
 
@@ -260,7 +266,9 @@ def ingest_gdelt(
 
     for path in files:
         file_spec = analyze_file(path)
-        schema_columns = _resolve_schema_columns(schema_type, file_spec.has_header)
+        schema_columns = _resolve_schema_columns(
+            schema_type, file_spec.has_header, file_spec.column_count
+        )
         try:
             reader = pd.read_csv(
                 path,
@@ -375,6 +383,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     raw_dir = Path(args.raw_dir).expanduser()
     out_dir = Path(args.out_dir).expanduser()
+    env_raw = os.getenv("MARKET_APP_GDELT_RAW_DIR") or os.getenv("MARKET_APP_GDELT_EVENTS_RAW_DIR")
+    if env_raw:
+        warn_if_unusable(Path(env_raw).expanduser(), file_glob="*.csv", context="gdelt.ingest")
     try:
         result = ingest_gdelt(
             raw_dir=raw_dir,

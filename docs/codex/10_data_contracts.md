@@ -67,6 +67,20 @@ includes the locked path and a remediation step.
 Important:
 - Strict no-leakage joining: when creating features for date D, only use GDELT rows with day == D.
 
+### Corpus Doctor (raw vs stable vs normalized)
+Definitions:
+- **Raw corpus**: user-provided files (input only). Example: `C:\Users\micha\OneDrive\Desktop\NLP Corpus`.
+- **Stable corpus**: files that are parseable with headers + consistent delimiter (READY_STABLE verdict).
+- **Normalized corpus**: deterministic, partitioned cache that downstream features/joins consume.
+
+Normalized cache layout:
+- `<gdelt_dir>/events/day=YYYY-MM-DD/part-00000.parquet` (or `.csv`)
+- `<gdelt_dir>/events/manifest.json` (includes coverage, rows, columns/dtypes, content_hash)
+
+Example environment configuration:
+- `MARKET_APP_GDELT_RAW_DIR="C:\Users\micha\OneDrive\Desktop\NLP Corpus"`
+- `MARKET_APP_GDELT_DIR="C:\Users\micha\OneDrive\Desktop\NLP Corpus_normalized"`
+
 ## E) BigQuery export notes (for provisioning)
 - Public datasets are accessed under bigquery-public-data, and dataset location constraints apply (commonly US multi-region).
 - Use SQL exports filtered by date range and only required columns to control cost.

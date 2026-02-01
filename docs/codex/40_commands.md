@@ -51,6 +51,16 @@ python -m market_monitor.gdelt.features_daily --gdelt-dir data/gdelt --out data/
 python -m market_monitor.features.join_exogenous --market-path data/processed/market_daily_features.parquet --gdelt-path data/gdelt/features_daily.csv --out-dir data/features/joined --lags 1,3,7 --rolling-window 7 --rolling-mean --rolling-sum
 ```
 
+## Validate Local Corpus (offline)
+Run from the `market_app` directory:
+
+```bash
+python -m market_monitor.gdelt.doctor audit --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --glob "*.csv"
+python -m market_monitor.gdelt.doctor normalize --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --gdelt-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus_normalized" --format events --glob "*.csv" --write csv
+python -m market_monitor.gdelt.doctor verify-cache --gdelt-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus_normalized"
+python -m market_monitor.gdelt.features_daily --gdelt-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus_normalized" --out data/gdelt/features_daily.csv
+```
+
 ## Expected outputs after run.ps1
 - outputs/<run_id>/eligible.csv
 - outputs/<run_id>/scored.csv
