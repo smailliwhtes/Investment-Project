@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Iterable
@@ -22,6 +23,7 @@ from market_monitor.gdelt.utils import (
     parse_day,
     utc_now_iso,
 )
+from market_monitor.gdelt.doctor import warn_if_unusable
 
 
 @dataclass
@@ -40,13 +42,17 @@ class ProfileSummary:
     required_field_present: dict[str, bool]
 
 
-def _resolve_schema_columns(schema_type: str, has_header: bool) -> list[str] | None:
+def _resolve_schema_columns(
+    schema_type: str,
+    has_header: bool,
+    column_count: int,
+) -> list[str] | None:
     if has_header:
         return None
     if schema_type == "events":
-        return EVENTS_HEADER_COLUMNS
+        return EVENTS_HEADER_COLUMNS[:column_count]
     if schema_type == "gkg":
-        return GKG_HEADER_COLUMNS
+        return GKG_HEADER_COLUMNS[:column_count]
     return None
 
 
@@ -128,7 +134,7 @@ def profile_gdelt(
         total_rows += rows
         estimated = estimated or rows_estimated
 
-        schema_columns = _resolve_schema_columns(file_schema, has_header)
+        schema_columns = _resolve_schema_columns(file_schema, has_header, column_count)
         required_fields = _load_required_fields(file_schema)
 
         try:
@@ -233,6 +239,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     raw_dir = Path(args.raw_dir).expanduser()
+    env_raw = os.getenv("MARKET_APP_GDELT_RAW_DIR") or os.getenv("MARKET_APP_GDELT_EVENTS_RAW_DIR")
+    if env_raw:
+        warn_if_unusable(Path(env_raw).expanduser(), file_glob="*.csv", context="gdelt.profile")
     summary = profile_gdelt(raw_dir=raw_dir, file_glob=args.glob, format_hint=args.format)
     if summary is None:
         print("[gdelt.profile] no files matched.")

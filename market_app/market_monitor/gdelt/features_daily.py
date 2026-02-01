@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,7 @@ from market_monitor.gdelt.utils import (
     normalize_event_root_code,
     utc_now_iso,
 )
+from market_monitor.gdelt.doctor import warn_if_unusable
 
 
 @dataclass
@@ -169,6 +171,9 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    env_raw = os.getenv("MARKET_APP_GDELT_RAW_DIR") or os.getenv("MARKET_APP_GDELT_EVENTS_RAW_DIR")
+    if env_raw:
+        warn_if_unusable(Path(env_raw).expanduser(), file_glob="*.csv", context="gdelt.features_daily")
     try:
         result = build_daily_features(
             gdelt_dir=Path(args.gdelt_dir).expanduser(),

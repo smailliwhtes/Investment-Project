@@ -14,10 +14,16 @@ class WalkForwardSplit:
     val_days: list[str]
 
 
-def build_walk_forward_splits(days: Iterable[str], folds: int) -> list[WalkForwardSplit]:
+def build_walk_forward_splits(
+    days: Iterable[str],
+    folds: int,
+    gap: int = 0,
+) -> list[WalkForwardSplit]:
     days_sorted = sorted(set(days))
     if folds < 1:
         raise ValueError("folds must be >= 1")
+    if gap < 0:
+        raise ValueError("gap must be >= 0")
     if len(days_sorted) < folds + 1:
         raise ValueError("Not enough unique days to build walk-forward splits")
 
@@ -30,7 +36,8 @@ def build_walk_forward_splits(days: Iterable[str], folds: int) -> list[WalkForwa
         train_end = boundaries[fold_idx]
         val_end = boundaries[fold_idx + 1]
         train_days = days_sorted[:train_end]
-        val_days = days_sorted[train_end:val_end]
+        val_start = train_end + gap
+        val_days = days_sorted[val_start:val_end]
         if not train_days or not val_days:
             raise ValueError("Walk-forward split produced empty train or validation window")
         splits.append(WalkForwardSplit(fold=fold_idx + 1, train_days=train_days, val_days=val_days))
