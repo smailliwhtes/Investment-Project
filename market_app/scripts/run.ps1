@@ -1,5 +1,5 @@
 param(
-  [string]$Config = ".\config\config.yaml",
+  [string]$Config = ".\config.example.yaml",
   [string]$RunId = "",
   [int]$TopN = 15,
   [switch]$Offline,
@@ -44,18 +44,69 @@ if (-not (Test-Path $ResolvedWatchlist)) {
   throw "Watchlist file not found: $ResolvedWatchlist"
 }
 
-Write-Host "[stage] provisioning data for watchlist"
-& (Join-Path $Root "provision_data.ps1") -Config $ResolvedConfig -WatchlistPath $ResolvedWatchlist
-if ($LASTEXITCODE -ne 0) {
-  throw "Provisioning failed with exit code $LASTEXITCODE."
+if (-not $Offline) {
+  Write-Host "[stage] provisioning data for watchlist"
+  & (Join-Path $Root "provision_data.ps1") -Config $ResolvedConfig -WatchlistPath $ResolvedWatchlist
+  if ($LASTEXITCODE -ne 0) {
+    throw "Provisioning failed with exit code $LASTEXITCODE."
+  }
+} else {
+  Write-Host "[skip] offline mode enabled; skipping data provisioning"
 }
 
-$args = @("-m","market_app.cli","--config",$Config,"--top_n",$TopN)
-if ($RunId) { $args += @("--run_id",$RunId) }
-if ($Offline) { $args += "--offline" }
-if ($Variant -eq "opportunistic") { $args += "--opportunistic" }
-else { $args += "--conservative" }
+$OutputsRoot = Join-Path $Root "..\outputs"
+$TempOutdir = Join-Path $OutputsRoot "tmp_run"
+$CacheDir = Join-Path $OutputsRoot "cache"
 
-$env:MARKET_APP_WATCHLIST_FILE = $ResolvedWatchlist
+if (Test-Path $TempOutdir) {
+  Remove-Item -Recurse -Force $TempOutdir
+}
+New-Item -ItemType Directory -Path $TempOutdir | Out-Null
+
+$args = @(
+  "-m","market_monitor","run",
+  "--config",$ResolvedConfig,
+  "--watchlist",$ResolvedWatchlist,
+  "--outdir",$TempOutdir,
+  "--cache-dir",$CacheDir,
+  "--mode","watchlist",
+  "--log-level","INFO"
+)
+if ($RunId) { $args += @("--run-id",$RunId) }
+if ($Offline) { $args += "--offline" }
 
 & $VenvPy @args
+if ($LASTEXITCODE -ne 0) {
+  throw "Pipeline failed with exit code $LASTEXITCODE."
+}
+
+$ResolvedRunId = & $VenvPy -c "import json,sys; from pathlib import Path; manifest=Path(sys.argv[1])/'run_manifest.json'; data=json.loads(manifest.read_text()); print(data.get('run_id',''))" $TempOutdir
+if (-not $ResolvedRunId) {
+  throw "run_id missing from run_manifest.json"
+}
+
+$FinalOutdir = Join-Path $OutputsRoot $ResolvedRunId
+if (-not (Test-Path $FinalOutdir)) {
+  New-Item -ItemType Directory -Path $FinalOutdir | Out-Null
+}
+
+Get-ChildItem -Path $TempOutdir -Force | Move-Item -Destination $FinalOutdir
+
+$EligiblePath = Join-Path $FinalOutdir "eligible_$ResolvedRunId.csv"
+if (Test-Path $EligiblePath) {
+  Rename-Item -Path $EligiblePath -NewName "eligible.csv"
+}
+
+$ScoredPath = Join-Path $FinalOutdir "scored_$ResolvedRunId.csv"
+if (Test-Path $ScoredPath) {
+  Rename-Item -Path $ScoredPath -NewName "scored.csv"
+}
+
+$ReportPath = Join-Path $FinalOutdir "run_report.md"
+if (Test-Path $ReportPath) {
+  Rename-Item -Path $ReportPath -NewName "report.md"
+}
+
+Remove-Item -Recurse -Force $TempOutdir
+
+Write-Host "[done] Outputs written to $FinalOutdir"

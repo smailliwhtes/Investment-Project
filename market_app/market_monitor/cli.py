@@ -115,7 +115,7 @@ def run_pipeline(args: argparse.Namespace) -> int:
             mode=args.mode,
             watchlist_path=watchlist_path,
             output_dir=outputs_dir,
-            run_id=None,
+            run_id=getattr(args, "run_id", None),
             logger=logger,
             write_legacy_outputs=True,
         )
@@ -546,6 +546,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--history-min-days", type=int)
     run_parser.add_argument("--outdir")
     run_parser.add_argument("--cache-dir")
+    run_parser.add_argument("--run-id")
     run_parser.add_argument(
         "--offline",
         action="store_true",

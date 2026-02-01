@@ -1,3 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "market-app"
+version = "0.1.0"
+description = "Offline-first market monitor and watchlist tooling."
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+package-dir = {"" = ".", "market_app" = "src/market_app"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["market_monitor*", "market_app*"]
+
 [tool.black]
 line-length = 100
 target-version = ["py310"]

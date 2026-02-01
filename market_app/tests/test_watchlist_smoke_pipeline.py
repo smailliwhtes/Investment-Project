@@ -3,21 +3,41 @@ from __future__ import annotations
 from argparse import Namespace
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 
 from market_monitor.cli import run_pipeline
 
 
+def _build_synthetic_ohlcv(symbol: str, rows: int = 300) -> pd.DataFrame:
+    dates = pd.date_range("2020-01-01", periods=rows, freq="B")
+    base = 100 + (sum(ord(letter) for letter in symbol) % 25)
+    trend = np.linspace(0, 12, rows)
+    close = base + trend
+    open_ = close * 0.995
+    high = close * 1.01
+    low = close * 0.99
+    volume = 1_000_000 + np.arange(rows) * 10
+    return pd.DataFrame(
+        {
+            "Date": dates,
+            "Open": open_,
+            "High": high,
+            "Low": low,
+            "Close": close,
+            "Volume": volume,
+        }
+    )
+
+
 def test_watchlist_smoke_pipeline(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     watchlist_path = repo_root / "watchlists" / "watchlist_smoke.csv"
-    fixture_path = repo_root / "tests" / "fixtures" / "ohlcv.csv"
-
     data_dir = tmp_path / "ohlcv"
     data_dir.mkdir(parents=True, exist_ok=True)
-    fixture_df = pd.read_csv(fixture_path)
     for symbol in ["SPY", "TLT", "GLD"]:
+        fixture_df = _build_synthetic_ohlcv(symbol)
         fixture_df.to_csv(data_dir / f"{symbol}.csv", index=False)
 
     outputs_dir = tmp_path / "outputs"
