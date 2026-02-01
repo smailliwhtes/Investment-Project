@@ -5,9 +5,10 @@ import json
 import os
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import pandas as pd
+if TYPE_CHECKING:
+    import pandas as pd
 
 from market_monitor.gdelt.utils import (
     EVENTS_HEADER_COLUMNS,
@@ -117,7 +118,8 @@ def _load_sample_frame(
     schema_type: str,
     column_count: int,
     max_rows: int,
-) -> pd.DataFrame:
+) -> "pd.DataFrame":
+    import pandas as pd
     schema_columns = _schema_columns(schema_type, has_header, column_count)
     return pd.read_csv(
         path,
@@ -158,10 +160,11 @@ def _detect_quoting_irregularities(path: Path, delimiter: str) -> bool:
 
 
 def _parse_date_stats(
-    frame: pd.DataFrame,
+    frame: "pd.DataFrame",
     schema_type: str,
     mapping: dict[str, str],
 ) -> DateStats:
+    import pandas as pd
     if schema_type == "events":
         source = mapping.get("day")
         if source is None:
@@ -183,7 +186,7 @@ def _parse_date_stats(
 
 
 def _required_field_report(
-    frame: pd.DataFrame,
+    frame: "pd.DataFrame",
     *,
     schema_type: str,
     mapping: dict[str, str],
@@ -221,7 +224,7 @@ def _events_capabilities(mapping: dict[str, str]) -> dict[str, bool]:
     }
 
 
-def _gkg_semicolon_fields(frame: pd.DataFrame, mapping: dict[str, str]) -> dict[str, bool]:
+def _gkg_semicolon_fields(frame: "pd.DataFrame", mapping: dict[str, str]) -> dict[str, bool]:
     results: dict[str, bool] = {}
     for field in ["themes", "persons", "organizations", "locations"]:
         source = mapping.get(field)

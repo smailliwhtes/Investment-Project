@@ -1,11 +1,16 @@
 # 40_commands — Commands Codex must run and report
 
+Supported Python versions: 3.10–3.13 (NumPy/Pandas wheels). Use the bootstrap scripts to enforce this range.
+
 ## Windows (local)
 From repo root:
 
 ```powershell
 cd market_app
 ```
+
+### Bootstrap venv (Python 3.12/3.13 required)
+.\scripts\bootstrap.ps1
 
 ### Install / run (offline)
 .\scripts\run.ps1 -WatchlistPath .\watchlists\watchlist_smoke.csv -Offline
@@ -24,6 +29,9 @@ From repo root:
 cd market_app
 ```
 
+### Bootstrap venv (Python 3.12/3.13 required)
+bash scripts/bootstrap.sh
+
 ### Install / run (offline)
 bash scripts/run.sh --watchlist watchlists/watchlist_smoke.csv
 
@@ -37,6 +45,9 @@ python -m market_monitor.ml.predict --joined-path data/features/joined --output-
 ## Python test commands
 Run from the `market_app` directory:
 python -m pytest -q
+
+### Environment doctor
+python -m market_monitor.env_doctor --self-test
 
 ### Minimal smoke subset (if you keep explicit smoke tests)
 python -m pytest -q tests/test_watchlist_validator.py tests/test_watchlist_smoke_pipeline.py

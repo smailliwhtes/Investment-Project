@@ -6,9 +6,10 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
-import pandas as pd
+if TYPE_CHECKING:
+    import pandas as pd
 
 from market_monitor.hash_utils import hash_text
 
@@ -291,7 +292,8 @@ def estimate_rows(path: Path, *, delimiter: str) -> tuple[int, bool]:
     return estimated, is_estimated
 
 
-def parse_day(series: pd.Series) -> pd.Series:
+def parse_day(series: "pd.Series") -> "pd.Series":
+    import pandas as pd
     if series.dtype.kind in {"i", "u", "f"}:
         as_str = series.dropna().astype(int).astype(str)
         parsed = pd.to_datetime(as_str, format="%Y%m%d", errors="coerce")
@@ -330,13 +332,16 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def normalize_event_root_code(value: pd.Series) -> pd.Series:
+def normalize_event_root_code(value: "pd.Series") -> "pd.Series":
+    import pandas as pd
     cleaned = value.astype(str).str.strip()
     cleaned = cleaned.replace({"nan": None, "None": None})
     return cleaned.apply(lambda item: item.zfill(2) if isinstance(item, str) and item.isdigit() and len(item) == 1 else item)
 
 
-def coerce_numeric(series: pd.Series) -> pd.Series:
+def coerce_numeric(series: "pd.Series") -> "pd.Series":
+    import pandas as pd
+
     return pd.to_numeric(series, errors="coerce")
 
 
