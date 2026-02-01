@@ -33,6 +33,15 @@ python -m pytest -q
 ### Minimal smoke subset (if you keep explicit smoke tests)
 python -m pytest -q tests/test_watchlist_validator.py tests/test_watchlist_smoke_pipeline.py
 
+## Local GDELT (offline)
+Run from the `market_app` directory:
+
+```bash
+python -m market_monitor.gdelt.profile --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --glob "*.csv"
+python -m market_monitor.gdelt.ingest --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --out-dir data/gdelt --format events --glob "*.csv" --write csv
+python -m market_monitor.gdelt.features_daily --gdelt-dir data/gdelt --out data/gdelt/features_daily.csv
+```
+
 ## Expected outputs after run.ps1
 - outputs/<run_id>/eligible.csv
 - outputs/<run_id>/scored.csv

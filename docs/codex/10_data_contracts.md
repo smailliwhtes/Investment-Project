@@ -37,19 +37,35 @@ Each cache directory must have a manifest JSON:
 - path: data/<domain>/manifest.json
 - includes: schema_version, created_utc, source, coverage (min_date/max_date), row_counts, checksum/schema_hash
 
-## D) GDELT offline datasets (planned; exported via BigQuery or ingest)
-We will treat GDELT as offline tables stored locally (prefer Parquet) partitioned by day:
-- data/gdelt/events/day=YYYY-MM-DD/part-*.parquet
-- data/gdelt/gkg/day=YYYY-MM-DD/part-*.parquet
+## D) GDELT offline datasets (local ingest)
+Local GDELT data is ingested offline from user-provided CSVs. The ingest step supports headered CSVs and raw
+GDELT events files that are tab-delimited even if the extension is `.csv`. Outputs are partitioned by day:
+- data/gdelt/events/day=YYYY-MM-DD/part-00000.parquet (or `.csv`)
+- data/gdelt/gkg/day=YYYY-MM-DD/part-00000.parquet (or `.csv`)
 
-Minimal columns to retain (events):
-- day/date, event identifiers, actor fields, event_code, goldstein_scale, geos, mentions count (as available)
+Events canonical columns (snake_case):
+- day, event_id, event_code, event_base_code, event_root_code, quad_class, goldstein_scale, avg_tone,
+  num_mentions, num_sources, num_articles, actor1_country_code, actor2_country_code,
+  actiongeo_country_code, source_url
 
-Minimal columns to retain (gkg):
-- day/date, document identifiers, themes, entities/organizations/persons (as available), tone-like fields
+GKG canonical columns (if present):
+- datetime, document_identifier, themes, persons, organizations, locations, tone
+
+Manifests:
+- data/gdelt/events/manifest.json (schema_version, created_utc, raw_dir, file_glob, coverage, row_counts,
+  columns, content_hash)
+- data/gdelt/gkg/manifest.json (same structure as events)
+
+Config/env:
+- data_roots.gdelt_raw_dir (raw CSV input directory)
+- data_roots.gdelt_dir (normalized cache output directory, default: data/gdelt)
+- MARKET_APP_GDELT_RAW_DIR, MARKET_APP_GDELT_DIR override the paths above
+
+Note: OneDrive/Dropbox sync can lock files. Ingestion opens files read-only and will fail with a message that
+includes the locked path and a remediation step.
 
 Important:
-- Strict no-leakage joining: when creating features for date D, only use GDELT rows with timestamps <= D.
+- Strict no-leakage joining: when creating features for date D, only use GDELT rows with day == D.
 
 ## E) BigQuery export notes (for provisioning)
 - Public datasets are accessed under bigquery-public-data, and dataset location constraints apply (commonly US multi-region).
