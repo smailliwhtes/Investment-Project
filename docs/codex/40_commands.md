@@ -40,6 +40,7 @@ Run from the `market_app` directory:
 python -m market_monitor.gdelt.profile --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --glob "*.csv"
 python -m market_monitor.gdelt.ingest --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --out-dir data/gdelt --format events --glob "*.csv" --write csv
 python -m market_monitor.gdelt.features_daily --gdelt-dir data/gdelt --out data/gdelt/features_daily.csv
+python -m market_monitor.features.join_exogenous --market-path data/processed/market_daily_features.parquet --gdelt-path data/gdelt/features_daily.csv --out-dir data/features/joined --lags 1,3,7 --rolling-window 7 --rolling-mean --rolling-sum
 ```
 
 ## Expected outputs after run.ps1
