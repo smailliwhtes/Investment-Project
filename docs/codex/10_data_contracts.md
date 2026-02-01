@@ -72,3 +72,27 @@ Important:
 - Use SQL exports filtered by date range and only required columns to control cost.
 
 GDELT’s events/mentions/GKG tables are available in Google BigQuery, and BigQuery public datasets have defined dataset locations/constraints (e.g., US multi-region).
+
+## F) Joined market + GDELT daily features (PR5)
+Join output location:
+- data/features/joined/day=YYYY-MM-DD/part-00000.parquet
+- data/features/joined/manifest.json
+
+Schema (long-form):
+- day (YYYY-MM-DD, join key)
+- symbol (uppercase ticker)
+- market_features... (all per-symbol OHLCV-derived daily features)
+- gdelt_features... (daily GDELT features, plus lagged/rolling variants)
+
+Lag/rolling rules:
+- GDELT lags: per feature, t-1/t-3/t-7 (configurable)
+- Optional rolling mean/sum for count-like features (default window 7)
+- **No leakage**: only GDELT rows with day <= D may be used to build features for day D
+
+Manifest fields:
+- schema_version, created_utc
+- coverage (min_day, max_day, n_days)
+- row_counts (total_rows, rows_per_day)
+- columns
+- inputs (market_path, gdelt_path, file fingerprints)
+- config (lags, rolling settings)
