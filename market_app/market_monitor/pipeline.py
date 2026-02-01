@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -53,6 +54,9 @@ OUTPUT_SCORED_COLUMNS = [
     "explanation",
     "theme_bucket",
     "asset_type",
+    "ml_signal",
+    "ml_model_id",
+    "ml_featureset_id",
 ]
 
 
@@ -176,11 +180,43 @@ def _build_contract_scored(scored: pd.DataFrame, universe_df: pd.DataFrame) -> p
             "explanation": explanation.astype(str),
             "theme_bucket": _series_or_empty(merged, "theme_bucket").fillna(""),
             "asset_type": _series_or_empty(merged, "asset_type").fillna(""),
+            "ml_signal": pd.to_numeric(_series_or_empty(merged, "ml_signal"), errors="coerce"),
+            "ml_model_id": _series_or_empty(merged, "ml_model_id"),
+            "ml_featureset_id": _series_or_empty(merged, "ml_featureset_id"),
         }
     )
     _assert_columns_match(output, OUTPUT_SCORED_COLUMNS, "scored.csv")
     _assert_pipe_delimited(output["risk_flags"], "scored.csv risk_flags")
     return output
+
+
+def _attach_ml_predictions(scored: pd.DataFrame, output_dir: Path) -> pd.DataFrame:
+    ml_columns = ["ml_signal", "ml_model_id", "ml_featureset_id"]
+    if scored.empty:
+        return scored.assign(**{col: pd.Series(dtype=object) for col in ml_columns})
+
+    predictions_path = output_dir / "ml" / "predictions_latest.csv"
+    if not predictions_path.exists():
+        return scored.assign(**{col: None for col in ml_columns})
+
+    predictions = pd.read_csv(predictions_path)
+    if "symbol" not in predictions.columns or "yhat" not in predictions.columns:
+        raise RuntimeError("ml/predictions_latest.csv missing required columns: symbol, yhat")
+    predictions = predictions.rename(columns={"yhat": "ml_signal"})
+    predictions = predictions[["symbol", "ml_signal"]]
+
+    model_id = None
+    featureset_id = None
+    manifest_path = output_dir / "ml" / "predict_manifest.json"
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        model_id = manifest.get("model_id")
+        featureset_id = manifest.get("featureset_id")
+
+    merged = scored.merge(predictions, on="symbol", how="left")
+    merged["ml_model_id"] = model_id
+    merged["ml_featureset_id"] = featureset_id
+    return merged
 
 
 def run_pipeline(
@@ -316,6 +352,8 @@ def run_pipeline(
             right_on="Date",
             how="left",
         ).drop(columns=["Date"])
+
+    scored = _attach_ml_predictions(scored, output_dir)
 
     eligible = (
         scored[["symbol", "name", "eligible", "gate_fail_codes", "notes"]]

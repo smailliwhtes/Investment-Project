@@ -97,6 +97,9 @@ BASE_SCORED_COLUMNS = BASE_FEATURE_COLUMNS + [
     "monitor_score_1_10",
     "monitor_priority_1_10",
     "score_components",
+    "ml_signal",
+    "ml_model_id",
+    "ml_featureset_id",
 ]
 
 ELIGIBLE_COLUMNS = [
