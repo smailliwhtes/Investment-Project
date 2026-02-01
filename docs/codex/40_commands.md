@@ -13,6 +13,10 @@ cd market_app
 ### Offline data correctness check (must fail nonzero if missing)
 .\scripts\check_watchlist_ohlcv.ps1 -WatchlistPath .\watchlists\watchlist_smoke.csv -DataDir .\outputs\ohlcv_smoke
 
+### ML train/predict (offline)
+python -m market_monitor.ml.train_xgb --joined-path .\\data\\features\\joined --output-dir .\\outputs\\<run_id>
+python -m market_monitor.ml.predict --joined-path .\\data\\features\\joined --output-dir .\\outputs\\<run_id>
+
 ## Linux/macOS (Codex cloud / CI)
 From repo root:
 
@@ -25,6 +29,10 @@ bash scripts/run.sh --watchlist watchlists/watchlist_smoke.csv
 
 ### Offline data correctness check (must fail nonzero if missing)
 bash scripts/check_watchlist_ohlcv.sh --watchlist watchlists/watchlist_smoke.csv --data-dir outputs/ohlcv_smoke
+
+### ML train/predict (offline)
+python -m market_monitor.ml.train_xgb --joined-path data/features/joined --output-dir outputs/<run_id>
+python -m market_monitor.ml.predict --joined-path data/features/joined --output-dir outputs/<run_id>
 
 ## Python test commands
 Run from the `market_app` directory:

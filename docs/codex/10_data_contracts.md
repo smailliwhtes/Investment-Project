@@ -96,3 +96,27 @@ Manifest fields:
 - columns
 - inputs (market_path, gdelt_path, file fingerprints)
 - config (lags, rolling settings)
+
+## G) Modeling table (joined features + labels)
+Source: outputs of `market_monitor.features.join_exogenous` plus derived labels from OHLCV.
+
+Required columns:
+- day (YYYY-MM-DD; join key, global split boundary)
+- symbol (uppercase ticker)
+- close (or Close) for label computation
+- market_features... (numeric OHLCV-derived features for day T)
+- gdelt_features... (lagged/rolling only; no same-day raw counts by default)
+
+Label (default):
+- label_fwd_return_5d = close[t+5] / close[t] - 1
+- (optional) label_fwd_return_1d when configured
+
+Leakage rules (non-negotiable):
+- No forward leakage: features for day T may only use data from <= T.
+- Exogenous (GDELT) features must be lagged or rolling (suffix `_lag_#` / `_roll#_*`) unless explicitly allowlisted.
+- Labels must be computed from OHLCV only (no exogenous inputs).
+- Raw same-day exogenous columns are excluded from ML features unless allowlisted.
+
+Splitting:
+- Walk-forward time splits by day (no random split).
+- Split boundaries are global by day; all symbols up to the boundary belong to the train window.

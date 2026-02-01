@@ -25,6 +25,9 @@ Required columns:
 - explanation (string; one-line, short)
 - theme_bucket (string)
 - asset_type (string)
+- ml_signal (float; nullable; model output only when available)
+- ml_model_id (string; nullable; training identifier)
+- ml_featureset_id (string; nullable; dataset schema/config hash)
 
 Risk flags (minimum set):
 - volume_missing

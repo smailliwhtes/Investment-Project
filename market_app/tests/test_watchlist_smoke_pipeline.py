@@ -25,6 +25,9 @@ EXPECTED_SCORED_COLUMNS = [
     "explanation",
     "theme_bucket",
     "asset_type",
+    "ml_signal",
+    "ml_model_id",
+    "ml_featureset_id",
 ]
 
 
