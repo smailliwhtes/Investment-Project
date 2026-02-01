@@ -50,6 +50,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "data_roots": {
         "ohlcv_dir": "",
+        "gdelt_raw_dir": "",
         "gdelt_dir": "",
         "outputs_dir": "outputs",
     },
@@ -201,7 +202,7 @@ def _load_env_overrides() -> dict[str, Any]:
     )
     corpus_root = os.getenv("MARKET_APP_CORPUS_ROOT")
     gdelt_dir = os.getenv("MARKET_APP_GDELT_DIR") or os.getenv("MARKET_APP_GDELT_CONFLICT_DIR")
-    gdelt_raw_dir = os.getenv("MARKET_APP_GDELT_EVENTS_RAW_DIR")
+    gdelt_raw_dir = os.getenv("MARKET_APP_GDELT_RAW_DIR") or os.getenv("MARKET_APP_GDELT_EVENTS_RAW_DIR")
     outputs_dir = os.getenv("MARKET_APP_OUTPUTS_DIR") or os.getenv("OUTPUTS_DIR")
     offline = _parse_bool(os.getenv("OFFLINE_MODE"))
 
@@ -219,6 +220,7 @@ def _load_env_overrides() -> dict[str, Any]:
         overrides["data_roots"]["gdelt_dir"] = gdelt_dir
     if gdelt_raw_dir:
         overrides["corpus"]["gdelt_events_raw_dir"] = gdelt_raw_dir
+        overrides["data_roots"]["gdelt_raw_dir"] = gdelt_raw_dir
     if outputs_dir:
         overrides["paths"]["outputs_dir"] = outputs_dir
         overrides["data_roots"]["outputs_dir"] = outputs_dir
@@ -248,6 +250,11 @@ def _apply_data_roots(config: dict[str, Any]) -> None:
         data_roots["gdelt_dir"] = gdelt_dir
         corpus_cfg.setdefault("root_dir", gdelt_dir)
         corpus_cfg.setdefault("gdelt_conflict_dir", gdelt_dir)
+
+    gdelt_raw_dir = data_roots.get("gdelt_raw_dir") or corpus_cfg.get("gdelt_events_raw_dir")
+    if gdelt_raw_dir:
+        data_roots["gdelt_raw_dir"] = gdelt_raw_dir
+        corpus_cfg.setdefault("gdelt_events_raw_dir", gdelt_raw_dir)
 
     outputs_dir = data_roots.get("outputs_dir") or paths_cfg.get("outputs_dir") or "outputs"
     data_roots["outputs_dir"] = outputs_dir

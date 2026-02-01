@@ -51,11 +51,12 @@ def resolve_data_paths(config: dict, base_dir: Path) -> DataPaths:
 
 def resolve_corpus_paths(config: dict, base_dir: Path) -> CorpusPaths:
     corpus_cfg = config.get("corpus", {})
+    data_roots = config.get("data_roots", {})
     root_str = corpus_cfg.get("root_dir")
     root = _normalize_path(root_str, root=None, base_dir=base_dir) if root_str else None
     gdelt_dir = corpus_cfg.get("gdelt_conflict_dir")
     gdelt = _normalize_path(gdelt_dir, root=root, base_dir=base_dir)
-    raw_dir = corpus_cfg.get("gdelt_events_raw_dir")
+    raw_dir = data_roots.get("gdelt_raw_dir") or corpus_cfg.get("gdelt_events_raw_dir")
     gdelt_raw = _normalize_path(raw_dir, root=root, base_dir=base_dir)
     if gdelt is None and root is not None:
         gdelt = root
