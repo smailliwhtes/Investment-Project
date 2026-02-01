@@ -49,6 +49,7 @@ fi
 
 WATCHLIST=$(python -c "from pathlib import Path; import sys; print(Path(sys.argv[1]).expanduser().resolve())" "$WATCHLIST")
 
+export MARKET_APP_OHLCV_DIR="$DATA_DIR"
 export NASDAQ_DAILY_DIR="$DATA_DIR"
 
 python -m market_monitor.tools.check_watchlist_ohlcv --config "$CONFIG" --watchlist "$WATCHLIST"

@@ -202,14 +202,17 @@ Each run writes:
 `config.yaml` is the canonical configuration. `config.json` is deprecated for this offline-only
 milestone and will be ignored in favor of `config.yaml` defaults.
 
-Set either `config.yaml` or environment variables:
+Set either `config.yaml` (prefer the `data_roots` section) or environment variables:
 
 - `MARKET_APP_DATA_ROOT`
-- `MARKET_APP_NASDAQ_DAILY_DIR`
+- `MARKET_APP_OHLCV_DIR` (canonical OHLCV root)
+- `MARKET_APP_NASDAQ_DAILY_DIR` (legacy, still supported)
 - `MARKET_APP_SILVER_PRICES_DIR`
 - `MARKET_APP_CORPUS_ROOT`
-- `MARKET_APP_GDELT_CONFLICT_DIR` (optional override)
+- `MARKET_APP_GDELT_DIR` (optional, canonical)
+- `MARKET_APP_GDELT_CONFLICT_DIR` (optional override, legacy)
 - `MARKET_APP_GDELT_EVENTS_RAW_DIR` (optional override)
+- `MARKET_APP_OUTPUTS_DIR` (optional override)
 - `OFFLINE_MODE` (true/false, defaults to true)
 
 See `.env.example` and `config.example.yaml` for templates. The Kaggle folders should be placed
@@ -223,6 +226,14 @@ pytest
 ```
 
 Tests are offline-friendly and run against fixtures in `tests/fixtures`.
+
+## Optional GPU Acceleration (Prediction Training)
+
+Prediction training defaults to CPU-only scikit-learn models. To opt into XGBoost (CPU by
+default, GPU when available), set:
+
+- `MARKET_APP_PREDICTION_BACKEND=xgboost`
+- `MARKET_APP_ENABLE_GPU=1` (optional; uses `gpu_hist` when supported)
 
 ## Fixtures (Deterministic Offline Data)
 

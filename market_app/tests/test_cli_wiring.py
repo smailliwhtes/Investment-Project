@@ -22,11 +22,11 @@ def test_cli_preflight_minimal_config(tmp_path: Path) -> None:
     fixture_dir = fixture_path.parent
     payload = yaml.safe_load(fixture_path.read_text(encoding="utf-8"))
 
-    payload["paths"]["outputs_dir"] = str(tmp_path / "outputs")
+    payload.setdefault("data_roots", {})["outputs_dir"] = str(tmp_path / "outputs")
     payload["paths"]["cache_dir"] = str(tmp_path / "cache")
     payload["paths"]["logs_dir"] = str(tmp_path / "logs")
     payload["paths"]["watchlist_file"] = str(fixture_dir / "watchlist.txt")
-    payload["data"]["paths"]["nasdaq_daily_dir"] = str(fixture_dir / "ohlcv")
+    payload.setdefault("data_roots", {})["ohlcv_dir"] = str(fixture_dir / "ohlcv")
 
     config_path = tmp_path / "config.yaml"
     config_path.write_text(yaml.safe_dump(payload), encoding="utf-8")

@@ -11,6 +11,18 @@ from market_monitor.providers.nasdaq_daily import NasdaqDailyProvider, NasdaqDai
 from market_monitor.universe import read_watchlist
 
 
+def _print_ohlcv_remediation() -> None:
+    print("[remediation] Configure the offline OHLCV data directory:")
+    print(
+        "  1) Set data_roots.ohlcv_dir in config.yaml "
+        "(example: data_roots: {ohlcv_dir: ./data/ohlcv})"
+    )
+    print(
+        '  2) Or set MARKET_APP_OHLCV_DIR '
+        '(example: export MARKET_APP_OHLCV_DIR="/path/to/ohlcv")'
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Assert every watchlist symbol has a NASDAQ daily OHLCV CSV."
@@ -32,8 +44,13 @@ def main() -> int:
     config = config_result.config
     base_dir = config_path.parent
     data_paths = resolve_data_paths(config, base_dir)
-    if not data_paths.nasdaq_daily_dir or not data_paths.nasdaq_daily_dir.exists():
-        print("[error] NASDAQ daily data directory is not configured or missing.")
+    if not data_paths.nasdaq_daily_dir:
+        print("[error] OHLCV data directory is not configured.")
+        _print_ohlcv_remediation()
+        return 2
+    if not data_paths.nasdaq_daily_dir.exists():
+        print(f"[error] OHLCV data directory does not exist: {data_paths.nasdaq_daily_dir}")
+        _print_ohlcv_remediation()
         return 2
 
     watchlist_path = resolve_path(

@@ -48,6 +48,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "silver_prices_dir": "",
         },
     },
+    "data_roots": {
+        "ohlcv_dir": "",
+        "gdelt_dir": "",
+        "outputs_dir": "outputs",
+    },
     "gates": {
         "price_min": None,
         "price_max": None,
@@ -182,34 +187,71 @@ def _parse_bool(value: str | None) -> bool | None:
 
 
 def _load_env_overrides() -> dict[str, Any]:
-    overrides: dict[str, Any] = {"data": {"paths": {}}, "corpus": {}}
+    overrides: dict[str, Any] = {"data": {"paths": {}}, "corpus": {}, "paths": {}, "data_roots": {}}
     root = os.getenv("MARKET_APP_DATA_ROOT")
-    nasdaq = os.getenv("MARKET_APP_NASDAQ_DAILY_DIR") or os.getenv("NASDAQ_DAILY_DIR")
+    ohlcv = (
+        os.getenv("MARKET_APP_OHLCV_DIR")
+        or os.getenv("MARKET_APP_NASDAQ_DAILY_DIR")
+        or os.getenv("NASDAQ_DAILY_DIR")
+    )
     silver = (
         os.getenv("MARKET_APP_SILVER_PRICES_DIR")
         or os.getenv("SILVER_PRICES_DIR")
         or os.getenv("SILVER_PRICES_CSV")
     )
     corpus_root = os.getenv("MARKET_APP_CORPUS_ROOT")
-    gdelt_dir = os.getenv("MARKET_APP_GDELT_CONFLICT_DIR")
+    gdelt_dir = os.getenv("MARKET_APP_GDELT_DIR") or os.getenv("MARKET_APP_GDELT_CONFLICT_DIR")
     gdelt_raw_dir = os.getenv("MARKET_APP_GDELT_EVENTS_RAW_DIR")
+    outputs_dir = os.getenv("MARKET_APP_OUTPUTS_DIR") or os.getenv("OUTPUTS_DIR")
     offline = _parse_bool(os.getenv("OFFLINE_MODE"))
 
     if root:
         overrides["data"]["paths"]["market_app_data_root"] = root
-    if nasdaq:
-        overrides["data"]["paths"]["nasdaq_daily_dir"] = nasdaq
+    if ohlcv:
+        overrides["data"]["paths"]["nasdaq_daily_dir"] = ohlcv
+        overrides["data_roots"]["ohlcv_dir"] = ohlcv
     if silver:
         overrides["data"]["paths"]["silver_prices_dir"] = silver
     if corpus_root:
         overrides["corpus"]["root_dir"] = corpus_root
     if gdelt_dir:
         overrides["corpus"]["gdelt_conflict_dir"] = gdelt_dir
+        overrides["data_roots"]["gdelt_dir"] = gdelt_dir
     if gdelt_raw_dir:
         overrides["corpus"]["gdelt_events_raw_dir"] = gdelt_raw_dir
+    if outputs_dir:
+        overrides["paths"]["outputs_dir"] = outputs_dir
+        overrides["data_roots"]["outputs_dir"] = outputs_dir
     if offline is not None:
         overrides["data"]["offline_mode"] = offline
     return overrides
+
+
+def _apply_data_roots(config: dict[str, Any]) -> None:
+    data_roots = config.setdefault("data_roots", {})
+    data_cfg = config.setdefault("data", {})
+    data_paths = data_cfg.setdefault("paths", {})
+    paths_cfg = config.setdefault("paths", {})
+    corpus_cfg = config.setdefault("corpus", {})
+
+    ohlcv_dir = data_roots.get("ohlcv_dir") or data_paths.get("nasdaq_daily_dir")
+    if ohlcv_dir:
+        data_roots["ohlcv_dir"] = ohlcv_dir
+        data_paths["nasdaq_daily_dir"] = ohlcv_dir
+
+    gdelt_dir = (
+        data_roots.get("gdelt_dir")
+        or corpus_cfg.get("root_dir")
+        or corpus_cfg.get("gdelt_conflict_dir")
+    )
+    if gdelt_dir:
+        data_roots["gdelt_dir"] = gdelt_dir
+        corpus_cfg.setdefault("root_dir", gdelt_dir)
+        corpus_cfg.setdefault("gdelt_conflict_dir", gdelt_dir)
+
+    outputs_dir = data_roots.get("outputs_dir") or paths_cfg.get("outputs_dir") or "outputs"
+    data_roots["outputs_dir"] = outputs_dir
+    paths_cfg["outputs_dir"] = outputs_dir
 
 
 def _load_config_file(path: Path) -> dict[str, Any]:
@@ -246,6 +288,8 @@ def load_config(path: Path, overrides: dict[str, Any] | None = None) -> ConfigRe
         config = _deep_merge(config, env_overrides)
     if overrides:
         config = _deep_merge(config, overrides)
+
+    _apply_data_roots(config)
 
     if config["data"].get("offline_mode", False):
         config["data"]["provider"] = "nasdaq_daily"

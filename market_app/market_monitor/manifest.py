@@ -107,7 +107,12 @@ def build_run_manifest(
         watchlist_file_hash = hash_file(watchlist_path)
 
     watchlist_hash = _watchlist_hash(watchlist_df)
+    ohlcv_dir = (
+        config.get("data_roots", {}).get("ohlcv_dir")
+        or config.get("data", {}).get("paths", {}).get("nasdaq_daily_dir")
+    )
     input_files: dict[str, dict[str, str]] = {}
+    symbol_ranges: dict[str, dict[str, int | str | None]] = {}
     if preflight:
         for symbol in preflight.symbols:
             if symbol.status != "FOUND" or not symbol.file_path:
@@ -120,6 +125,11 @@ def build_run_manifest(
                 }
             except OSError:
                 continue
+            symbol_ranges[symbol.symbol] = {
+                "rows": symbol.rows,
+                "start_date": symbol.start_date,
+                "end_date": symbol.end_date,
+            }
 
     corpus_files = []
     if corpus_manifest:
@@ -153,10 +163,12 @@ def build_run_manifest(
         "end_timestamp_utc": run_end.isoformat(),
         "config_hash": config_hash,
         "config": _redact_config(config),
+        "ohlcv_dir": ohlcv_dir,
         "watchlist_file": str(watchlist_path) if watchlist_path else None,
         "watchlist_file_hash": watchlist_file_hash,
         "watchlist_hash": watchlist_hash,
         "input_files": input_files,
+        "ohlcv_symbol_ranges": symbol_ranges,
         "corpus_files": corpus_files,
         "counts": counts,
         "summary": summary,

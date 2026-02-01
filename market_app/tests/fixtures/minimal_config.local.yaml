@@ -1,11 +1,11 @@
 data:
   offline_mode: true
   provider: nasdaq_daily
-  paths:
-    nasdaq_daily_dir: ohlcv
+data_roots:
+  ohlcv_dir: ohlcv
+  outputs_dir: outputs
 paths:
   watchlist_file: watchlist.txt
-  outputs_dir: outputs
   cache_dir: data/cache
   logs_dir: outputs/logs
 watchlist_file: watchlist_local.txt
