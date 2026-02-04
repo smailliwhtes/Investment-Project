@@ -213,8 +213,11 @@ def map_columns(columns: Iterable[str], aliases: dict[str, list[str]]) -> dict[s
 def detect_delimiter(sample: str) -> str:
     comma_count = sample.count(",")
     tab_count = sample.count("\t")
-    if tab_count > comma_count:
+    pipe_count = sample.count("|")
+    if tab_count > max(comma_count, pipe_count):
         return "\t"
+    if pipe_count > comma_count:
+        return "|"
     return ","
 
 
@@ -270,7 +273,7 @@ def detect_schema_type(columns: list[str], column_count: int) -> str:
         return "events"
     if normalized & {"themes", "v2themes", "v2tone", "persons", "organizations", "locations"}:
         return "gkg"
-    if column_count >= 50:
+    if not columns and column_count >= 50:
         return "events"
     return "unknown"
 

@@ -1,6 +1,7 @@
 # 40_commands — Commands Codex must run and report
 
-Supported Python versions: 3.10–3.13 (NumPy/Pandas wheels). Use the bootstrap scripts to enforce this range.
+Supported Python versions: 3.10–3.13. Prefer Python 3.12 for this repo.
+Use the bootstrap scripts to enforce this range.
 
 ## Windows (local)
 From repo root:
@@ -19,8 +20,8 @@ cd market_app
 .\scripts\check_watchlist_ohlcv.ps1 -WatchlistPath .\watchlists\watchlist_smoke.csv -DataDir .\outputs\ohlcv_smoke
 
 ### ML train/predict (offline)
-python -m market_monitor.ml.train_xgb --joined-path .\\data\\features\\joined --output-dir .\\outputs\\<run_id>
-python -m market_monitor.ml.predict --joined-path .\\data\\features\\joined --output-dir .\\outputs\\<run_id>
+python -m market_monitor.ml.train_xgb --joined-path .\data\features\joined --output-dir .\outputs\<run_id>
+python -m market_monitor.ml.predict --joined-path .\data\features\joined --output-dir .\outputs\<run_id>
 
 ## Linux/macOS (Codex cloud / CI)
 From repo root:
@@ -62,14 +63,24 @@ python -m market_monitor.gdelt.features_daily --gdelt-dir data/gdelt --out data/
 python -m market_monitor.features.join_exogenous --market-path data/processed/market_daily_features.parquet --gdelt-path data/gdelt/features_daily.csv --out-dir data/features/joined --lags 1,3,7 --rolling-window 7 --rolling-mean --rolling-sum
 ```
 
-## Validate Local Corpus (offline)
-Run from the `market_app` directory:
+## Audit/Normalize Precomputed Corpus (offline)
+Run from the `market_app` directory (Windows + bash equivalent):
+
+```powershell
+python -m market_monitor.gdelt.doctor audit --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --glob "*.csv"
+python -m market_monitor.gdelt.doctor normalize --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --gdelt-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus_normalized" --format auto --glob "*.csv" --write csv
+python -m market_monitor.gdelt.doctor verify-cache --gdelt-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus_normalized"
+```
 
 ```bash
 python -m market_monitor.gdelt.doctor audit --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --glob "*.csv"
-python -m market_monitor.gdelt.doctor normalize --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --gdelt-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus_normalized" --format events --glob "*.csv" --write csv
+python -m market_monitor.gdelt.doctor normalize --raw-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --gdelt-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus_normalized" --format auto --glob "*.csv" --write csv
 python -m market_monitor.gdelt.doctor verify-cache --gdelt-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus_normalized"
-python -m market_monitor.gdelt.features_daily --gdelt-dir "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus_normalized" --out data/gdelt/features_daily.csv
+```
+
+### Join + Train/Predict demo (offline)
+```bash
+python -m market_monitor.features.join_exogenous --market-path data/processed/market_daily_features.parquet --gdelt-path data/gdelt/daily_features --out-dir data/features/joined --lags 1,3,7 --rolling-window 7 --rolling-mean --rolling-sum
 ```
 
 ## Expected outputs after run.ps1

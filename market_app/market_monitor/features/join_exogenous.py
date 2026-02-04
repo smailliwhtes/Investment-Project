@@ -26,6 +26,9 @@ def _collect_input_files(path: Path) -> list[Path]:
         return [path]
     if not path.exists():
         raise FileNotFoundError(f"Input path not found: {path}")
+    partitioned = sorted(path.glob("day=*/part-00000.*"))
+    if partitioned:
+        return partitioned
     parquet_files = sorted(path.glob("**/*.parquet"))
     csv_files = sorted(path.glob("**/*.csv"))
     if parquet_files:
@@ -61,7 +64,12 @@ def _normalize_day(df: pd.DataFrame, column: str, *, label: str) -> pd.DataFrame
 
 def _is_count_column(name: str) -> bool:
     lowered = name.lower()
-    return lowered.endswith("_count") or lowered.endswith("_sum") or lowered.startswith("num_")
+    return (
+        lowered.endswith("_count")
+        or lowered.endswith("_sum")
+        or lowered.startswith("num_")
+        or "mentions" in lowered
+    )
 
 
 def _parse_lags(lags: Iterable[int] | None) -> list[int]:
@@ -80,6 +88,7 @@ def _build_gdelt_features(
     rolling_sum: bool,
     count_columns: list[str] | None,
     rolling_min_periods: int | None,
+    include_raw: bool,
 ) -> pd.DataFrame:
     frame = df.copy()
     frame = frame.sort_values("day")
@@ -106,6 +115,14 @@ def _build_gdelt_features(
                     frame[col].rolling(window=rolling_window, min_periods=min_periods).sum()
                 )
 
+    if not include_raw:
+        derived_cols = [
+            col
+            for col in frame.columns
+            if col == "day" or col.endswith(tuple([f"_lag_{lag}" for lag in lags])) or "_roll" in col
+        ]
+        frame = frame[list(dict.fromkeys(derived_cols))]
+
     return frame.reset_index(drop=True)
 
 
@@ -124,6 +141,7 @@ def build_joined_features(
     gdelt_day_column: str | None = None,
     output_format: str = "parquet",
     rolling_min_periods: int | None = None,
+    include_raw_gdelt: bool = False,
 ) -> JoinResult:
     market_df = _load_frame(market_path)
     gdelt_df = _load_frame(gdelt_path)
@@ -149,6 +167,8 @@ def build_joined_features(
         gdelt_df = gdelt_df.drop(columns=[gdelt_day_column], errors="ignore")
 
     lag_list = _parse_lags(lags)
+    if not include_raw_gdelt and not lag_list and not (rolling_window and (rolling_mean or rolling_sum)):
+        raise ValueError("No GDELT features selected: enable lags/rolling or set include_raw_gdelt.")
     gdelt_features = _build_gdelt_features(
         gdelt_df,
         lags=lag_list,
@@ -157,6 +177,7 @@ def build_joined_features(
         rolling_sum=rolling_sum,
         count_columns=count_columns,
         rolling_min_periods=rolling_min_periods,
+        include_raw=include_raw_gdelt,
     )
 
     if market_day_column != "day":
@@ -216,6 +237,7 @@ def build_joined_features(
             "count_columns": count_columns,
             "rolling_min_periods": rolling_min_periods,
             "output_format": output_format,
+            "include_raw_gdelt": include_raw_gdelt,
         },
     }
     manifest_payload["content_hash"] = build_content_hash(manifest_payload)
@@ -276,6 +298,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="parquet",
         help="Output file format for partitions.",
     )
+    parser.add_argument(
+        "--include-raw-gdelt",
+        action="store_true",
+        help="Include same-day GDELT columns in output (may introduce leakage).",
+    )
     return parser
 
 
@@ -303,6 +330,7 @@ def main(argv: list[str] | None = None) -> int:
             gdelt_day_column=args.gdelt_day_column,
             output_format=args.output_format,
             rolling_min_periods=args.rolling_min_periods,
+            include_raw_gdelt=args.include_raw_gdelt,
         )
     except (FileNotFoundError, ValueError) as exc:
         print(f"[features.join_exogenous] {exc}")

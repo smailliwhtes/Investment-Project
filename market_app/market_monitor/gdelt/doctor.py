@@ -16,10 +16,14 @@ from market_monitor.gdelt.utils import (
     GKG_HEADER_COLUMNS,
     GKG_REQUIRED_FIELDS,
     analyze_file,
+    build_content_hash,
+    build_file_fingerprint,
     detect_schema_type,
     estimate_rows,
+    ensure_dir,
     list_files,
     map_columns,
+    normalize_columns,
     parse_day,
     utc_now_iso,
 )
@@ -28,6 +32,11 @@ from market_monitor.gdelt.utils import (
 READY_STABLE = "READY_STABLE"
 NEEDS_NORMALIZATION = "NEEDS_NORMALIZATION"
 UNUSABLE = "UNUSABLE"
+
+EVENTS_RAW = "events_raw"
+DAILY_FEATURES_PRECOMPUTED = "daily_features_precomputed"
+ANNUAL_AGGREGATES = "annual_aggregates"
+UNKNOWN = "unknown"
 
 
 @dataclass
@@ -45,6 +54,15 @@ class DateStats:
 
 
 @dataclass
+class DateCandidate:
+    column: str
+    parseable_rate: float
+    min_day: str | None
+    max_day: str | None
+    inferred_frequency: str
+
+
+@dataclass
 class RequiredFieldReport:
     availability: dict[str, bool]
     coverage: dict[str, float]
@@ -58,6 +76,11 @@ class FileAudit:
     rows_estimated: bool
     dialect: DialectInfo
     schema_type: str
+    file_type: str
+    candidate_date_columns: list[DateCandidate]
+    inferred_frequency: str
+    columns: list[str]
+    inferred_dtypes: dict[str, str]
     date_stats: DateStats
     required_fields: RequiredFieldReport
     gkg_semicolon_fields: dict[str, bool]
@@ -159,6 +182,62 @@ def _detect_quoting_irregularities(path: Path, delimiter: str) -> bool:
     return False
 
 
+def _infer_frequency(parsed: "pd.Series", original: "pd.Series") -> str:
+    import pandas as pd
+
+    parsed = parsed.dropna()
+    if parsed.empty:
+        return "unknown"
+    if original.dtype.kind in {"i", "u"}:
+        years = original.dropna().astype(int)
+        if not years.empty and years.between(1800, 2300).all():
+            return "annual"
+    dates = parsed.dt.normalize().sort_values().unique()
+    if len(dates) < 2:
+        return "unknown"
+    deltas = (dates[1:] - dates[:-1]) / pd.Timedelta(days=1)
+    if (deltas >= 360).all():
+        return "annual"
+    if (deltas >= 28).all() and (deltas <= 31).all():
+        return "monthly"
+    return "daily"
+
+
+def _evaluate_date_candidates(frame: "pd.DataFrame") -> list[DateCandidate]:
+    import pandas as pd
+
+    candidates = ["dt", "day", "date", "sqldate", "datetime", "year"]
+    normalized = normalize_columns(frame.columns)
+    name_map = {name: frame.columns[idx] for idx, name in enumerate(normalized)}
+    results: list[DateCandidate] = []
+    for candidate in candidates:
+        if candidate not in name_map:
+            continue
+        column = name_map[candidate]
+        series = frame[column]
+        if series.dtype.kind in {"i", "u", "f"}:
+            parsed = parse_day(series)
+        else:
+            parsed = pd.to_datetime(series, errors="coerce")
+            if parsed.notna().sum() == 0:
+                parsed = parse_day(series)
+        parseable_rate = float(parsed.notna().mean()) if len(parsed) else 0.0
+        parsed = parsed.dropna()
+        min_day = parsed.min().date().isoformat() if not parsed.empty else None
+        max_day = parsed.max().date().isoformat() if not parsed.empty else None
+        frequency = _infer_frequency(parsed, series)
+        results.append(
+            DateCandidate(
+                column=column,
+                parseable_rate=parseable_rate,
+                min_day=min_day,
+                max_day=max_day,
+                inferred_frequency=frequency,
+            )
+        )
+    return results
+
+
 def _parse_date_stats(
     frame: "pd.DataFrame",
     schema_type: str,
@@ -183,6 +262,12 @@ def _parse_date_stats(
     min_day = parsed.min().date().isoformat()
     max_day = parsed.max().date().isoformat()
     return DateStats(min_day, max_day, parseable_rate)
+
+
+def _best_candidate(candidates: list[DateCandidate]) -> DateCandidate | None:
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: item.parseable_rate)
 
 
 def _required_field_report(
@@ -239,13 +324,20 @@ def _gkg_semicolon_fields(frame: "pd.DataFrame", mapping: dict[str, str]) -> dic
 def _classify_readiness(
     *,
     schema_type: str,
+    file_type: str,
     dialect: DialectInfo,
     date_stats: DateStats,
     mapping: dict[str, str],
     issues: list[str],
 ) -> str:
-    if schema_type == "unknown":
+    if file_type == UNKNOWN:
         issues.append("Schema could not be identified from headers or column count.")
+        return UNUSABLE
+    if file_type == ANNUAL_AGGREGATES:
+        issues.append(
+            "Annual aggregates are not usable for daily joins. "
+            "Re-run with --allow-annual to normalize separately."
+        )
         return UNUSABLE
     if date_stats.parseable_rate == 0.0:
         issues.append("No parseable dates detected in sample.")
@@ -254,6 +346,9 @@ def _classify_readiness(
         if "event_code" not in mapping and "event_root_code" not in mapping:
             issues.append("Event codes missing; cannot recover event identifiers.")
             return UNUSABLE
+    if file_type == DAILY_FEATURES_PRECOMPUTED:
+        issues.append("Precomputed daily features require normalization.")
+        return NEEDS_NORMALIZATION
     if not dialect.has_header:
         issues.append("Header row missing; normalization is required to map columns.")
     if dialect.delimiter != ",":
@@ -305,6 +400,11 @@ def audit_corpus(
         required_fields = RequiredFieldReport(availability={}, coverage={})
         gkg_semicolons: dict[str, bool] = {}
         issues: list[str] = []
+        candidate_date_columns: list[DateCandidate] = []
+        inferred_frequency = "unknown"
+        columns: list[str] = []
+        inferred_dtypes: dict[str, str] = {}
+        file_type = UNKNOWN
         try:
             if schema_type != "unknown":
                 frame = _load_sample_frame(
@@ -315,8 +415,14 @@ def audit_corpus(
                     column_count=file_spec.column_count,
                     max_rows=max_rows,
                 )
+                columns = list(frame.columns)
+                inferred_dtypes = {col: str(dtype) for col, dtype in frame.dtypes.items()}
+                candidate_date_columns = _evaluate_date_candidates(frame)
                 mapping = map_columns(frame.columns, _schema_aliases(schema_type))
                 date_stats = _parse_date_stats(frame, schema_type, mapping)
+                best_candidate = _best_candidate(candidate_date_columns)
+                if best_candidate:
+                    inferred_frequency = best_candidate.inferred_frequency
                 required_fields = _required_field_report(
                     frame, schema_type=schema_type, mapping=mapping
                 )
@@ -327,6 +433,28 @@ def audit_corpus(
                 if schema_type == "gkg":
                     gkg_semicolons = _gkg_semicolon_fields(frame, mapping)
             else:
+                if file_spec.has_header:
+                    import pandas as pd
+
+                    frame = pd.read_csv(
+                        path,
+                        sep=file_spec.delimiter,
+                        header=0,
+                        dtype=str,
+                        nrows=max_rows,
+                        low_memory=False,
+                    )
+                    columns = list(frame.columns)
+                    inferred_dtypes = {col: str(dtype) for col, dtype in frame.dtypes.items()}
+                    candidate_date_columns = _evaluate_date_candidates(frame)
+                    best_candidate = _best_candidate(candidate_date_columns)
+                    if best_candidate:
+                        inferred_frequency = best_candidate.inferred_frequency
+                        date_stats = DateStats(
+                            min_day=best_candidate.min_day,
+                            max_day=best_candidate.max_day,
+                            parseable_rate=best_candidate.parseable_rate,
+                        )
                 issues.append("Schema detection returned unknown.")
         except PermissionError as exc:
             permission_errors.append(f"{path}: {exc}")
@@ -334,8 +462,20 @@ def audit_corpus(
         except OSError as exc:
             issues.append(str(exc))
 
+        if schema_type in {"events", "gkg"}:
+            file_type = EVENTS_RAW
+        elif candidate_date_columns:
+            best_candidate = _best_candidate(candidate_date_columns)
+            if best_candidate and best_candidate.inferred_frequency == "annual":
+                file_type = ANNUAL_AGGREGATES
+            elif best_candidate and best_candidate.inferred_frequency == "daily":
+                file_type = DAILY_FEATURES_PRECOMPUTED
+            else:
+                file_type = UNKNOWN
+
         readiness = _classify_readiness(
             schema_type=schema_type,
+            file_type=file_type,
             dialect=dialect,
             date_stats=date_stats,
             mapping=mapping,
@@ -350,6 +490,11 @@ def audit_corpus(
                 rows_estimated=rows_estimated,
                 dialect=dialect,
                 schema_type=schema_type,
+                file_type=file_type,
+                candidate_date_columns=candidate_date_columns,
+                inferred_frequency=inferred_frequency,
+                columns=columns,
+                inferred_dtypes=inferred_dtypes,
                 date_stats=date_stats,
                 required_fields=required_fields,
                 gkg_semicolon_fields=gkg_semicolons,
@@ -428,6 +573,11 @@ def _print_summary(report: AuditReport) -> None:
     print(f"[gdelt.doctor] total size: {report.inventory['total_size_bytes']} bytes")
     print(f"[gdelt.doctor] coverage: {report.coverage['min_day']} -> {report.coverage['max_day']}")
     print(f"[gdelt.doctor] overall verdict: {report.overall_verdict}")
+    by_type: dict[str, int] = {}
+    for audit in report.files:
+        by_type[audit.file_type] = by_type.get(audit.file_type, 0) + 1
+    if by_type:
+        print(f"[gdelt.doctor] file type counts: {by_type}")
     if report.permission_errors:
         print("[gdelt.doctor] permission errors detected:")
         for error in report.permission_errors:
@@ -454,6 +604,276 @@ def _write_report(report: AuditReport, out_path: Path) -> None:
     out_path.write_text(json.dumps(report.to_dict(), indent=2), encoding="utf-8")
 
 
+def _resolve_date_column(columns: list[str], date_col: str | None) -> str | None:
+    if not columns:
+        return None
+    if date_col:
+        lowered = {col.lower(): col for col in columns}
+        return lowered.get(date_col.lower())
+    normalized = normalize_columns(columns)
+    for candidate in ["dt", "day", "date", "sqldate", "datetime"]:
+        if candidate in normalized:
+            return columns[normalized.index(candidate)]
+    return None
+
+
+def _normalize_daily_frame(
+    frame: "pd.DataFrame",
+    *,
+    date_column: str,
+    issues: list[str],
+) -> "pd.DataFrame":
+    import pandas as pd
+
+    parsed = pd.to_datetime(frame[date_column], errors="coerce")
+    if parsed.notna().sum() == 0:
+        parsed = parse_day(frame[date_column])
+    if parsed.notna().sum() == 0:
+        raise ValueError(f"Date column '{date_column}' could not be parsed.")
+    normalized = frame.copy()
+    normalized["day"] = parsed.dt.strftime("%Y-%m-%d")
+    normalized = normalized.drop(columns=[date_column])
+    if normalized["day"].isna().any():
+        issues.append("Dropped rows with unparseable dates.")
+        normalized = normalized[normalized["day"].notna()]
+
+    numeric_cols: list[str] = []
+    for col in normalized.columns:
+        if col == "day":
+            continue
+        series = pd.to_numeric(normalized[col], errors="coerce")
+        if series.notna().any():
+            normalized[col] = series
+            numeric_cols.append(col)
+        else:
+            normalized[col] = normalized[col].astype(str)
+
+    if normalized["day"].duplicated().any():
+        issues.append("Duplicate days detected; aggregated with mean (numeric) and first (non-numeric).")
+
+    agg: dict[str, str] = {}
+    for col in normalized.columns:
+        if col == "day":
+            continue
+        agg[col] = "mean" if col in numeric_cols else "first"
+
+    grouped = normalized.groupby("day", as_index=False).agg(agg)
+    ordered_cols = ["day"] + sorted([col for col in grouped.columns if col != "day"])
+    return grouped[ordered_cols]
+
+
+def _aggregate_by_day(frame: "pd.DataFrame") -> "pd.DataFrame":
+    import pandas as pd
+
+    numeric_cols = [
+        col for col in frame.columns if col != "day" and pd.api.types.is_numeric_dtype(frame[col])
+    ]
+    agg: dict[str, str] = {}
+    for col in frame.columns:
+        if col == "day":
+            continue
+        agg[col] = "mean" if col in numeric_cols else "first"
+    grouped = frame.groupby("day", as_index=False).agg(agg)
+    ordered_cols = ["day"] + sorted([col for col in grouped.columns if col != "day"])
+    return grouped[ordered_cols]
+
+
+def _write_partitioned(
+    frame: "pd.DataFrame",
+    *,
+    out_dir: Path,
+    write_format: str,
+) -> dict[str, int]:
+    import importlib.util
+
+    ensure_dir(out_dir)
+    output_ext = ".parquet" if write_format == "parquet" else ".csv"
+    if output_ext == ".parquet" and importlib.util.find_spec("pyarrow") is None:
+        raise ImportError("pyarrow is required for parquet output. Use --write csv instead.")
+    rows_per_day: dict[str, int] = {}
+    for day in sorted(frame["day"].unique()):
+        day_dir = out_dir / f"day={day}"
+        ensure_dir(day_dir)
+        day_frame = frame[frame["day"] == day]
+        out_path = day_dir / f"part-00000{output_ext}"
+        if output_ext == ".parquet":
+            day_frame.to_parquet(out_path, index=False)
+        else:
+            day_frame.to_csv(out_path, index=False)
+        rows_per_day[day] = int(len(day_frame))
+    return rows_per_day
+
+
+def _normalize_precomputed_daily(
+    *,
+    file_paths: list[Path],
+    gdelt_dir: Path,
+    date_col: str | None,
+    write_format: str,
+    classification_summary: dict[str, Any],
+) -> dict[str, Any]:
+    import pandas as pd
+
+    if not file_paths:
+        raise ValueError("No daily features files available for normalization.")
+    all_frames: list[pd.DataFrame] = []
+    issues: list[str] = []
+    for path in file_paths:
+        file_spec = analyze_file(path)
+        frame = pd.read_csv(
+            path,
+            sep=file_spec.delimiter,
+            header=0 if file_spec.has_header else None,
+            dtype=str,
+            low_memory=False,
+        )
+        if not file_spec.has_header:
+            raise ValueError(f"{path} is missing headers; cannot normalize daily features.")
+        date_column = _resolve_date_column(list(frame.columns), date_col)
+        if not date_column:
+            raise ValueError(f"{path} missing a recognizable date column; use --date-col to map.")
+        normalized = _normalize_daily_frame(frame, date_column=date_column, issues=issues)
+        all_frames.append(normalized)
+
+    combined = pd.concat(all_frames, ignore_index=True, sort=False)
+    if combined["day"].duplicated().any():
+        issues.append("Duplicate days across files detected; aggregated with mean/first.")
+        combined = _aggregate_by_day(combined)
+    combined = combined.sort_values("day")
+    daily_root = gdelt_dir / "daily_features"
+    rows_per_day = _write_partitioned(combined, out_dir=daily_root, write_format=write_format)
+    manifest_path = daily_root / "features_manifest.json"
+    columns = list(combined.columns)
+    inferred_dtypes = {col: str(dtype) for col, dtype in combined.dtypes.items()}
+    manifest_payload = {
+        "schema_version": 1,
+        "created_utc": utc_now_iso(),
+        "coverage": {
+            "min_day": combined["day"].min(),
+            "max_day": combined["day"].max(),
+            "n_days": int(combined["day"].nunique()),
+        },
+        "row_counts": {
+            "total_rows": int(len(combined)),
+            "rows_per_day": rows_per_day,
+        },
+        "schema": {
+            "columns": columns,
+            "dtypes": inferred_dtypes,
+        },
+        "inputs": {
+            "raw_files": build_file_fingerprint(file_paths),
+        },
+        "config": {
+            "date_col": date_col,
+            "write_format": write_format,
+            "aggregation": {
+                "numeric": "mean",
+                "non_numeric": "first",
+            },
+        },
+        "classification_summary": classification_summary,
+        "issues": issues,
+    }
+    manifest_payload["content_hash"] = build_content_hash(manifest_payload)
+    manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
+    return {
+        "daily_root": daily_root,
+        "manifest_path": manifest_path,
+        "issues": issues,
+    }
+
+
+def _normalize_annual_features(
+    *,
+    file_paths: list[Path],
+    gdelt_dir: Path,
+    write_format: str,
+    classification_summary: dict[str, Any],
+) -> dict[str, Any]:
+    import pandas as pd
+
+    if not file_paths:
+        return {}
+    frames: list[pd.DataFrame] = []
+    issues: list[str] = []
+    for path in file_paths:
+        file_spec = analyze_file(path)
+        frame = pd.read_csv(
+            path,
+            sep=file_spec.delimiter,
+            header=0 if file_spec.has_header else None,
+            dtype=str,
+            low_memory=False,
+        )
+        if not file_spec.has_header:
+            raise ValueError(f"{path} is missing headers; cannot normalize annual features.")
+        normalized_names = normalize_columns(frame.columns)
+        if "year" not in normalized_names:
+            raise ValueError(f"{path} missing a Year column; cannot normalize annual features.")
+        year_col = frame.columns[normalized_names.index("year")]
+        frame = frame.rename(columns={year_col: "year"})
+        frame["year"] = pd.to_numeric(frame["year"], errors="coerce").astype("Int64")
+        frame = frame.dropna(subset=["year"])
+        frames.append(frame)
+
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    combined = combined.sort_values("year")
+    annual_root = gdelt_dir / "annual_features"
+    ensure_dir(annual_root)
+    output_ext = ".parquet" if write_format == "parquet" else ".csv"
+    if output_ext == ".parquet":
+        import importlib.util
+
+        if importlib.util.find_spec("pyarrow") is None:
+            raise ImportError("pyarrow is required for parquet output. Use --write csv instead.")
+    rows_per_year: dict[str, int] = {}
+    for year in sorted(combined["year"].dropna().unique()):
+        year_dir = annual_root / f"year={int(year)}"
+        ensure_dir(year_dir)
+        year_frame = combined[combined["year"] == year]
+        out_path = year_dir / f"part-00000{output_ext}"
+        if output_ext == ".parquet":
+            year_frame.to_parquet(out_path, index=False)
+        else:
+            year_frame.to_csv(out_path, index=False)
+        rows_per_year[str(int(year))] = int(len(year_frame))
+
+    manifest_path = annual_root / "annual_features_manifest.json"
+    manifest_payload = {
+        "schema_version": 1,
+        "created_utc": utc_now_iso(),
+        "coverage": {
+            "min_year": int(combined["year"].min()),
+            "max_year": int(combined["year"].max()),
+            "n_years": int(combined["year"].nunique()),
+        },
+        "row_counts": {
+            "total_rows": int(len(combined)),
+            "rows_per_year": rows_per_year,
+        },
+        "schema": {
+            "columns": list(combined.columns),
+            "dtypes": {col: str(dtype) for col, dtype in combined.dtypes.items()},
+        },
+        "inputs": {
+            "raw_files": build_file_fingerprint(file_paths),
+        },
+        "config": {
+            "write_format": write_format,
+        },
+        "classification_summary": classification_summary,
+        "issues": issues,
+    }
+    manifest_payload["content_hash"] = build_content_hash(manifest_payload)
+    manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
+    return {
+        "annual_root": annual_root,
+        "manifest_path": manifest_path,
+        "issues": issues,
+    }
+
+
 def normalize_corpus(
     *,
     raw_dir: Path,
@@ -461,17 +881,95 @@ def normalize_corpus(
     file_glob: str,
     format_hint: str,
     write_format: str,
+    date_col: str | None = None,
+    allow_annual: bool = False,
 ) -> None:
     from market_monitor.gdelt.ingest import ingest_gdelt
 
-    ingest_gdelt(
-        raw_dir=raw_dir,
-        out_dir=gdelt_dir,
-        file_glob=file_glob,
-        format_hint=format_hint,
-        write_format=write_format,
-        require_files=True,
-    )
+    if format_hint in {"events", "gkg"}:
+        ingest_gdelt(
+            raw_dir=raw_dir,
+            out_dir=gdelt_dir,
+            file_glob=file_glob,
+            format_hint=format_hint,
+            write_format=write_format,
+            require_files=True,
+        )
+        return
+
+    report = audit_corpus(raw_dir=raw_dir, file_glob=file_glob, format_hint="auto")
+    daily_files = [
+        Path(item.path) for item in report.files if item.file_type == DAILY_FEATURES_PRECOMPUTED
+    ]
+    annual_files = [Path(item.path) for item in report.files if item.file_type == ANNUAL_AGGREGATES]
+    events_files = [Path(item.path) for item in report.files if item.file_type == EVENTS_RAW]
+    unknown_files = [Path(item.path) for item in report.files if item.file_type == UNKNOWN]
+    classification_summary = {
+        DAILY_FEATURES_PRECOMPUTED: [str(path) for path in daily_files],
+        ANNUAL_AGGREGATES: [str(path) for path in annual_files],
+        EVENTS_RAW: [str(path) for path in events_files],
+        UNKNOWN: [str(path) for path in unknown_files],
+    }
+
+    if daily_files:
+        result = _normalize_precomputed_daily(
+            file_paths=daily_files,
+            gdelt_dir=gdelt_dir,
+            date_col=date_col,
+            write_format=write_format,
+            classification_summary=classification_summary,
+        )
+        print(f"[gdelt.doctor] wrote daily features cache: {result['daily_root']}")
+        print(f"[gdelt.doctor] daily features manifest: {result['manifest_path']}")
+        for issue in result["issues"]:
+            print(f"[gdelt.doctor] warning: {issue}")
+
+    if annual_files:
+        if allow_annual:
+            annual_result = _normalize_annual_features(
+                file_paths=annual_files,
+                gdelt_dir=gdelt_dir,
+                write_format=write_format,
+                classification_summary=classification_summary,
+            )
+            if annual_result:
+                print(
+                    "[gdelt.doctor] wrote annual features cache: "
+                    f"{annual_result['annual_root']}"
+                )
+                print(
+                    "[gdelt.doctor] annual features manifest: "
+                    f"{annual_result['manifest_path']}"
+                )
+                for issue in annual_result["issues"]:
+                    print(f"[gdelt.doctor] warning: {issue}")
+        else:
+            print(
+                "[gdelt.doctor] annual aggregates detected and excluded. "
+                "Re-run with --allow-annual to normalize separately."
+            )
+
+    if events_files and not daily_files:
+        ingest_gdelt(
+            raw_dir=raw_dir,
+            out_dir=gdelt_dir,
+            file_glob=file_glob,
+            format_hint="events",
+            write_format=write_format,
+            require_files=True,
+        )
+        return
+
+    if not daily_files and not events_files:
+        if annual_files and not allow_annual:
+            raise ValueError(
+                "Annual aggregates were detected but excluded. "
+                "Re-run with --allow-annual to normalize annual_features."
+            )
+        raise ValueError(
+            "No daily features or events files were normalized. "
+            "Check the audit report for classification details."
+        )
 
 
 def verify_cache(*, gdelt_dir: Path) -> tuple[bool, list[str]]:
@@ -518,9 +1016,19 @@ def build_parser() -> argparse.ArgumentParser:
     normalize_parser = subparsers.add_parser("normalize", help="Normalize raw corpus into cache.")
     normalize_parser.add_argument("--raw-dir", required=True, help="Raw corpus root directory.")
     normalize_parser.add_argument("--gdelt-dir", required=True, help="Normalized cache directory.")
-    normalize_parser.add_argument("--format", default="events", choices=["events", "gkg"])
+    normalize_parser.add_argument("--format", default="events", choices=["auto", "events", "gkg"])
     normalize_parser.add_argument("--glob", default="*.csv", help="File glob pattern.")
     normalize_parser.add_argument("--write", default="csv", choices=["csv", "parquet"])
+    normalize_parser.add_argument(
+        "--date-col",
+        default=None,
+        help="Date column name for precomputed daily features (auto-detected if omitted).",
+    )
+    normalize_parser.add_argument(
+        "--allow-annual",
+        action="store_true",
+        help="Normalize annual aggregates into a separate annual_features cache.",
+    )
 
     verify_parser = subparsers.add_parser("verify-cache", help="Verify normalized cache integrity.")
     verify_parser.add_argument("--gdelt-dir", required=True, help="Normalized cache directory.")
@@ -550,6 +1058,8 @@ def main(argv: list[str] | None = None) -> int:
             file_glob=args.glob,
             format_hint=args.format,
             write_format=args.write,
+            date_col=args.date_col,
+            allow_annual=args.allow_annual,
         )
         print("[gdelt.doctor] normalization complete.")
         return 0

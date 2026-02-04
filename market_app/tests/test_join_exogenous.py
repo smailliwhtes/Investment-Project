@@ -50,11 +50,11 @@ def test_join_exogenous_lags_no_leakage(tmp_path: Path) -> None:
     row = day2.iloc[0]
     assert row["symbol"] == "AAA"
     assert row["market_feature"] == 3.0
-    assert row["total_event_count"] == 20
     assert row["total_event_count_lag_1"] == 10
     assert row["total_event_count_roll2_sum"] == 30
     assert row["total_event_count_roll2_mean"] == 15
     assert row["tone_mean_lag_1"] == 0.1
+    assert "total_event_count" not in day2.columns
 
     day1 = _read_partition(out_dir, "2024-01-01")
     assert day1["total_event_count_lag_1"].isna().all()

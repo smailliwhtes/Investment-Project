@@ -1,43 +1,43 @@
 # AGENTS.md — market_app / market_monitor
 
-## Working agreements (must follow)
-- Offline-first is the default. Never require internet at runtime. Any network features must be optional and strictly gated behind explicit flags.
-- Deterministic outputs: given the same cached data + config, the pipeline must produce identical results.
-- CPU fallback is mandatory for all functionality. GPU acceleration is optional and must be auto-detected.
-- Keep changes small and testable: one task = one PR. Include tests and run commands listed in docs/codex/40_commands.md.
+## A) Repository expectations
+- **Offline-first**: No mandatory runtime internet calls. Tests must be hermetic and runnable offline.
+- **Determinism**: Seed randomness, use content hashing for datasets/artifacts, and keep output naming stable.
+- **Platform**: Windows-first, but must support Linux/macOS runners. PowerShell wrappers must exit nonzero on failure.
+- **Change scope**: One task = one PR. Keep changes small and testable.
 
-## Repo navigation
-- Primary entrypoint: scripts/run.ps1
-- Data provisioning (optional): scripts/provision_data.ps1
-- Watchlist runner: tools/run_watchlist.py (or python -m <module> if applicable)
-- Core code: market_monitor/ (or market_app/), tests/ for pytest
+## B) Entry points and commands
+- **Repo root**: `/workspace/Investment-Project`
+- **App root**: `market_app/`
+- **Primary entrypoint**: `scripts/run.ps1`
+- **Data provisioning (optional)**: `scripts/provision_data.ps1`
+- **Watchlist runner**: `tools/run_watchlist.py`
+- **Authoritative commands after changes**: see `docs/codex/40_commands.md` (pytest + offline smoke run required).
 
-## Required checks before finishing any task
-- Run: pytest (or the specific subset listed in docs/codex/40_commands.md)
-- Run: the offline smoke pipeline with watchlists/watchlist_smoke.csv
-- If editing PowerShell scripts: verify nonzero exit code on failure cases (missing data, pipeline errors)
+## C) Output contracts
+- Required outputs for every run:
+  - `outputs/<run_id>/eligible.csv`
+  - `outputs/<run_id>/scored.csv`
+  - `outputs/<run_id>/report.md`
+- **Fail fast** if outputs or columns are missing.
+- Full contract: `docs/codex/20_output_contract.md`.
 
-## Output contract (non-negotiable)
-All runs must write:
-- outputs/<run_id>/eligible.csv
-- outputs/<run_id>/scored.csv
-- outputs/<run_id>/report.md
-See docs/codex/20_output_contract.md for exact columns.
+## D) Data contracts
+- Schemas, manifests, and partitioning rules: `docs/codex/10_data_contracts.md`.
+- Corpus roots are configured via config and env overrides (see `10_data_contracts.md`).
 
-## Review guidelines (P0/P1)
-P0 (must fix):
+## E) Review guidelines
+**P0 (must fix)**
 - Silent success on failure (wrong exit codes)
 - Non-deterministic outputs without justification
 - Breaking the output contract or CLI signatures
 - Introducing mandatory network dependencies
 - Missing/removed tests for touched modules
 
-P1 (should fix):
+**P1 (should fix)**
 - Weak error messages (no file/row context)
 - Missing docs updates for new flags/files
 - Unused config keys or dead code paths
 
-## Dependency rules
-- Prefer stdlib where practical.
-- New dependencies require: justification + lock/update + minimal usage + tests.
-- Avoid heavy ML deps unless the PR is explicitly a ML PR (see docs/codex/30_pr_ladder.md).
+## Verification
+Before coding, confirm you loaded this `AGENTS.md` and call out any nested `AGENTS.md` overrides found in subdirectories.
