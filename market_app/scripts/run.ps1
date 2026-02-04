@@ -1,11 +1,12 @@
 param(
   [string]$Config = ".\config.example.yaml",
   [string]$RunId = "",
-  [int]$TopN = 15,
   [switch]$Offline,
-  [ValidateSet("conservative","opportunistic")]
-  [string]$Variant = "conservative",
-  [string]$WatchlistPath = ""
+  [string]$WatchlistPath = "",
+  [string]$AsOf = "",
+  [string]$OhlcvRawDir = "",
+  [string]$OhlcvDailyDir = "",
+  [string]$ExogenousDailyDir = ""
 )
 
 Set-StrictMode -Version Latest
@@ -56,60 +57,29 @@ try {
   }
 
   $OutputsRoot = Join-Path $Root "..\outputs"
-  $TempOutdir = Join-Path $OutputsRoot "tmp_run"
-  $CacheDir = Join-Path $OutputsRoot "cache"
-
-  if (Test-Path $TempOutdir) {
-    Remove-Item -Recurse -Force $TempOutdir
+  $ResolvedRunId = $RunId
+  if (-not $ResolvedRunId) {
+    $ResolvedRunId = "run_{0:yyyyMMdd_HHmmss}" -f (Get-Date)
   }
-  New-Item -ItemType Directory -Path $TempOutdir | Out-Null
 
   $args = @(
-    "-m","market_monitor","run",
+    "-m","market_monitor.run_watchlist",
     "--config",$ResolvedConfig,
     "--watchlist",$ResolvedWatchlist,
-    "--outdir",$TempOutdir,
-    "--cache-dir",$CacheDir,
-    "--mode","watchlist",
-    "--log-level","INFO"
+    "--run-id",$ResolvedRunId,
+    "--outputs-dir",$OutputsRoot
   )
-  if ($RunId) { $args += @("--run-id",$RunId) }
-  if ($Offline) { $args += "--offline" }
+  if ($AsOf) { $args += @("--asof",$AsOf) }
+  if ($OhlcvRawDir) { $args += @("--ohlcv-raw-dir",$OhlcvRawDir) }
+  if ($OhlcvDailyDir) { $args += @("--ohlcv-daily-dir",$OhlcvDailyDir) }
+  if ($ExogenousDailyDir) { $args += @("--exogenous-daily-dir",$ExogenousDailyDir) }
 
   & $VenvPy @args
   if ($LASTEXITCODE -ne 0) {
     throw "Pipeline failed with exit code $LASTEXITCODE."
   }
 
-  $ResolvedRunId = & $VenvPy -c "import json,sys; from pathlib import Path; manifest=Path(sys.argv[1])/'run_manifest.json'; data=json.loads(manifest.read_text()); print(data.get('run_id',''))" $TempOutdir
-  if (-not $ResolvedRunId) {
-    throw "run_id missing from run_manifest.json"
-  }
-
   $FinalOutdir = Join-Path $OutputsRoot $ResolvedRunId
-  if (-not (Test-Path $FinalOutdir)) {
-    New-Item -ItemType Directory -Path $FinalOutdir | Out-Null
-  }
-
-  Get-ChildItem -Path $TempOutdir -Force | Move-Item -Destination $FinalOutdir
-
-  $EligiblePath = Join-Path $FinalOutdir "eligible_$ResolvedRunId.csv"
-  if (Test-Path $EligiblePath) {
-    Rename-Item -Path $EligiblePath -NewName "eligible.csv"
-  }
-
-  $ScoredPath = Join-Path $FinalOutdir "scored_$ResolvedRunId.csv"
-  if (Test-Path $ScoredPath) {
-    Rename-Item -Path $ScoredPath -NewName "scored.csv"
-  }
-
-  $ReportPath = Join-Path $FinalOutdir "run_report.md"
-  if (Test-Path $ReportPath) {
-    Rename-Item -Path $ReportPath -NewName "report.md"
-  }
-
-  Remove-Item -Recurse -Force $TempOutdir
-
   Write-Host "[done] Outputs written to $FinalOutdir"
   exit 0
 } catch {

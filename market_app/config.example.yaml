@@ -99,6 +99,33 @@ paths:
   cache_dir: data/cache
   state_file: data/state/batch_state.json
   logs_dir: outputs/logs
+  ohlcv_raw_dir: data/ohlcv_raw
+  ohlcv_daily_dir: data/ohlcv_daily
+  exogenous_daily_dir: data/exogenous/daily_features
+pipeline:
+  auto_normalize_ohlcv: true
+  include_raw_exogenous_same_day: false
+  asof_default: null
+  benchmarks:
+  - SPY
+  - QQQ
+  - IWM
+  - TLT
+  - GLD
+scoring:
+  minimum_history_days: 252
+  price_floor: 1.0
+  average_dollar_volume_floor: 1000000.0
+  max_vol_20d_cap: null
+  base_score: 5.0
+  weight_momentum: 2.0
+  weight_trend: 1.5
+  weight_stability: 1.2
+  weight_liquidity: 0.8
+  regime_risk_off_penalty: 1.0
+  regime_risk_on_bonus: 0.3
+  vol_target: 0.4
+  liquidity_target: 1000000.0
 corpus:
   root_dir: ''
   gdelt_conflict_dir: ''

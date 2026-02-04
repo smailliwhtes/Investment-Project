@@ -1,0 +1,7 @@
+{
+  "schema_version": "fixture",
+  "partitions": [
+    "day=2025-01-31/part-00000.csv"
+  ],
+  "content_hash": "731f8743877cb31ff4803bf69181cd30030691e028e3ec701eb689e8a78d5b14"
+}

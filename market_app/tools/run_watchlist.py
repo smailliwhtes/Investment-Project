@@ -829,4 +829,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from market_monitor.run_watchlist import main as run_watchlist_main
+
+    run_watchlist_main()
