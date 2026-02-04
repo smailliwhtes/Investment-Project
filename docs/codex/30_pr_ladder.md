@@ -19,7 +19,17 @@ Acceptance:
 Stop conditions:
 - Do NOT add GDELT, embeddings, or ML training in PR2.
 
-## PR3 — Offline datastore + manifests (Parquet-ready)
+## PR3 — Corpus Doctor v2 (classify + normalize)
+Deliver:
+- Audit classification for raw events, precomputed daily features, and annual aggregates
+- Deterministic normalization into canonical daily_features cache + manifest
+- Optional annual_features cache guarded by explicit flag
+
+Acceptance:
+- pytest passes (doctor + join tests)
+- doctor normalize produces daily_features cache with manifest
+
+## PR4 — Offline datastore + manifests (Parquet-ready)
 Deliver:
 - data/ folder conventions + manifest.json writer/validator
 - “data doctor” CLI: validates schema, coverage, duplicates, missingness
@@ -27,7 +37,7 @@ Acceptance:
 - pytest passes
 - doctor runs on fixtures and fails on intentionally corrupted cases
 
-## PR4 — GDELT provisioning (BigQuery export + offline cache)
+## PR5 — GDELT provisioning (BigQuery export + offline cache)
 Deliver:
 - BigQuery export tool(s) that create day-partitioned local Parquet/CSV
 - manifests for gdelt datasets
@@ -35,7 +45,7 @@ Acceptance:
 - export for a small date window succeeds
 - offline pipeline can read exported files without internet
 
-## PR5 — Feature engineering: GDELT → daily exogenous features
+## PR6 — Feature engineering: GDELT → daily exogenous features
 Deliver:
 - daily aggregates (counts, theme/entity frequencies, tone proxies if available)
 - lagged windows and z-scores
@@ -43,7 +53,7 @@ Deliver:
 Acceptance:
 - unit tests confirm no future data is used (date boundary tests)
 
-## PR6 — Offline text corpus indexing + vector retrieval (CPU first, GPU optional)
+## PR7 — Offline text corpus indexing + vector retrieval (CPU first, GPU optional)
 Deliver:
 - embeddings build script, persisted index + metadata
 - query CLI that returns top-k analog docs for a date window
@@ -51,7 +61,7 @@ Acceptance:
 - CPU path works on fixtures
 - GPU path is optional and auto-detected
 
-## PR7 — Predictive modeling v1 (GPU optional, CPU fallback required)
+## PR8 — Predictive modeling v1 (GPU optional, CPU fallback required)
 Deliver:
 - task definitions (vol spike, drawdown breach, regime classification)
 - baseline model + walk-forward evaluation
@@ -60,14 +70,14 @@ Acceptance:
 - training/eval runs on fixtures (small)
 - inference produces additional columns into scored.csv without breaking contract
 
-## PR8 — Model registry + offline inference engine
+## PR9 — Model registry + offline inference engine
 Deliver:
 - model_card.md per model version
 - predict CLI and integration into run pipeline
 Acceptance:
 - reproducible inference outputs on fixture datasets
 
-## PR9 — Performance + GPU acceleration wiring
+## PR10 — Performance + GPU acceleration wiring
 Deliver:
 - GPU detection, optional acceleration for embedding/indexing and training
 - benchmarks and caching improvements
