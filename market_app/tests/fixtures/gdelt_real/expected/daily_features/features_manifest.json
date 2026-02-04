@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "created_utc": "2024-02-01T00:00:00+00:00",
+  "coverage": {
+    "min_day": "2024-01-01",
+    "max_day": "2024-01-02",
+    "n_days": 2
+  },
+  "row_counts": {
+    "total_rows": 2,
+    "rows_per_day": {
+      "2024-01-01": 1,
+      "2024-01-02": 1
+    }
+  },
+  "schema": {
+    "columns": [
+      "day",
+      "mentions",
+      "notes",
+      "source",
+      "tone_mean"
+    ],
+    "dtypes": {
+      "day": "object",
+      "mentions": "float64",
+      "notes": "object",
+      "source": "object",
+      "tone_mean": "float64"
+    }
+  },
+  "inputs": {
+    "raw_files": [
+      {
+        "path": "market_app/tests/fixtures/gdelt_real/raw/precomputed_daily_mixed.csv",
+        "size": 162
+      }
+    ]
+  },
+  "config": {
+    "date_col": null,
+    "write_format": "csv",
+    "aggregation": {
+      "numeric": "mean",
+      "non_numeric": "first"
+    }
+  },
+  "classification_summary": {
+    "daily_features_precomputed": [
+      "market_app/tests/fixtures/gdelt_real/raw/precomputed_daily_mixed.csv"
+    ],
+    "annual_aggregates": [],
+    "events_raw": [
+      "market_app/tests/fixtures/gdelt_real/raw/gdelt_events_sample.tsv"
+    ],
+    "unknown": []
+  },
+  "issues": [
+    "Duplicate days detected; aggregated with mean (numeric) and first (non-numeric)."
+  ],
+  "content_hash": "89ddee42e8a6e12f651293f8b3c532aa87d7311138e8ff5c63a4e579c0a51db9"
+}

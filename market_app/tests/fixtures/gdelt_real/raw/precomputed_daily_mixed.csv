@@ -1,0 +1,5 @@
+Date,mentions,tone_mean,source,notes
+2024-01-01,10,0.1,news,first
+2024-01-01,20,0.3,blog,second
+2024-01-02,5,0.2,news,third
+2024-01-02,7,not_a_number,wire,fourth

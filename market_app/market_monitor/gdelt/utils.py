@@ -313,18 +313,74 @@ def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
+def _canonicalize_path(value: str) -> str:
+    path = Path(value)
+    return path.name or path.as_posix()
+
+
+def _canonicalize_for_hash(value: object) -> object:
+    if isinstance(value, dict):
+        cleaned: dict[str, object] = {}
+        for key, item in value.items():
+            if key in {"created_utc", "content_hash"}:
+                continue
+            if key.endswith("_path") or key.endswith("_dir"):
+                if isinstance(item, str):
+                    cleaned[key] = _canonicalize_path(item)
+                else:
+                    cleaned[key] = item
+                continue
+            if key == "inputs" and isinstance(item, dict):
+                cleaned_inputs: dict[str, object] = {}
+                for input_key, input_value in item.items():
+                    if input_key.endswith("_path") or input_key.endswith("_dir"):
+                        if isinstance(input_value, str):
+                            cleaned_inputs[input_key] = _canonicalize_path(input_value)
+                        else:
+                            cleaned_inputs[input_key] = input_value
+                        continue
+                    cleaned_inputs[input_key] = _canonicalize_for_hash(input_value)
+                cleaned[key] = cleaned_inputs
+                continue
+            if key == "classification_summary" and isinstance(item, dict):
+                summary: dict[str, object] = {}
+                for summary_key, summary_value in item.items():
+                    summary[summary_key] = _canonicalize_for_hash(summary_value)
+                cleaned[key] = summary
+                continue
+            cleaned[key] = _canonicalize_for_hash(item)
+        return cleaned
+    if isinstance(value, list):
+        cleaned_items = [_canonicalize_for_hash(item) for item in value]
+        if all(isinstance(item, dict) and "path" in item for item in cleaned_items):
+            normalized = []
+            for item in cleaned_items:
+                assert isinstance(item, dict)
+                normalized.append(
+                    {
+                        "path": _canonicalize_path(str(item.get("path", ""))),
+                        "size": item.get("size"),
+                    }
+                )
+            return sorted(normalized, key=lambda entry: str(entry.get("path")))
+        if all(isinstance(item, str) for item in cleaned_items):
+            return sorted({_canonicalize_path(item) for item in cleaned_items})
+        return cleaned_items
+    return value
+
+
 def build_content_hash(payload: dict) -> str:
-    return hash_text(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
+    canonical = _canonicalize_for_hash(payload)
+    return hash_text(json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
 
 
-def build_file_fingerprint(paths: Iterable[Path]) -> list[dict[str, str | int | float]]:
+def build_file_fingerprint(paths: Iterable[Path]) -> list[dict[str, str | int]]:
     fingerprint = []
     for path in paths:
         stat = path.stat()
         fingerprint.append(
             {
                 "path": str(path),
-                "mtime": stat.st_mtime,
                 "size": stat.st_size,
             }
         )
