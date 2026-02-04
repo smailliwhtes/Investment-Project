@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "created_utc": "2024-02-01T00:00:00+00:00",
+  "coverage": {
+    "min_day": "2024-01-02",
+    "max_day": "2024-01-03",
+    "n_days": 2
+  },
+  "row_counts": {
+    "total_rows": 2,
+    "rows_per_day": {
+      "2024-01-02": 1,
+      "2024-01-03": 1
+    }
+  },
+  "columns": [
+    "day",
+    "symbol",
+    "close",
+    "volume",
+    "mentions_lag_1",
+    "tone_mean_lag_1"
+  ],
+  "inputs": {
+    "market_path": "market_app/tests/fixtures/gdelt_real/market_daily.csv",
+    "gdelt_path": "market_app/tests/fixtures/gdelt_real/expected/daily_features",
+    "market_files": [
+      {
+        "path": "market_app/tests/fixtures/gdelt_real/market_daily.csv",
+        "size": 72
+      }
+    ],
+    "gdelt_files": [
+      {
+        "path": "market_app/tests/fixtures/gdelt_real/expected/daily_features/day=2024-01-01/part-00000.csv",
+        "size": 67
+      },
+      {
+        "path": "market_app/tests/fixtures/gdelt_real/expected/daily_features/day=2024-01-02/part-00000.csv",
+        "size": 66
+      }
+    ]
+  },
+  "config": {
+    "lags": [
+      1
+    ],
+    "rolling_window": null,
+    "rolling_mean": false,
+    "rolling_sum": false,
+    "count_columns": null,
+    "rolling_min_periods": null,
+    "output_format": "csv",
+    "include_raw_gdelt": false
+  },
+  "content_hash": "de208790b0fd17902b5748ba82b2c6002899fcf2a21dea913365c75ebde699b5"
+}

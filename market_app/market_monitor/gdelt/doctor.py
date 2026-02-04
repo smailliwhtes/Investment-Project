@@ -5,7 +5,7 @@ import json
 import os
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -658,8 +658,7 @@ def _normalize_daily_frame(
         agg[col] = "mean" if col in numeric_cols else "first"
 
     grouped = normalized.groupby("day", as_index=False).agg(agg)
-    ordered_cols = ["day"] + sorted([col for col in grouped.columns if col != "day"])
-    return grouped[ordered_cols]
+    return _canonicalize_daily_frame(grouped)
 
 
 def _aggregate_by_day(frame: "pd.DataFrame") -> "pd.DataFrame":
@@ -674,8 +673,112 @@ def _aggregate_by_day(frame: "pd.DataFrame") -> "pd.DataFrame":
             continue
         agg[col] = "mean" if col in numeric_cols else "first"
     grouped = frame.groupby("day", as_index=False).agg(agg)
-    ordered_cols = ["day"] + sorted([col for col in grouped.columns if col != "day"])
-    return grouped[ordered_cols]
+    return _canonicalize_daily_frame(grouped)
+
+
+def _canonicalize_daily_frame(frame: "pd.DataFrame") -> "pd.DataFrame":
+    ordered_cols = ["day"] + sorted([col for col in frame.columns if col != "day"])
+    return frame.sort_values("day")[ordered_cols].reset_index(drop=True)
+
+
+def _stream_precomputed_daily(
+    *,
+    path: Path,
+    delimiter: str,
+    date_column: str,
+    chunksize: int,
+    issues: list[str],
+) -> "pd.DataFrame":
+    import pandas as pd
+
+    def _iter_chunks() -> Iterable[pd.DataFrame]:
+        return pd.read_csv(
+            path,
+            sep=delimiter,
+            header=0,
+            dtype=str,
+            chunksize=chunksize,
+            low_memory=False,
+        )
+
+    header = pd.read_csv(path, sep=delimiter, header=0, dtype=str, nrows=0, low_memory=False)
+    numeric_columns: set[str] = set()
+    for chunk in _iter_chunks():
+        for col in chunk.columns:
+            if col == date_column:
+                continue
+            series = pd.to_numeric(chunk[col], errors="coerce")
+            if series.notna().any():
+                numeric_columns.add(col)
+
+    sum_by_day: dict[str, dict[str, float]] = {}
+    count_by_day: dict[str, dict[str, int]] = {}
+    first_by_day: dict[str, dict[str, str]] = {}
+    row_counts: dict[str, int] = {}
+
+    for chunk in _iter_chunks():
+        parsed = pd.to_datetime(chunk[date_column], errors="coerce")
+        if parsed.notna().sum() == 0:
+            parsed = parse_day(chunk[date_column])
+        if parsed.notna().sum() == 0:
+            raise ValueError(f"Date column '{date_column}' could not be parsed.")
+        chunk = chunk.copy()
+        chunk["day"] = parsed.dt.strftime("%Y-%m-%d")
+        chunk = chunk.drop(columns=[date_column])
+        chunk = chunk[chunk["day"].notna()]
+        if chunk.empty:
+            continue
+        grouped_counts = chunk.groupby("day", as_index=False).size()
+        for _, row in grouped_counts.iterrows():
+            day_value = row["day"]
+            row_counts[day_value] = row_counts.get(day_value, 0) + int(row["size"])
+
+        non_numeric_cols = [col for col in chunk.columns if col not in {"day", *numeric_columns}]
+
+        for col in numeric_columns:
+            series = pd.to_numeric(chunk[col], errors="coerce")
+            sums = series.groupby(chunk["day"]).sum(min_count=1)
+            counts = series.groupby(chunk["day"]).count()
+            for day_value, total in sums.items():
+                if pd.isna(total):
+                    continue
+                sum_by_day.setdefault(day_value, {})
+                sum_by_day[day_value][col] = sum_by_day[day_value].get(col, 0.0) + float(total)
+            for day_value, count in counts.items():
+                count_by_day.setdefault(day_value, {})
+                count_by_day[day_value][col] = count_by_day[day_value].get(col, 0) + int(count)
+
+        for col in non_numeric_cols:
+            series = chunk[col].dropna().astype(str)
+            if series.empty:
+                continue
+            firsts = series.groupby(chunk["day"]).first()
+            for day_value, value in firsts.items():
+                if value is None:
+                    continue
+                first_by_day.setdefault(day_value, {})
+                first_by_day[day_value].setdefault(col, value)
+
+    if any(count > 1 for count in row_counts.values()):
+        issues.append("Duplicate days detected; aggregated with mean (numeric) and first (non-numeric).")
+
+    rows: list[dict[str, object]] = []
+    all_columns = [col for col in header.columns if col != date_column]
+    for day_value in sorted(row_counts.keys()):
+        row: dict[str, object] = {"day": day_value}
+        for col in all_columns:
+            if col in numeric_columns:
+                count = count_by_day.get(day_value, {}).get(col, 0)
+                if count:
+                    row[col] = sum_by_day.get(day_value, {}).get(col, 0.0) / count
+                else:
+                    row[col] = float("nan")
+            else:
+                row[col] = first_by_day.get(day_value, {}).get(col)
+        rows.append(row)
+
+    frame = pd.DataFrame(rows)
+    return _canonicalize_daily_frame(frame)
 
 
 def _write_partitioned(
@@ -711,6 +814,8 @@ def _normalize_precomputed_daily(
     date_col: str | None,
     write_format: str,
     classification_summary: dict[str, Any],
+    streaming_threshold_bytes: int = 25_000_000,
+    streaming_chunk_rows: int = 50_000,
 ) -> dict[str, Any]:
     import pandas as pd
 
@@ -720,26 +825,46 @@ def _normalize_precomputed_daily(
     issues: list[str] = []
     for path in file_paths:
         file_spec = analyze_file(path)
-        frame = pd.read_csv(
-            path,
-            sep=file_spec.delimiter,
-            header=0 if file_spec.has_header else None,
-            dtype=str,
-            low_memory=False,
-        )
         if not file_spec.has_header:
             raise ValueError(f"{path} is missing headers; cannot normalize daily features.")
-        date_column = _resolve_date_column(list(frame.columns), date_col)
-        if not date_column:
-            raise ValueError(f"{path} missing a recognizable date column; use --date-col to map.")
-        normalized = _normalize_daily_frame(frame, date_column=date_column, issues=issues)
+        if path.stat().st_size >= streaming_threshold_bytes:
+            header = pd.read_csv(
+                path,
+                sep=file_spec.delimiter,
+                header=0,
+                dtype=str,
+                nrows=0,
+                low_memory=False,
+            )
+            date_column = _resolve_date_column(list(header.columns), date_col)
+            if not date_column:
+                raise ValueError(f"{path} missing a recognizable date column; use --date-col to map.")
+            normalized = _stream_precomputed_daily(
+                path=path,
+                delimiter=file_spec.delimiter,
+                date_column=date_column,
+                chunksize=streaming_chunk_rows,
+                issues=issues,
+            )
+        else:
+            frame = pd.read_csv(
+                path,
+                sep=file_spec.delimiter,
+                header=0,
+                dtype=str,
+                low_memory=False,
+            )
+            date_column = _resolve_date_column(list(frame.columns), date_col)
+            if not date_column:
+                raise ValueError(f"{path} missing a recognizable date column; use --date-col to map.")
+            normalized = _normalize_daily_frame(frame, date_column=date_column, issues=issues)
         all_frames.append(normalized)
 
     combined = pd.concat(all_frames, ignore_index=True, sort=False)
     if combined["day"].duplicated().any():
         issues.append("Duplicate days across files detected; aggregated with mean/first.")
         combined = _aggregate_by_day(combined)
-    combined = combined.sort_values("day")
+    combined = _canonicalize_daily_frame(combined)
     daily_root = gdelt_dir / "daily_features"
     rows_per_day = _write_partitioned(combined, out_dir=daily_root, write_format=write_format)
     manifest_path = daily_root / "features_manifest.json"

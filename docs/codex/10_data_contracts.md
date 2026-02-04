@@ -36,6 +36,10 @@ Allowed asset_type:
 Each cache directory must have a manifest JSON:
 - path: `data/<domain>/manifest.json`
 - includes: schema_version, created_utc, source, coverage (min_date/max_date), row_counts, checksum/schema_hash
+Content hashing:
+- `content_hash` is the SHA-256 of the canonical JSON payload with keys sorted and separators `(",", ":")`.
+- Canonicalization removes `created_utc` and `content_hash`, normalizes any `*_path`/`*_dir` values to
+  basenames, and collapses file fingerprints to `{path: <basename>, size: <bytes>}` before hashing.
 
 ## D) GDELT raw ingest (offline)
 Local GDELT data is ingested offline from user-provided CSVs. The ingest step supports headered CSVs and raw
@@ -84,6 +88,16 @@ Normalized cache layout (precomputed daily features):
 - `<gdelt_dir>/daily_features/day=YYYY-MM-DD/part-00000.parquet` (or `.csv`)
 - `<gdelt_dir>/daily_features/features_manifest.json`
 
+Canonical daily schema:
+- `day` (YYYY-MM-DD, string)
+- remaining columns are sorted alphabetically (deterministic ordering)
+- partition rows are sorted by `day` before writing
+
+Aggregation rules (precomputed daily normalization):
+- Numeric columns: mean per day (after coercion with `errors="coerce"`).
+- Non-numeric columns: first non-null value per day.
+- Duplicate days within or across files are aggregated using the rules above.
+
 Daily features manifest fields:
 - schema_version, created_utc
 - coverage (min_day, max_day, n_days)
@@ -106,6 +120,10 @@ Example environment configuration:
 Join output location:
 - `data/features/joined/day=YYYY-MM-DD/part-00000.parquet`
 - `data/features/joined/manifest.json`
+
+Canonicalization:
+- Output rows are sorted by `(day, symbol)` and partitions are written in sorted day order.
+- Column order is deterministic: `day`, `symbol`, market feature columns, then GDELT feature columns.
 
 Schema (long-form):
 - day (YYYY-MM-DD, join key)
