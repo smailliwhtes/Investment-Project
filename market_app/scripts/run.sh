@@ -81,7 +81,7 @@ fi
 
 RUN_ID="${RUN_ID_OVERRIDE:-run_$(date +%Y%m%d_%H%M%S)}"
 
-RUN_ARGS=("-m" "market_monitor.run_watchlist" "--config" "$CONFIG" "--watchlist" "$WATCHLIST" "--run-id" "$RUN_ID" "--outputs-dir" "$OUTDIR")
+RUN_ARGS=("run" "--config" "$CONFIG" "--watchlist" "$WATCHLIST" "--run-id" "$RUN_ID" "--outputs-dir" "$OUTDIR")
 if [[ -n "$ASOF_DATE" ]]; then
   RUN_ARGS+=("--asof" "$ASOF_DATE")
 fi
@@ -95,7 +95,12 @@ if [[ -n "$EXOGENOUS_DAILY_DIR" ]]; then
   RUN_ARGS+=("--exogenous-daily-dir" "$EXOGENOUS_DAILY_DIR")
 fi
 
-python "${RUN_ARGS[@]}"
+MARKET_MONITOR_BIN="${REPO_ROOT}/.venv/bin/market-monitor"
+if [[ -x "$MARKET_MONITOR_BIN" ]]; then
+  "$MARKET_MONITOR_BIN" "${RUN_ARGS[@]}"
+else
+  market-monitor "${RUN_ARGS[@]}"
+fi
 
 FINAL_OUTDIR="${OUTDIR%/}/${RUN_ID}"
 echo "[done] Outputs written to $FINAL_OUTDIR"

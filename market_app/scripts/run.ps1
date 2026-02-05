@@ -16,7 +16,9 @@ $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location (Resolve-Path "$Root\..")
 
 $VenvPy = Join-Path $Root "..\.venv\Scripts\python.exe"
+$VenvCli = Join-Path $Root "..\.venv\Scripts\market-monitor.exe"
 if (-not (Test-Path $VenvPy)) { $VenvPy = "python" }
+if (-not (Test-Path $VenvCli)) { $VenvCli = "market-monitor" }
 
 try {
   function Resolve-WatchlistPath {
@@ -63,7 +65,7 @@ try {
   }
 
   $args = @(
-    "-m","market_monitor.run_watchlist",
+    "run",
     "--config",$ResolvedConfig,
     "--watchlist",$ResolvedWatchlist,
     "--run-id",$ResolvedRunId,
@@ -74,7 +76,7 @@ try {
   if ($OhlcvDailyDir) { $args += @("--ohlcv-daily-dir",$OhlcvDailyDir) }
   if ($ExogenousDailyDir) { $args += @("--exogenous-daily-dir",$ExogenousDailyDir) }
 
-  & $VenvPy @args
+  & $VenvCli @args
   if ($LASTEXITCODE -ne 0) {
     throw "Pipeline failed with exit code $LASTEXITCODE."
   }

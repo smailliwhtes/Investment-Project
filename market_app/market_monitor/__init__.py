@@ -1,6 +1,8 @@
 ﻿"""Market Monitor package."""
 
-__all__ = ["main"]
+from market_monitor.version import __version__
+
+__all__ = ["main", "__version__"]
 
 
 def main(argv=None):
