@@ -6,6 +6,13 @@
 **/.ruff_cache/
 **/.coverage
 **/htmlcov/
+**/dist/
+**/build/
+**/*.exe
+**/*.zip
+**/*.parquet
+**/*.db
+**/*.sqlite
 **/outputs/
 **/data/raw/
 **/data/processed/

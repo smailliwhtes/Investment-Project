@@ -7,11 +7,16 @@ from typing import Any
 
 
 def hash_file(path: Path) -> str:
-    hasher = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            hasher.update(chunk)
-    return hasher.hexdigest()
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        hasher = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    return hash_text(normalized)
 
 
 def hash_text(text: str) -> str:

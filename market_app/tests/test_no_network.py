@@ -1,4 +1,5 @@
 import importlib
+import socket
 
 import pytest
 
@@ -18,3 +19,8 @@ def test_offline_blocks_network_calls() -> None:
             importlib.import_module("market_monitor.providers.stooq")
     finally:
         set_offline_mode(False)
+
+
+def test_network_guard_blocks_socket() -> None:
+    with pytest.raises(RuntimeError, match="blocked"):
+        socket.create_connection(("example.com", 80), timeout=1)

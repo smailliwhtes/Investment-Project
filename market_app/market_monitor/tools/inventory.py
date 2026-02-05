@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from market_monitor.time_utils import utc_now_iso
 from pathlib import Path
 
 from market_monitor.config.discovery import (
@@ -32,7 +32,7 @@ def build_inventory(config: InventoryConfig) -> dict:
     security_master_summary = _summarize_security_master(security_master_path)
 
     payload = {
-        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "generated_at": utc_now_iso(),
         "paths": {
             "repo_root": str(config.repo_root),
             "stooq_root": str(config.stooq_root) if config.stooq_root else None,
@@ -54,8 +54,10 @@ def write_inventory(config: InventoryConfig) -> dict:
     config.output_dir.mkdir(parents=True, exist_ok=True)
     json_path = config.output_dir / "inventory.json"
     md_path = config.output_dir / "inventory.md"
-    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    md_path.write_text(_render_inventory_md(payload), encoding="utf-8")
+    with json_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(payload, indent=2))
+    with md_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(_render_inventory_md(payload))
     return payload
 
 

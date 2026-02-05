@@ -31,7 +31,7 @@ def write_features(path: Path, rows: list[dict]) -> None:
             df[col] = None
     df = df[FEATURE_COLUMNS]
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(path, index=False)
+    df.to_csv(path, index=False, lineterminator="\n")
 
 
 def build_features_manifest(
@@ -49,5 +49,6 @@ def build_features_manifest(
     }
     payload["content_hash"] = build_content_hash(payload)
     manifest_path = output_dir / "features_manifest.json"
-    manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(payload, indent=2))
     return payload

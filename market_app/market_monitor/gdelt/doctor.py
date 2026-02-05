@@ -25,8 +25,8 @@ from market_monitor.gdelt.utils import (
     map_columns,
     normalize_columns,
     parse_day,
-    utc_now_iso,
 )
+from market_monitor.time_utils import utc_now_iso
 
 
 READY_STABLE = "READY_STABLE"
@@ -601,7 +601,8 @@ def _print_summary(report: AuditReport) -> None:
 
 def _write_report(report: AuditReport, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(report.to_dict(), indent=2), encoding="utf-8")
+    with out_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(report.to_dict(), indent=2))
 
 
 def _resolve_date_column(columns: list[str], date_col: str | None) -> str | None:
@@ -802,7 +803,7 @@ def _write_partitioned(
         if output_ext == ".parquet":
             day_frame.to_parquet(out_path, index=False)
         else:
-            day_frame.to_csv(out_path, index=False)
+            day_frame.to_csv(out_path, index=False, lineterminator="\n")
         rows_per_day[day] = int(len(day_frame))
     return rows_per_day
 
@@ -901,7 +902,8 @@ def _normalize_precomputed_daily(
         "issues": issues,
     }
     manifest_payload["content_hash"] = build_content_hash(manifest_payload)
-    manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(manifest_payload, indent=2))
     return {
         "daily_root": daily_root,
         "manifest_path": manifest_path,
@@ -961,7 +963,7 @@ def _normalize_annual_features(
         if output_ext == ".parquet":
             year_frame.to_parquet(out_path, index=False)
         else:
-            year_frame.to_csv(out_path, index=False)
+            year_frame.to_csv(out_path, index=False, lineterminator="\n")
         rows_per_year[str(int(year))] = int(len(year_frame))
 
     manifest_path = annual_root / "annual_features_manifest.json"
@@ -991,7 +993,8 @@ def _normalize_annual_features(
         "issues": issues,
     }
     manifest_payload["content_hash"] = build_content_hash(manifest_payload)
-    manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(manifest_payload, indent=2))
     return {
         "annual_root": annual_root,
         "manifest_path": manifest_path,

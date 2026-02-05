@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from market_monitor.hash_utils import hash_file, hash_manifest
+from market_monitor.time_utils import utc_now_iso
 from market_monitor.taxonomy import parse_taxonomy_fields
 
 CANONICAL_FIELDS = {
@@ -173,8 +174,9 @@ def build_corpus_index(sources: list[CorpusSource], index_path: Path) -> dict[st
                 "source_type": source.source_type,
             }
         )
-    payload = {"generated_at_utc": datetime.now(timezone.utc).isoformat(), "files": entries}
-    index_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    payload = {"generated_at_utc": utc_now_iso(), "files": entries}
+    with index_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(payload, indent=2, sort_keys=True))
     return payload
 
 
@@ -303,7 +305,7 @@ def _canonicalize_chunk(raw: pd.DataFrame, *, date_col: str | None) -> pd.DataFr
     canonical = canonical.dropna(subset=["EventDate"]).copy()
     canonical["EventDate"] = canonical["EventDate"].dt.tz_convert("UTC")
     canonical["Date"] = canonical["EventDate"].dt.date.astype(str)
-    now_date = datetime.now(timezone.utc).date().isoformat()
+    now_date = utc_now_iso().split("T", maxsplit=1)[0]
     canonical = canonical[canonical["Date"] <= now_date]
     canonical = _normalize_taxonomy_fields(canonical)
     return canonical
@@ -1011,8 +1013,9 @@ def _load_cache_key(cache_path: Path) -> str | None:
 
 
 def _write_cache_key(cache_path: Path, cache_key: str) -> None:
-    payload = {"cache_key": cache_key, "generated_at_utc": datetime.now(timezone.utc).isoformat()}
-    cache_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    payload = {"cache_key": cache_key, "generated_at_utc": utc_now_iso()}
+    with cache_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(payload, indent=2, sort_keys=True))
 
 
 def build_corpus_daily_store(
@@ -1128,14 +1131,15 @@ def run_corpus_pipeline(
                     "max_date": entry["max_date"],
                 }
             )
-    index_path.write_text(json.dumps(index_payload, indent=2, sort_keys=True), encoding="utf-8")
+    with index_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(index_payload, indent=2, sort_keys=True))
 
     manifest["raw_event_zips"] = manifest_payload.get("raw_event_zips", [])
     if "settings" in manifest_payload:
         manifest["settings"] = manifest_payload["settings"]
-    (outputs_dir / "corpus_manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
-    )
+    manifest_path = outputs_dir / "corpus_manifest.json"
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(manifest, indent=2, sort_keys=True))
 
     analog_cfg = config.get("corpus", {}).get("analogs", {})
     analogs_report, analogs = build_analogs_report(
@@ -1143,7 +1147,8 @@ def run_corpus_pipeline(
         top_n=int(analog_cfg.get("top_n", 8)),
     )
     analogs_path = outputs_dir / "analogs_report.md"
-    analogs_path.write_text(analogs_report, encoding="utf-8")
+    with analogs_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(analogs_report)
 
     forward_days = [int(d) for d in analog_cfg.get("forward_days", [1, 5, 20])]
     event_impact = build_event_impact_library(
