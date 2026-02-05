@@ -17,7 +17,7 @@ def test_run_and_evaluate_with_fixtures(tmp_path: Path) -> None:
             sys.executable,
             "-m",
             "market_monitor",
-            "run",
+            "run-legacy",
             "--config",
             str(config_path),
             "--mode",

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,14 +15,17 @@ from market_monitor.config_schema import load_config
 from market_monitor.features.compute_daily_features import compute_daily_features
 from market_monitor.features.io import read_ohlcv
 from market_monitor.hash_utils import hash_file, hash_text
+from market_monitor.logging_utils import LogPaths, configure_logging
 from market_monitor.manifest import resolve_git_commit
 from market_monitor.ohlcv_doctor import normalize_directory
 from market_monitor.regime import compute_regime
 from market_monitor.scoring.explain import build_explanations
 from market_monitor.scoring.gates import GateConfig, apply_gates, join_pipe
 from market_monitor.scoring.score import ScoreConfig, compute_score
+from market_monitor.validation import validate_data
 
 REQUIRED_WATCHLIST_COLUMNS = {"symbol", "theme_bucket", "asset_type"}
+OUTPUT_SCHEMA_VERSION = "v2"
 
 
 @dataclass(frozen=True)
@@ -77,7 +82,9 @@ def _latest_common_date(symbols: list[str], ohlcv_dir: Path) -> str:
     return min(max_dates).strftime("%Y-%m-%d")
 
 
-def _load_exogenous_features(exogenous_dir: Path, asof_date: str, include_raw: bool) -> tuple[dict, dict]:
+def _load_exogenous_features(
+    exogenous_dir: Path, asof_date: str, include_raw: bool
+) -> tuple[dict, dict]:
     manifest_path = exogenous_dir / "features_manifest.json"
     manifest_hash = hash_file(manifest_path) if manifest_path.exists() else None
 
@@ -91,7 +98,7 @@ def _load_exogenous_features(exogenous_dir: Path, asof_date: str, include_raw: b
             df = pd.read_csv(candidates[0])
 
     if df is None or df.empty:
-        return {}, {"manifest_hash": manifest_hash, "coverage": 0}
+        return {}, {"manifest_hash": manifest_hash, "coverage": 0, "missing_dates": [asof_date]}
 
     day_col = None
     for col in df.columns:
@@ -102,7 +109,7 @@ def _load_exogenous_features(exogenous_dir: Path, asof_date: str, include_raw: b
         df = df[df[day_col] == asof_date]
 
     if df.empty:
-        return {}, {"manifest_hash": manifest_hash, "coverage": 0}
+        return {}, {"manifest_hash": manifest_hash, "coverage": 0, "missing_dates": [asof_date]}
 
     row = df.iloc[0].to_dict()
     if not include_raw:
@@ -115,7 +122,7 @@ def _load_exogenous_features(exogenous_dir: Path, asof_date: str, include_raw: b
         row = filtered
 
     coverage = 1 if row else 0
-    return row, {"manifest_hash": manifest_hash, "coverage": coverage}
+    return row, {"manifest_hash": manifest_hash, "coverage": coverage, "missing_dates": []}
 
 
 def _write_results_jsonl(path: Path, rows: list[dict]) -> None:
@@ -173,6 +180,17 @@ def _write_report(path: Path, manifest: dict, results_df: pd.DataFrame) -> None:
 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+def _write_diagnostics(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _log_stage(logger: logging.Logger, stage: str, status: str, details: str | None = None) -> None:
+    message = f"[stage:{stage}] {status}"
+    if details:
+        message = f"{message} | {details}"
+    logger.info(message)
+
 
 def run_watchlist(args: argparse.Namespace) -> dict:
     config_path = Path(args.config).expanduser().resolve()
@@ -201,9 +219,51 @@ def run_watchlist(args: argparse.Namespace) -> dict:
 
     watchlist_path = Path(args.watchlist).expanduser()
     watchlist_df = _load_watchlist(watchlist_path)
+    symbols = watchlist_df["symbol"].tolist()
+    asof_date = args.asof or config.get("pipeline", {}).get("asof_default")
+    if not asof_date and paths.ohlcv_daily_dir.exists():
+        asof_date = _latest_common_date(symbols, paths.ohlcv_daily_dir)
+    output_dir = paths.outputs_dir / args.run_id
+    log_path = output_dir / "logs" / "run.log"
+    logger = configure_logging(LogPaths(console_level=args.log_level, file_path=log_path))
+    timings: dict[str, float] = {}
+    warnings: list[str] = []
+    _log_stage(logger, "run", "start", f"run_id={args.run_id}")
+
+    _log_stage(logger, "validation", "start")
+    validation = validate_data(
+        watchlist_path=watchlist_path,
+        ohlcv_daily_dir=paths.ohlcv_daily_dir,
+        exogenous_daily_dir=paths.exogenous_daily_dir,
+        asof_date=asof_date or "",
+        min_history_days=int(config.get("scoring", {}).get("minimum_history_days", 252)),
+        benchmark_symbols=config.get("pipeline", {}).get("benchmarks") or [],
+    )
+    warnings.extend(validation.warnings)
+    diagnostics = {
+        "run_id": args.run_id,
+        "schema_version": OUTPUT_SCHEMA_VERSION,
+        "missing_symbols": validation.missing_symbols,
+        "per_symbol_exclusion": validation.per_symbol_reasons,
+        "exogenous_coverage_gaps": validation.exogenous_gaps,
+        "benchmark_missing": validation.benchmark_missing,
+        "warnings": validation.warnings,
+    }
+    if not validation.ok:
+        _write_diagnostics(output_dir / "diagnostics.json", diagnostics)
+        error_message = validation.errors[0]
+        logger.error(f"[validation] {error_message}")
+        raise RuntimeError(error_message)
+    _log_stage(
+        logger,
+        "validation",
+        "end",
+        f"errors=0 warnings={len(validation.warnings)} symbols={len(watchlist_df)}",
+    )
 
     if config.get("pipeline", {}).get("auto_normalize_ohlcv", True):
         if not paths.ohlcv_daily_dir.exists() or not list(paths.ohlcv_daily_dir.glob("*.csv")):
+            _log_stage(logger, "ohlcv_normalize", "start", f"raw_dir={paths.ohlcv_raw_dir}")
             if not paths.ohlcv_raw_dir.exists():
                 raise FileNotFoundError(f"Raw OHLCV dir not found: {paths.ohlcv_raw_dir}")
             normalize_directory(
@@ -217,35 +277,61 @@ def run_watchlist(args: argparse.Namespace) -> dict:
                 streaming=True,
                 chunk_rows=200_000,
             )
+            _log_stage(logger, "ohlcv_normalize", "end", f"out_dir={paths.ohlcv_daily_dir}")
 
-    symbols = watchlist_df["symbol"].tolist()
-    asof_date = args.asof or config.get("pipeline", {}).get("asof_default")
     if not asof_date:
         asof_date = _latest_common_date(symbols, paths.ohlcv_daily_dir)
 
     ohlcv_manifest_path = paths.ohlcv_daily_dir / "ohlcv_manifest.json"
     ohlcv_manifest_hash = hash_file(ohlcv_manifest_path) if ohlcv_manifest_path.exists() else None
 
+    _log_stage(logger, "features", "start", f"symbols={len(symbols)} workers={args.workers}")
+    start = time.perf_counter()
     feature_result = compute_daily_features(
         ohlcv_dir=paths.ohlcv_daily_dir,
-        out_dir=paths.outputs_dir / args.run_id,
+        out_dir=output_dir,
         asof_date=asof_date,
+        workers=args.workers,
     )
+    timings["features"] = time.perf_counter() - start
     features_df = pd.read_csv(feature_result["features_path"])
     features_df = features_df[features_df["symbol"].isin(symbols)]
+    _log_stage(
+        logger,
+        "features",
+        "end",
+        f"rows={len(features_df)} asof={asof_date}",
+    )
 
     regime_config = config.get("pipeline", {})
     benchmarks = regime_config.get("benchmarks") or ["SPY", "QQQ", "IWM", "TLT", "GLD"]
+    _log_stage(logger, "regime", "start", f"benchmarks={benchmarks}")
+    start = time.perf_counter()
     regime_result = compute_regime(
         ohlcv_dir=paths.ohlcv_daily_dir,
         benchmarks=benchmarks,
         asof_date=asof_date,
     )
+    timings["regime"] = time.perf_counter() - start
+    if regime_result.issues:
+        warnings.extend(regime_result.issues)
+    _log_stage(logger, "regime", "end", f"label={regime_result.regime_label}")
 
+    _log_stage(logger, "exogenous", "start", f"asof={asof_date}")
+    start = time.perf_counter()
     exogenous_row, exogenous_meta = _load_exogenous_features(
         paths.exogenous_daily_dir,
         asof_date,
         include_raw=config.get("pipeline", {}).get("include_raw_exogenous_same_day", False),
+    )
+    timings["exogenous"] = time.perf_counter() - start
+    if exogenous_meta.get("missing_dates"):
+        warnings.append(f"Exogenous coverage missing: {exogenous_meta['missing_dates']}")
+    _log_stage(
+        logger,
+        "exogenous",
+        "end",
+        f"coverage={exogenous_meta.get('coverage', 0)} fields={len(exogenous_row)}",
     )
 
     scoring_cfg = config.get("scoring", {})
@@ -269,10 +355,11 @@ def run_watchlist(args: argparse.Namespace) -> dict:
 
     results = []
     json_rows = []
-    warnings = []
 
     features_by_symbol = {row["symbol"]: row for row in features_df.to_dict(orient="records")}
 
+    _log_stage(logger, "scoring", "start", f"symbols={len(watchlist_df)}")
+    start = time.perf_counter()
     for _, watch_row in watchlist_df.iterrows():
         symbol = watch_row["symbol"]
         feature_row = features_by_symbol.get(symbol, {})
@@ -319,6 +406,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
             {
                 "symbol": symbol,
                 "asof_date": asof_date,
+                "schema_version": OUTPUT_SCHEMA_VERSION,
                 "theme_bucket": watch_row.get("theme_bucket", ""),
                 "asset_type": watch_row.get("asset_type", ""),
                 "gates_passed": gate_decision.passed,
@@ -339,6 +427,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
             {
                 "symbol": symbol,
                 "asof_date": asof_date,
+                "schema_version": OUTPUT_SCHEMA_VERSION,
                 "theme_bucket": watch_row.get("theme_bucket", ""),
                 "asset_type": watch_row.get("asset_type", ""),
                 "gates_passed": gate_decision.passed,
@@ -362,8 +451,15 @@ def run_watchlist(args: argparse.Namespace) -> dict:
         results_df = results_df.sort_values(
             ["priority_score", "gates_passed", "symbol"], ascending=[False, False, True]
         )
+    timings["scoring"] = time.perf_counter() - start
+    eligible_count = int(results_df["gates_passed"].sum()) if not results_df.empty else 0
+    _log_stage(
+        logger,
+        "scoring",
+        "end",
+        f"rows={len(results_df)} eligible={eligible_count} ineligible={len(results_df) - eligible_count}",
+    )
 
-    output_dir = paths.outputs_dir / args.run_id
     output_dir.mkdir(parents=True, exist_ok=True)
 
     results_csv_path = output_dir / "results.csv"
@@ -397,17 +493,27 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     )
     scored_df.to_csv(output_dir / "scored.csv", index=False)
 
+    diagnostics["per_symbol_exclusion"] = {
+        row["symbol"]: row["failed_gates"].split("|") if row["failed_gates"] else []
+        for _, row in results_df.iterrows()
+        if not row["gates_passed"]
+    }
+    diagnostics["exogenous_coverage_gaps"] = exogenous_meta.get("missing_dates", [])
+    _write_diagnostics(output_dir / "diagnostics.json", diagnostics)
+
     run_manifest = {
         "run_id": args.run_id,
         "asof_date": asof_date,
         "started_utc": datetime.now(timezone.utc).isoformat(),
         "config_hash": config_hash,
+        "schema_version": OUTPUT_SCHEMA_VERSION,
         "watchlist_content_hash": hash_file(watchlist_path),
         "ohlcv_manifest_hash": ohlcv_manifest_hash,
         "exogenous_manifest_hash": exogenous_meta.get("manifest_hash"),
         "code_version": resolve_git_commit(base_dir),
         "determinism_fingerprint": _determinism_fingerprint(results_csv_path),
         "warnings": warnings,
+        "timings": timings,
         "paths": {
             "ohlcv_raw_dir": str(paths.ohlcv_raw_dir),
             "ohlcv_daily_dir": str(paths.ohlcv_daily_dir),
@@ -421,6 +527,21 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     manifest_path.write_text(json.dumps(run_manifest, indent=2), encoding="utf-8")
 
     _write_report(output_dir / "report.md", run_manifest, results_df)
+    _log_stage(
+        logger,
+        "outputs",
+        "end",
+        f"results={results_csv_path.name} eligible={len(eligible_df)} scored={len(scored_df)}",
+    )
+    if warnings:
+        logger.warning(f"[warnings] count={len(warnings)}")
+    _log_stage(logger, "run", "end", f"run_id={args.run_id}")
+
+    if args.profile and timings:
+        timing_lines = ["Stage timings (s):"]
+        for stage, duration in sorted(timings.items()):
+            timing_lines.append(f"  - {stage}: {duration:.3f}s")
+        logger.info("\n".join(timing_lines))
 
     return run_manifest
 
@@ -436,6 +557,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--exogenous-daily-dir", default=None)
     parser.add_argument("--outputs-dir", default=None)
     parser.add_argument("--include-raw-gdelt", action="store_true", default=False)
+    parser.add_argument("--log-level", default="INFO")
+    parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--profile", action="store_true", default=False)
     return parser
 
 
