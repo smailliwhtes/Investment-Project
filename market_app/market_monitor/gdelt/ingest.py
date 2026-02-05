@@ -24,9 +24,9 @@ from market_monitor.gdelt.utils import (
     map_columns,
     normalize_event_root_code,
     parse_day,
-    utc_now_iso,
 )
 from market_monitor.gdelt.doctor import warn_if_unusable
+from market_monitor.time_utils import utc_now_iso
 
 
 @dataclass
@@ -204,7 +204,7 @@ def _write_csv_partition(
 ) -> None:
     ensure_dir(partition_dir)
     path = partition_dir / filename
-    df.to_csv(path, mode="a", header=not header_written, index=False)
+    df.to_csv(path, mode="a", header=not header_written, index=False, lineterminator="\n")
 
 
 def _write_parquet_partition(
@@ -356,7 +356,8 @@ def ingest_gdelt(
         ),
     }
     manifest_path = output_root / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(manifest, indent=2))
 
     return IngestResult(
         manifest_path=manifest_path,

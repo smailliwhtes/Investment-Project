@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
@@ -130,13 +131,26 @@ def compute_daily_features(
     ohlcv_dir: Path,
     out_dir: Path,
     asof_date: str,
+    workers: int = 1,
 ) -> dict:
-    rows: list[dict] = []
-    for path in sorted(ohlcv_dir.glob("*.csv")):
+    paths = sorted(ohlcv_dir.glob("*.csv"))
+
+    def _compute(path: Path) -> dict:
         symbol = path.stem.upper()
         df = read_ohlcv(path)
-        row = compute_features_for_symbol(symbol, df, asof_date)
-        rows.append(row)
+        return compute_features_for_symbol(symbol, df, asof_date)
+
+    rows: list[dict] = []
+    if workers <= 1 or len(paths) <= 1:
+        for path in paths:
+            rows.append(_compute(path))
+    else:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(_compute, path): path for path in paths}
+            for future in concurrent.futures.as_completed(futures):
+                rows.append(future.result())
+
+    rows = sorted(rows, key=lambda row: row.get("symbol") or "")
 
     output_path = out_dir / "features_by_symbol.csv"
     write_features(output_path, rows)
@@ -158,6 +172,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ohlcv-dir", required=True)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--asof", required=True)
+    parser.add_argument("--workers", type=int, default=1)
     return parser
 
 
@@ -168,6 +183,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         ohlcv_dir=Path(args.ohlcv_dir),
         out_dir=Path(args.out_dir),
         asof_date=args.asof,
+        workers=args.workers,
     )
     return 0
 

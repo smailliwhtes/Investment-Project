@@ -8,7 +8,8 @@ from typing import Iterable
 
 import pandas as pd
 
-from market_monitor.gdelt.utils import build_content_hash, build_file_fingerprint, ensure_dir, utc_now_iso
+from market_monitor.gdelt.utils import build_content_hash, build_file_fingerprint, ensure_dir
+from market_monitor.time_utils import utc_now_iso
 
 
 @dataclass(frozen=True)
@@ -204,7 +205,7 @@ def build_joined_features(
         if output_format == "parquet":
             day_frame.to_parquet(out_path, index=False)
         else:
-            day_frame.to_csv(out_path, index=False)
+            day_frame.to_csv(out_path, index=False, lineterminator="\n")
 
     manifest_path = out_dir / "manifest.json"
     rows_per_day = {day: int((joined["day"] == day).sum()) for day in unique_days}
@@ -241,7 +242,8 @@ def build_joined_features(
         },
     }
     manifest_payload["content_hash"] = build_content_hash(manifest_payload)
-    manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(manifest_payload, indent=2))
 
     return JoinResult(
         output_dir=out_dir,

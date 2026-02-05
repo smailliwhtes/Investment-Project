@@ -6,10 +6,10 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from market_monitor.features import join_exogenous as join_exogenous_module
 from market_monitor.features.join_exogenous import build_joined_features
 from market_monitor.gdelt import doctor as gdelt_doctor
 from market_monitor.gdelt.doctor import audit_corpus, normalize_corpus
+from market_monitor import time_utils
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -56,7 +56,7 @@ def _assert_frames_equal(left_path: Path, right_path: Path) -> None:
 
 
 def test_gdelt_doctor_real_data_golden(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gdelt_doctor, "utc_now_iso", lambda: FIXED_UTC)
+    monkeypatch.setattr(time_utils, "utc_now_iso", lambda: FIXED_UTC)
 
     report = audit_corpus(raw_dir=RAW_DIR, file_glob="*", format_hint="auto")
     file_types = {Path(item.path).name: item.file_type for item in report.files}
@@ -82,11 +82,13 @@ def test_gdelt_doctor_real_data_golden(tmp_path: Path, monkeypatch: pytest.Monke
     actual_manifest = _canonicalize_manifest(
         _load_json(gdelt_dir / "daily_features" / "features_manifest.json")
     )
+    expected_manifest.pop("created_utc", None)
+    actual_manifest.pop("created_utc", None)
     assert actual_manifest == expected_manifest
 
 
 def test_join_exogenous_real_data_golden(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(join_exogenous_module, "utc_now_iso", lambda: FIXED_UTC)
+    monkeypatch.setattr(time_utils, "utc_now_iso", lambda: FIXED_UTC)
 
     output_dir = tmp_path / "joined"
     result = build_joined_features(
@@ -105,4 +107,6 @@ def test_join_exogenous_real_data_golden(tmp_path: Path, monkeypatch: pytest.Mon
 
     expected_manifest = _canonicalize_manifest(_load_json(expected_joined / "manifest.json"))
     actual_manifest = _canonicalize_manifest(_load_json(result.manifest_path))
+    expected_manifest.pop("created_utc", None)
+    actual_manifest.pop("created_utc", None)
     assert actual_manifest == expected_manifest

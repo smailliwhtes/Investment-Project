@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "Offline-first market monitor and watchlist tooling."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
+
+[project.scripts]
+market-monitor = "market_monitor.cli:main"
 
 [project.optional-dependencies]
 dev = [

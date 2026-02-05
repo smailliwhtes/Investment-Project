@@ -434,10 +434,9 @@ def run_pipeline(
             git_commit=resolve_git_commit(base_dir),
             corpus_manifest=corpus_run.manifest if corpus_run else None,
         )
-        (output_dir / "run_manifest.json").write_text(
-            manifest.to_json(indent=2),
-            encoding="utf-8",
-        )
+        manifest_path = output_dir / "run_manifest.json"
+        with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(manifest.to_json(indent=2))
         json_logger.log("summary", {"counts": summary})
 
     run_end = datetime.now(timezone.utc)

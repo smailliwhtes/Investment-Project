@@ -47,6 +47,9 @@ def test_determinism_twice_same_bytes(tmp_path: Path) -> None:
                 "exogenous_daily_dir": str(exogenous_dir),
                 "outputs_dir": str(outputs_dir),
                 "include_raw_gdelt": False,
+                "log_level": "INFO",
+                "workers": 1,
+                "profile": False,
             },
         )
         manifest = run_watchlist(args)
