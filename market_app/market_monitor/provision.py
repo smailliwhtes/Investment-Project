@@ -4,7 +4,7 @@ import json
 import shutil
 import zipfile
 from dataclasses import dataclass
-from market_monitor.time_utils import utc_now_iso
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -34,14 +34,13 @@ def _write_inventory(dest_dir: Path, source: str, files: list[Path]) -> Path:
             }
         )
     payload = Inventory(
-        created_at_utc=utc_now_iso(),
+        created_at_utc=datetime.now(timezone.utc).isoformat(),
         source=source,
         destination=str(dest_dir),
         files=entries,
     )
     inventory_path = dest_dir / "inventory.json"
-    with inventory_path.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(json.dumps(payload.__dict__, indent=2))
+    inventory_path.write_text(json.dumps(payload.__dict__, indent=2), encoding="utf-8")
     return inventory_path
 
 

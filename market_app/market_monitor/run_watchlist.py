@@ -193,6 +193,17 @@ def _log_stage(logger: logging.Logger, stage: str, status: str, details: str | N
         message = f"{message} | {details}"
     logger.info(message)
 
+def _write_diagnostics(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _log_stage(logger: logging.Logger, stage: str, status: str, details: str | None = None) -> None:
+    message = f"[stage:{stage}] {status}"
+    if details:
+        message = f"{message} | {details}"
+    logger.info(message)
+
 
 def run_watchlist(args: argparse.Namespace) -> dict:
     config_path = Path(args.config).expanduser().resolve()
@@ -494,6 +505,14 @@ def run_watchlist(args: argparse.Namespace) -> dict:
         }
     )
     scored_df.to_csv(output_dir / "scored.csv", index=False, lineterminator="\n")
+
+    diagnostics["per_symbol_exclusion"] = {
+        row["symbol"]: row["failed_gates"].split("|") if row["failed_gates"] else []
+        for _, row in results_df.iterrows()
+        if not row["gates_passed"]
+    }
+    diagnostics["exogenous_coverage_gaps"] = exogenous_meta.get("missing_dates", [])
+    _write_diagnostics(output_dir / "diagnostics.json", diagnostics)
 
     diagnostics["per_symbol_exclusion"] = {
         row["symbol"]: row["failed_gates"].split("|") if row["failed_gates"] else []
