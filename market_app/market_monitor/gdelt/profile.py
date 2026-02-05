@@ -21,9 +21,9 @@ from market_monitor.gdelt.utils import (
     list_files,
     map_columns,
     parse_day,
-    utc_now_iso,
 )
 from market_monitor.gdelt.doctor import warn_if_unusable
+from market_monitor.time_utils import utc_now_iso
 
 
 @dataclass
@@ -250,7 +250,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.json_out:
         payload = asdict(summary)
         payload["created_utc"] = utc_now_iso()
-        Path(args.json_out).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        json_path = Path(args.json_out)
+        with json_path.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(payload, indent=2))
     return 0
 
 

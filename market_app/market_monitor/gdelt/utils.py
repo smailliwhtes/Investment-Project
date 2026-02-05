@@ -388,7 +388,9 @@ def build_file_fingerprint(paths: Iterable[Path]) -> list[dict[str, str | int]]:
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    from market_monitor import time_utils
+
+    return time_utils.utc_now_iso()
 
 
 def normalize_event_root_code(value: "pd.Series") -> "pd.Series":

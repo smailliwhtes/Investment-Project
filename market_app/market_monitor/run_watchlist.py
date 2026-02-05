@@ -127,7 +127,7 @@ def _load_exogenous_features(
 
 def _write_results_jsonl(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
 
@@ -142,7 +142,7 @@ def _json_value(value):
 
 def _write_results_csv(path: Path, df: pd.DataFrame) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(path, index=False)
+    df.to_csv(path, index=False, lineterminator="\n")
 
 
 def _determinism_fingerprint(results_path: Path) -> str:
@@ -178,7 +178,20 @@ def _write_report(path: Path, manifest: dict, results_df: pd.DataFrame) -> None:
         explanation = row.get("explanation_1", "")
         lines.append(f"- {row['symbol']} | score {row['priority_score']} | {row['risk_flags']} | {explanation}")
 
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write("\n".join(lines) + "\n")
+
+def _write_diagnostics(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(payload, indent=2))
+
+
+def _log_stage(logger: logging.Logger, stage: str, status: str, details: str | None = None) -> None:
+    message = f"[stage:{stage}] {status}"
+    if details:
+        message = f"{message} | {details}"
+    logger.info(message)
 
 def _write_diagnostics(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -476,7 +489,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
             "asset_type": results_df["asset_type"],
         }
     )
-    eligible_df.to_csv(output_dir / "eligible.csv", index=False)
+    eligible_df.to_csv(output_dir / "eligible.csv", index=False, lineterminator="\n")
 
     scored_df = pd.DataFrame(
         {
@@ -491,7 +504,15 @@ def run_watchlist(args: argparse.Namespace) -> dict:
             "ml_featureset_id": None,
         }
     )
-    scored_df.to_csv(output_dir / "scored.csv", index=False)
+    scored_df.to_csv(output_dir / "scored.csv", index=False, lineterminator="\n")
+
+    diagnostics["per_symbol_exclusion"] = {
+        row["symbol"]: row["failed_gates"].split("|") if row["failed_gates"] else []
+        for _, row in results_df.iterrows()
+        if not row["gates_passed"]
+    }
+    diagnostics["exogenous_coverage_gaps"] = exogenous_meta.get("missing_dates", [])
+    _write_diagnostics(output_dir / "diagnostics.json", diagnostics)
 
     diagnostics["per_symbol_exclusion"] = {
         row["symbol"]: row["failed_gates"].split("|") if row["failed_gates"] else []
@@ -524,7 +545,8 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     }
 
     manifest_path = output_dir / "run_manifest.json"
-    manifest_path.write_text(json.dumps(run_manifest, indent=2), encoding="utf-8")
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(run_manifest, indent=2))
 
     _write_report(output_dir / "report.md", run_manifest, results_df)
     _log_stage(

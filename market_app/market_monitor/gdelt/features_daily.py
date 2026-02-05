@@ -14,9 +14,9 @@ from market_monitor.gdelt.utils import (
     build_file_fingerprint,
     ensure_dir,
     normalize_event_root_code,
-    utc_now_iso,
 )
 from market_monitor.gdelt.doctor import warn_if_unusable
+from market_monitor.time_utils import utc_now_iso
 
 
 @dataclass
@@ -124,7 +124,7 @@ def build_daily_features(
             raise ImportError("pyarrow is required for parquet output. Use a .csv path instead.")
         result_df.to_parquet(out_path, index=False)
     else:
-        result_df.to_csv(out_path, index=False)
+        result_df.to_csv(out_path, index=False, lineterminator="\n")
 
     manifest_dir = gdelt_dir / "features"
     ensure_dir(manifest_dir)
@@ -149,7 +149,8 @@ def build_daily_features(
             }
         ),
     }
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(manifest, indent=2))
 
     return FeaturesResult(
         output_path=out_path,
