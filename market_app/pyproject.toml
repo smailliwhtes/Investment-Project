@@ -86,9 +86,9 @@ skips = ["B101"]
 testpaths = ["tests"]
 addopts = "-ra"
 filterwarnings = [
-  "ignore:'oneOf' deprecated - use 'one_of':pyparsing.exceptions.PyparsingDeprecationWarning",
-  "ignore:'parseString' deprecated - use 'parse_string':pyparsing.exceptions.PyparsingDeprecationWarning",
-  "ignore:'resetCache' deprecated - use 'reset_cache':pyparsing.exceptions.PyparsingDeprecationWarning",
-  "ignore:'enablePackrat' deprecated - use 'enable_packrat':pyparsing.exceptions.PyparsingDeprecationWarning",
+  "ignore:'oneOf' deprecated - use 'one_of':DeprecationWarning",
+  "ignore:'parseString' deprecated - use 'parse_string':DeprecationWarning",
+  "ignore:'resetCache' deprecated - use 'reset_cache':DeprecationWarning",
+  "ignore:'enablePackrat' deprecated - use 'enable_packrat':DeprecationWarning",
   "ignore:X has feature names, but SimpleImputer was fitted without feature names:UserWarning:sklearn",
 ]
