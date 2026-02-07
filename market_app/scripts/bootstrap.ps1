@@ -3,41 +3,31 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location (Resolve-Path "$Root\..")
+$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RepoRoot = Resolve-Path (Join-Path $ScriptRoot "..")
+Set-Location $RepoRoot
 
 try {
-  function Resolve-PythonCommand {
-    if (Get-Command py -ErrorAction SilentlyContinue) {
-      & py -3.13 -c "import sys; print(sys.executable)" 2>$null
-      if ($LASTEXITCODE -eq 0) { return @("py", "-3.13") }
-      & py -3.12 -c "import sys; print(sys.executable)" 2>$null
-      if ($LASTEXITCODE -eq 0) { return @("py", "-3.12") }
+  function Invoke-Checked {
+    param([string[]]$Command)
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+      throw "Command failed: $($Command -join ' ')"
     }
-    throw "Python 3.13/3.12 not found. Install Python 3.13 or 3.12 and ensure the Windows py launcher is available."
   }
 
-  $PyCommand = Resolve-PythonCommand
-  $VenvPath = Join-Path (Get-Location) ".venv"
-  & $PyCommand -m venv $VenvPath
+  $VenvPath = Join-Path $RepoRoot ".venv"
+  Invoke-Checked @("python", "-m", "venv", $VenvPath)
 
   $VenvPy = Join-Path $VenvPath "Scripts\python.exe"
   if (-not (Test-Path $VenvPy)) {
     throw "Virtual environment python not found at $VenvPy"
   }
 
-  & $VenvPy -m pip install --upgrade pip
-  & $VenvPy -m pip install --only-binary=:all: -e ".[dev]"
+  Invoke-Checked @($VenvPy, "-m", "pip", "install", "-U", "pip", "setuptools", "wheel")
+  Invoke-Checked @($VenvPy, "-m", "pip", "install", "-e", ".[test]", "--no-build-isolation")
 
-  & $VenvPy -m market_monitor.env_doctor --self-test
-  if ($LASTEXITCODE -ne 0) {
-    throw "Environment doctor self-test failed with exit code $LASTEXITCODE."
-  }
-
-  & $VenvPy -m pytest -q
-  if ($LASTEXITCODE -ne 0) {
-    throw "pytest failed with exit code $LASTEXITCODE."
-  }
+  Invoke-Checked @($VenvPy, "-m", "pytest", "-q")
 
   Write-Host "[done] bootstrap completed successfully."
   exit 0
