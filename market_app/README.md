@@ -8,16 +8,69 @@ Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. 
 - Scenario sensitivity (defense/tech/metals)
 - Offline corpus context + historical analog summaries
 
-## One-Command Run (Blueprint Wrapper)
+## Run the monitor (canonical command)
 
 From the repo root:
 
+**Windows (PowerShell)**
 ```powershell
-.\scripts\run.ps1 -Config .\config\config.yaml
+python -m market_app.cli run --config .\config.yaml --offline
 ```
 
-This runs the blueprint-compatible wrapper (`python -m market_app.cli`) and writes
-output artifacts to `outputs/runs/<run_id>/`.
+**macOS/Linux (bash)**
+```bash
+python -m market_app.cli run --config ./config.yaml --offline
+```
+
+This runs the canonical wrapper (`python -m market_app.cli run`) and writes
+output artifacts to `outputs/runs/<run_id>/` (or `--runs-dir` if provided).
+
+## Doctor checks
+
+Validate environment + config (no run performed):
+
+**Windows (PowerShell)**
+```powershell
+python -m market_app.cli doctor --config .\config.yaml
+```
+
+**macOS/Linux (bash)**
+```bash
+python -m market_app.cli doctor --config ./config.yaml
+```
+
+The doctor command verifies required paths (config, watchlist, data dirs) and
+warns about optional assets like macro series files or missing theme watchlists.
+
+### Troubleshooting
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| Doctor fails with missing NASDAQ daily data | Offline mode without local OHLCV fixtures | Point `paths.nasdaq_daily_dir` at `tests/fixtures/ohlcv` or your own dataset. |
+| Doctor fails with missing watchlist | `paths.watchlist_file` not found | Update the config path or create the watchlist file. |
+| Warnings about macro series | Optional macro CSVs not present | Add the CSVs under `paths.data_dir` or remove the entries from config. |
+
+## Acceptance gate (fresh-clone proof)
+
+These scripts clone the repo to a temp directory, create a venv, install deps,
+run tests, run doctor, run the pipeline twice, and check determinism via
+`digest.json`.
+
+**Windows (PowerShell)**
+```powershell
+.\scripts\acceptance_gate.ps1
+```
+
+**macOS/Linux (bash)**
+```bash
+bash scripts/acceptance_gate.sh
+```
+
+## Day-to-day wrapper (Windows)
+
+```powershell
+.\scripts\run_monitor.ps1 -Config .\config.yaml -Offline
+```
 
 ## Windows setup (LF fixtures + bootstrap)
 
@@ -46,10 +99,10 @@ python -m pip install -r .\requirements.txt
 python -m pytest -q
 
 # run the blueprint wrapper (offline)
-.\scripts\run.ps1 -Config .\config\config.yaml -Offline -TopN 15 -Variant conservative
+python -m market_app.cli run --config .\config.yaml --offline --top-n 15 --conservative
 
 # run acceptance (fresh clone flow)
-.\scripts\acceptance.ps1
+.\scripts\acceptance_gate.ps1
 ```
 
 ## Legacy One-Command Run (PowerShell)
@@ -78,7 +131,7 @@ Optional flags (examples):
 
 ```powershell
 # Blueprint wrapper (preferred)
-python -m market_app.cli --config config/config.yaml --offline --run_id demo_run --top_n 15 --conservative
+python -m market_app.cli run --config config.yaml --offline --run-id demo_run --top-n 15 --conservative
 
 # Legacy Market Monitor CLI
 # Validate config

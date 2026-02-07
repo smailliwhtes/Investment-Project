@@ -1,0 +1,6 @@
+themes:
+  TestTheme:
+    seed_tickers: ["AAA"]
+    etfs: []
+    sectors: []
+    keywords: ["test"]
