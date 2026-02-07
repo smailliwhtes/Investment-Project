@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Keep test fixtures byte-stable across platforms (prevents CRLF/LF hash+size drift)
+tests/fixtures/** text eol=lf
