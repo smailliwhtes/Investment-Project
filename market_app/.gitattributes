@@ -3,3 +3,5 @@
 
 # Keep test fixtures byte-stable across platforms (prevents CRLF/LF hash+size drift)
 tests/fixtures/** text eol=lf
+
+.gitattributes text eol=lf
