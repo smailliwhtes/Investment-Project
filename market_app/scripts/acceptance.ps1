@@ -69,7 +69,7 @@ Write-Host "[stage] running blueprint wrapper"
 if ($WatchlistOverride) {
   $env:MARKET_APP_WATCHLIST_FILE = $WatchlistOverride
 }
-& $VenvPy -m market_app.cli --config $Config --offline --run_id $RunId --top_n 5 --conservative
+& $VenvPy -m market_app.cli run --config $Config --offline --run-id $RunId --top-n 5 --conservative
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[error] Pipeline run failed. See logs in outputs\runs\$RunId"
   exit $LASTEXITCODE

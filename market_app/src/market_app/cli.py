@@ -13,7 +13,7 @@ import yaml
 import pandas as pd
 import numpy as np
 
-from market_app.config import load_config, map_to_engine_config
+from market_app.config import ConfigResult, load_config, map_to_engine_config
 from market_app.outputs import (
     REQUIRED_FEATURES,
     apply_blueprint_gates,
@@ -32,15 +32,46 @@ from market_monitor.pipeline import PipelineResult, run_pipeline
 from market_monitor.themes import tag_themes
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Offline-first market_app wrapper CLI")
-    parser.add_argument("--config", default="config/config.yaml")
-    parser.add_argument("--run_id", default=None)
+def _build_run_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--config", default="config.yaml")
+    parser.add_argument("--run-id", "--run_id", dest="run_id", default=None)
     parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--top_n", type=int, default=None)
+    parser.add_argument("--runs-dir", default=None)
+    parser.add_argument("--top-n", "--top_n", dest="top_n", type=int, default=None)
     variant = parser.add_mutually_exclusive_group()
     variant.add_argument("--conservative", action="store_true")
     variant.add_argument("--opportunistic", action="store_true")
+    parser.set_defaults(command="run")
+
+
+def _build_doctor_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--config", default="config.yaml")
+    parser.add_argument("--offline", action="store_true")
+    parser.set_defaults(command="doctor")
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Offline-first market_app wrapper CLI")
+    subparsers = parser.add_subparsers(dest="command")
+    run_parser = subparsers.add_parser("run", help="Run the market monitor pipeline")
+    _build_run_parser(run_parser)
+    doctor_parser = subparsers.add_parser("doctor", help="Validate config and data paths")
+    _build_doctor_parser(doctor_parser)
+    return parser
+
+
+def _parse_legacy_args(argv: list[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Offline-first market_app wrapper CLI (legacy)")
+    _build_run_parser(parser)
+    return parser.parse_args(argv)
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    if argv is None:
+        argv = sys.argv[1:]
+    if not argv or argv[0].startswith("-"):
+        return _parse_legacy_args(argv)
+    parser = _build_parser()
     return parser.parse_args(argv)
 
 
@@ -83,8 +114,18 @@ def _select_weights(
 
 def _configure_logging(logging_path: Path, run_dir: Path) -> logging.Logger:
     if not logging_path.exists():
-        logging.basicConfig(level=logging.INFO)
-        return logging.getLogger("market_app")
+        logger = logging.getLogger("market_app")
+        logger.setLevel(logging.INFO)
+        logger.handlers.clear()
+        run_log = run_dir / "run.log"
+        formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+        file_handler = logging.FileHandler(run_log, encoding="utf-8")
+        file_handler.setFormatter(formatter)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        logger.addHandler(stream_handler)
+        return logger
     config = yaml.safe_load(logging_path.read_text(encoding="utf-8"))
     for handler in config.get("handlers", {}).values():
         if "filename" in handler:
@@ -115,10 +156,7 @@ def _deterministic_run_id(
     variant: str,
     top_n: int,
 ) -> str:
-    if watchlist_path.exists():
-        watchlist_hash = hash_file(watchlist_path)
-    else:
-        watchlist_hash = hash_text(watchlist_path.as_posix())
+    watchlist_hash = _watchlist_hash(watchlist_path)
     payload = json.dumps(
         {
             "config_hash": config_hash,
@@ -130,6 +168,12 @@ def _deterministic_run_id(
     )
     digest = hash_text(payload)[:8]
     return f"run_{digest}"
+
+
+def _watchlist_hash(watchlist_path: Path) -> str:
+    if watchlist_path.exists():
+        return hash_file(watchlist_path)
+    return hash_text(watchlist_path.as_posix())
 
 
 def _collect_dataset_paths(config: dict[str, Any], base_dir: Path) -> list[Path]:
@@ -145,6 +189,40 @@ def _collect_dataset_paths(config: dict[str, Any], base_dir: Path) -> list[Path]
         macro_path = base_dir / config["paths"]["data_dir"] / rel_path
         paths.append(macro_path.resolve())
     return paths
+
+
+def _write_digest(
+    *,
+    run_dir: Path,
+    config_result: ConfigResult,
+    git_sha: str | None,
+    offline: bool,
+    variant: str,
+    top_n: int,
+    watchlist_path: Path,
+    dataset_paths: list[Path],
+) -> dict[str, Any]:
+    stable_outputs = {}
+    for name in ("eligible.csv", "scored.csv", "features.csv", "classified.csv", "universe.csv"):
+        path = run_dir / name
+        if path.exists():
+            stable_outputs[name] = {"sha256": hash_file(path), "bytes": path.stat().st_size}
+    datasets = []
+    for path in dataset_paths:
+        if path.exists():
+            datasets.append({"path": str(path), "sha256": hash_file(path)})
+    payload = {
+        "config_hash": config_result.config_hash,
+        "git_sha": git_sha,
+        "offline": offline,
+        "variant": variant,
+        "top_n": top_n,
+        "watchlist_hash": _watchlist_hash(watchlist_path),
+        "outputs": stable_outputs,
+        "datasets": datasets,
+    }
+    (run_dir / "digest.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return payload
 
 
 def _build_classified(universe_df, theme_rules):
@@ -308,8 +386,169 @@ def _build_scored(
     return df
 
 
+def _resolve_logging_path(config_dir: Path, base_dir: Path) -> Path:
+    candidate = config_dir / "logging.yaml"
+    if candidate.exists():
+        return candidate
+    fallback = base_dir / "config" / "logging.yaml"
+    return fallback
+
+
+def _resolve_runs_dir(
+    args: argparse.Namespace, blueprint: dict[str, Any], base_dir: Path
+) -> Path:
+    runs_dir = args.runs_dir or blueprint["paths"]["output_dir"]
+    runs_path = Path(runs_dir)
+    if not runs_path.is_absolute():
+        runs_path = (base_dir / runs_path).resolve()
+    return runs_path
+
+
+def _run_doctor(args: argparse.Namespace) -> int:
+    config_path = Path(args.config).expanduser().resolve()
+    errors = []
+    warnings = []
+
+    if not config_path.exists():
+        errors.append(
+            (
+                "Config missing",
+                f"Config file not found: {config_path}",
+                [f"Create or copy a config file to {config_path}."],
+            )
+        )
+        _print_doctor_summary(errors, warnings)
+        return 2
+
+    try:
+        config_result = load_config(config_path)
+    except Exception as exc:  # noqa: BLE001
+        errors.append(
+            (
+                "Config invalid",
+                f"Failed to parse config: {exc}",
+                [f"Fix the YAML in {config_path}."],
+            )
+        )
+        _print_doctor_summary(errors, warnings)
+        return 2
+
+    config = config_result.config
+    config_dir = config_path.parent
+    repo_root = find_repo_root(config_dir)
+    base_dir = repo_root if repo_root.exists() else config_dir
+    offline = bool(config.get("offline", True) or args.offline)
+
+    def _resolve(path_value: str) -> Path:
+        path = Path(path_value)
+        return path if path.is_absolute() else (base_dir / path).resolve()
+
+    watchlist_path = _resolve(config["paths"]["watchlist_file"])
+    if not watchlist_path.exists():
+        errors.append(
+            (
+                "Watchlist missing",
+                f"Expected watchlist at {watchlist_path}.",
+                ["Set paths.watchlist_file in config.yaml.", "Add a watchlist file to the path above."],
+            )
+        )
+
+    data_dir = _resolve(config["paths"]["data_dir"])
+    if not data_dir.exists():
+        errors.append(
+            (
+                "Data directory missing",
+                f"Expected data directory at {data_dir}.",
+                ["Set paths.data_dir in config.yaml.", "Create the directory or update the path."],
+            )
+        )
+
+    output_dir = _resolve(config["paths"]["output_dir"])
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+        warnings.append(
+            (
+                "Output directory created",
+                f"Created output directory at {output_dir}.",
+                ["Ensure this path is on local storage with enough space."],
+            )
+        )
+
+    nasdaq_dir = config["paths"].get("nasdaq_daily_dir") or ""
+    nasdaq_path = _resolve(nasdaq_dir) if nasdaq_dir else None
+    if offline:
+        if not nasdaq_path or not nasdaq_path.exists():
+            errors.append(
+                (
+                    "NASDAQ daily data missing",
+                    "Offline mode requires local OHLCV data.",
+                    [
+                        "Set paths.nasdaq_daily_dir in config.yaml.",
+                        "Point it at tests/fixtures/ohlcv for fixtures.",
+                    ],
+                )
+            )
+    elif nasdaq_path and not nasdaq_path.exists():
+        warnings.append(
+            (
+                "NASDAQ daily data missing",
+                f"Configured path not found: {nasdaq_path}.",
+                ["Provide data or run with --offline for fixture-only runs."],
+            )
+        )
+
+    macro_series = config.get("macro", {}).get("series", [])
+    for entry in macro_series:
+        rel_path = entry.get("file")
+        if not rel_path:
+            continue
+        macro_path = data_dir / rel_path
+        if not macro_path.exists():
+            warnings.append(
+                (
+                    "Macro series missing",
+                    f"Missing macro series file: {macro_path}.",
+                    ["Add the macro CSV or remove it from config.yaml."],
+                )
+            )
+
+    watchlists_yaml = config_dir / "watchlists.yaml"
+    if not watchlists_yaml.exists():
+        watchlists_yaml = base_dir / "watchlists.yaml"
+    if not watchlists_yaml.exists():
+        warnings.append(
+            (
+                "Theme watchlists missing",
+                f"watchlists.yaml not found at {watchlists_yaml}.",
+                ["Add a watchlists.yaml file to enable theme tagging."],
+            )
+        )
+
+    _print_doctor_summary(errors, warnings)
+    return 2 if errors else 0
+
+
+def _print_doctor_summary(
+    errors: list[tuple[str, str, list[str]]], warnings: list[tuple[str, str, list[str]]]
+) -> None:
+    print("[doctor] Market App config diagnostics")
+    for title, detail, fix_steps in errors:
+        print(f"[ERROR] {title}\n  {detail}")
+        for step in fix_steps:
+            print(f"  - {step}")
+    for title, detail, fix_steps in warnings:
+        print(f"[WARN] {title}\n  {detail}")
+        for step in fix_steps:
+            print(f"  - {step}")
+    summary = "PASS" if not errors else "FAIL"
+    print(f"[doctor] Summary: {summary} (errors={len(errors)}, warnings={len(warnings)})")
+
+
 def run_cli(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.command == "doctor":
+        return _run_doctor(args)
+
     config_path = Path(args.config).expanduser().resolve()
     config_dir = config_path.parent
     repo_root = find_repo_root(config_dir)
@@ -342,9 +581,10 @@ def run_cli(argv: list[str] | None = None) -> int:
         top_n=top_n,
     )
 
-    run_dir = (base_dir / blueprint["paths"]["output_dir"] / run_id).resolve()
+    runs_dir = _resolve_runs_dir(args, blueprint, base_dir)
+    run_dir = (runs_dir / run_id).resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
-    logger = _configure_logging(config_dir / "logging.yaml", run_dir)
+    logger = _configure_logging(_resolve_logging_path(config_dir, base_dir), run_dir)
     logger.info("Starting blueprint-compatible run")
 
     pipeline_result: PipelineResult = run_pipeline(
@@ -394,19 +634,32 @@ def run_cli(argv: list[str] | None = None) -> int:
         forward_summary=forward_summary,
         top_n=top_n,
     )
+    dataset_paths = _collect_dataset_paths(blueprint, base_dir)
+    git_sha = resolve_git_commit(base_dir)
     manifest = build_manifest(
         run_id=run_id,
         run_timestamp=run_timestamp,
         config_hash=config_result.config_hash,
-        git_sha=resolve_git_commit(base_dir),
+        git_sha=git_sha,
         offline=offline,
         output_dir=run_dir,
         config_path=config_path,
-        dataset_paths=_collect_dataset_paths(blueprint, base_dir),
+        dataset_paths=dataset_paths,
         dependency_versions=_dependency_versions(),
     )
     (run_dir / "manifest.json").write_text(manifest.to_json(), encoding="utf-8")
+    _write_digest(
+        run_dir=run_dir,
+        config_result=config_result,
+        git_sha=git_sha,
+        offline=offline,
+        variant=variant,
+        top_n=top_n,
+        watchlist_path=watchlist_path,
+        dataset_paths=dataset_paths,
+    )
     logger.info("Completed blueprint-compatible run")
+    print(f"[done] Run artifacts: {run_dir}")
     return 0
 
 
