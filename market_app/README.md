@@ -66,6 +66,36 @@ run tests, run doctor, run the pipeline twice, and check determinism via
 bash scripts/acceptance_gate.sh
 ```
 
+## Verify ready for GUI
+
+Runs the canonical CLI in offline mode twice and confirms deterministic `digest.json` output.
+From the repo root:
+
+```powershell
+.\market_app\scripts\verify_ready_for_gui.ps1
+```
+
+The verifier checks:
+- acceptance config exists and CLI is reachable
+- fixtures look repo-local (warns on absolute paths)
+- doctor + two runs complete with required artifacts
+- `digest.json` matches across runs
+
+## Run minimal GUI
+
+Launch the offline-first Tkinter wrapper:
+
+```powershell
+python -m market_app.ui
+```
+
+Buttons and expected artifacts:
+- **Validate (doctor)**: runs `python -m market_app.cli doctor` and streams output.
+- **Run pipeline**: runs `python -m market_app.cli run` and streams output into the log view.
+- **Open latest report**: opens `report.html`, `report.md`, or `report.pdf` from the newest run folder.
+- **Open latest log**: opens `run.log` (or `logs/run.log`) from the newest run folder.
+- **Open runs folder**: opens the configured runs directory in your file explorer.
+
 ## Day-to-day wrapper (Windows)
 
 ```powershell
