@@ -19,6 +19,23 @@ From the repo root:
 This runs the blueprint-compatible wrapper (`python -m market_app.cli`) and writes
 output artifacts to `outputs/runs/<run_id>/`.
 
+## Windows setup (LF fixtures + bootstrap)
+
+This repo expects **LF line endings** for fixtures to keep golden manifests stable across
+Windows and Linux. `.gitattributes` already enforces LF under `tests/fixtures/**`, but you
+should also configure your local git settings to avoid CRLF drift:
+
+```powershell
+git config core.autocrlf false
+git config core.eol lf
+```
+
+Bootstrap the Windows dev/test environment from the repo root:
+
+```powershell
+.\scripts\bootstrap.ps1
+```
+
 ## Makefile-Equivalent Commands (PowerShell)
 
 ```powershell

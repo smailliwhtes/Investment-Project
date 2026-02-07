@@ -43,7 +43,6 @@ from market_monitor.manifest import resolve_git_commit, run_id_from_inputs
 from market_monitor.offline import set_offline_mode
 from market_monitor.ohlcv_doctor import normalize_directory
 from market_monitor.preflight import run_preflight
-from market_monitor.prediction import build_panel, latest_predictions, train_and_predict
 from market_monitor.evaluate import run_evaluation
 from market_monitor.pipeline import run_pipeline as engine_run_pipeline
 from market_monitor.provider_factory import build_provider
