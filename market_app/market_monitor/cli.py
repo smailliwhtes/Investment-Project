@@ -427,6 +427,9 @@ def run_preflight_command(args: argparse.Namespace) -> int:
         run_id=run_id,
         run_timestamp=run_timestamp,
         logger=logger,
+        as_of_date=config.get("pipeline", {}).get("asof_default"),
+        now_utc=config.get("pipeline", {}).get("now_utc"),
+        staging_cfg=config.get("staging"),
         corpus_dir=corpus_paths.gdelt_conflict_dir,
         raw_events_dir=corpus_paths.gdelt_events_raw_dir,
     )

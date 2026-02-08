@@ -13,7 +13,7 @@ from market_monitor.providers.base import HistoryProvider, ProviderError, Provid
 from market_monitor.risk import assess_risk
 from market_monitor.scenarios import scenario_scores
 from market_monitor.themes import tag_themes
-from market_monitor.timebase import today_utc
+from market_monitor.timebase import parse_as_of_date, parse_now_utc, today_utc
 
 
 def _history_fetch(provider: HistoryProvider, symbol: str, days: int) -> pd.DataFrame:
@@ -46,6 +46,7 @@ def stage_pipeline(
     logger,
     *,
     as_of_date: str | None = None,
+    now_utc: str | None = None,
     silver_macro: dict[str, float] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, int]]:
     staging_cfg = config["staging"]
@@ -56,10 +57,15 @@ def stage_pipeline(
     stage3_rows: list[dict[str, Any]] = []
     cache_hits = 0
     cache_misses = 0
+    anchor_date = None
+    if as_of_date:
+        anchor_date = parse_as_of_date(as_of_date)
+    elif now_utc:
+        anchor_date = parse_now_utc(now_utc).date()
 
     def fetch_cached(symbol: str, days: int):
         nonlocal cache_hits, cache_misses
-        if hasattr(provider, "get_history_with_cache"):
+        if getattr(provider, "supports_history_cache", False):
             cache_res = provider.get_history_with_cache(
                 symbol, days, max_cache_age_days=max_cache_age_days
             )
@@ -88,12 +94,12 @@ def stage_pipeline(
         return cache_res
 
     def _filter_as_of(df: pd.DataFrame) -> pd.DataFrame:
-        if not as_of_date or "Date" not in df.columns:
+        if anchor_date is None or "Date" not in df.columns:
             return df
         filtered = df.copy()
         filtered["Date"] = pd.to_datetime(filtered["Date"], errors="coerce")
         filtered = filtered.dropna(subset=["Date"])
-        filtered = filtered[filtered["Date"] <= pd.to_datetime(as_of_date)]
+        filtered = filtered[filtered["Date"] <= pd.to_datetime(anchor_date)]
         return filtered.sort_values("Date").reset_index(drop=True)
 
     def _data_freshness_days(df: pd.DataFrame) -> int:
@@ -103,7 +109,7 @@ def stage_pipeline(
         if dates.empty:
             return 0
         last_date = dates.max().date()
-        anchor = pd.to_datetime(as_of_date).date() if as_of_date else today_utc()
+        anchor = anchor_date or today_utc()
         return max((anchor - last_date).days, 0)
 
     logger.info("Stage 1: micro-history gate")
@@ -176,6 +182,15 @@ def stage_pipeline(
             status, reason_codes = _compute_data_status(
                 int(features.get("history_days", 0)), staging_cfg["history_min_days"]
             )
+            logger.info(
+                "Stage 2: %s lookback=%s rows=%s history_days=%s min_history=%s status=%s",
+                symbol,
+                staging_cfg["stage2_short_days"],
+                len(df),
+                int(features.get("history_days", 0)),
+                staging_cfg["history_min_days"],
+                status,
+            )
             eligible_by_price, gate_fail = apply_gates(
                 features,
                 gates_cfg.get("price_min"),
@@ -227,6 +242,15 @@ def stage_pipeline(
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
             status, reason_codes = _compute_data_status(
                 int(features.get("history_days", 0)), staging_cfg["history_min_days"]
+            )
+            logger.info(
+                "Stage 3: %s lookback=%s rows=%s history_days=%s min_history=%s status=%s",
+                symbol,
+                staging_cfg["stage3_deep_days"],
+                len(df),
+                int(features.get("history_days", 0)),
+                staging_cfg["history_min_days"],
+                status,
             )
             theme_tags, theme_confidence, theme_unknown = tag_themes(symbol, name, themes_cfg)
             scenario = scenario_scores(theme_tags)

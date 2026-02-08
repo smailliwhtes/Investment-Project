@@ -12,7 +12,7 @@ from market_monitor.corpus.pipeline import (
     validate_corpus_sources,
 )
 from market_monitor.providers.base import HistoryProvider, ProviderError
-from market_monitor.timebase import utcnow
+from market_monitor.timebase import parse_as_of_date, parse_now_utc, utcnow
 
 
 @dataclass(frozen=True)
@@ -27,6 +27,10 @@ class PreflightSymbolReport:
     zero_volume_pct: float | None
     volume_available: bool
     adjusted_close_available: bool
+    chosen_as_of_date: str | None
+    stage1_micro_days: int | None
+    stage2_short_days: int | None
+    stage3_deep_days: int | None
 
 
 @dataclass(frozen=True)
@@ -48,10 +52,17 @@ def run_preflight(
     run_id: str,
     run_timestamp: str,
     logger,
+    as_of_date: str | None = None,
+    now_utc: str | None = None,
+    staging_cfg: dict[str, Any] | None = None,
     corpus_dir: Path | None = None,
     raw_events_dir: Path | None = None,
 ) -> PreflightReport:
     symbols: list[PreflightSymbolReport] = []
+    anchor_date = _resolve_anchor_date(as_of_date, now_utc)
+    stage1_days = staging_cfg.get("stage1_micro_days") if staging_cfg else None
+    stage2_days = staging_cfg.get("stage2_short_days") if staging_cfg else None
+    stage3_days = staging_cfg.get("stage3_deep_days") if staging_cfg else None
     for _, row in universe_df.iterrows():
         symbol = row["symbol"]
         try:
@@ -69,12 +80,28 @@ def run_preflight(
                     zero_volume_pct=None,
                     volume_available=False,
                     adjusted_close_available=False,
+                    chosen_as_of_date=None,
+                    stage1_micro_days=stage1_days,
+                    stage2_short_days=stage2_days,
+                    stage3_deep_days=stage3_days,
                 )
             )
             logger.warning(f"[preflight] {symbol}: {exc}")
             continue
 
-        stats = _compute_symbol_stats(df)
+        stats = _compute_symbol_stats(df, anchor_date=anchor_date)
+        logger.info(
+            "[preflight] %s path=%s rows=%s min_date=%s max_date=%s chosen_as_of_date=%s lookback=(%s/%s/%s)",
+            symbol,
+            file_path,
+            stats["rows"],
+            stats["start_date"],
+            stats["end_date"],
+            stats["chosen_as_of_date"],
+            stage1_days,
+            stage2_days,
+            stage3_days,
+        )
         symbols.append(
             PreflightSymbolReport(
                 symbol=symbol,
@@ -87,6 +114,10 @@ def run_preflight(
                 zero_volume_pct=stats["zero_volume_pct"],
                 volume_available=stats["volume_available"],
                 adjusted_close_available=stats["adjusted_close_available"],
+                chosen_as_of_date=stats["chosen_as_of_date"],
+                stage1_micro_days=stage1_days,
+                stage2_short_days=stage2_days,
+                stage3_deep_days=stage3_days,
             )
         )
 
@@ -104,15 +135,22 @@ def _load_symbol(provider: HistoryProvider, symbol: str) -> tuple[pd.DataFrame, 
     return df, file_path
 
 
-def _compute_symbol_stats(df: pd.DataFrame) -> dict[str, Any]:
+def _compute_symbol_stats(df: pd.DataFrame, *, anchor_date=None) -> dict[str, Any]:
     rows = len(df)
     start_date = None
     end_date = None
+    chosen_as_of_date = None
     if rows and "Date" in df.columns:
         dates = pd.to_datetime(df["Date"], errors="coerce")
         if not dates.isna().all():
             start_date = dates.min().strftime("%Y-%m-%d")
             end_date = dates.max().strftime("%Y-%m-%d")
+            if anchor_date is not None:
+                filtered = dates[dates <= pd.to_datetime(anchor_date)]
+                if not filtered.empty:
+                    chosen_as_of_date = filtered.max().strftime("%Y-%m-%d")
+            else:
+                chosen_as_of_date = end_date
 
     missing_ohlcv_pct = None
     if rows:
@@ -136,7 +174,16 @@ def _compute_symbol_stats(df: pd.DataFrame) -> dict[str, Any]:
         "zero_volume_pct": zero_volume_pct,
         "volume_available": bool(volume_available),
         "adjusted_close_available": bool(adjusted_close_available),
+        "chosen_as_of_date": chosen_as_of_date,
     }
+
+
+def _resolve_anchor_date(as_of_date: str | None, now_utc: str | None):
+    if as_of_date:
+        return parse_as_of_date(as_of_date)
+    if now_utc:
+        return parse_now_utc(now_utc).date()
+    return None
 
 
 def _check_datasets(provider: HistoryProvider) -> list[dict[str, Any]]:
@@ -214,9 +261,17 @@ def _write_preflight_reports(
                 "name": symbol.symbol,
                 "status": symbol.status,
                 "file_path": symbol.file_path,
+                "csv_path": symbol.file_path,
+                "row_count": symbol.rows,
                 "rows": symbol.rows,
+                "min_date": symbol.start_date,
+                "max_date": symbol.end_date,
                 "start_date": symbol.start_date,
                 "end_date": symbol.end_date,
+                "chosen_as_of_date": symbol.chosen_as_of_date,
+                "stage1_micro_days": symbol.stage1_micro_days,
+                "stage2_short_days": symbol.stage2_short_days,
+                "stage3_deep_days": symbol.stage3_deep_days,
                 "missing_ohlcv_pct": symbol.missing_ohlcv_pct,
                 "zero_volume_pct": symbol.zero_volume_pct,
                 "volume_available": symbol.volume_available,
@@ -231,9 +286,17 @@ def _write_preflight_reports(
                 "name": dataset.get("name"),
                 "status": dataset.get("status"),
                 "file_path": dataset.get("path"),
+                "csv_path": dataset.get("path"),
+                "row_count": dataset.get("rows"),
                 "rows": dataset.get("rows"),
+                "min_date": dataset.get("start_date"),
+                "max_date": dataset.get("end_date"),
                 "start_date": dataset.get("start_date"),
                 "end_date": dataset.get("end_date"),
+                "chosen_as_of_date": None,
+                "stage1_micro_days": None,
+                "stage2_short_days": None,
+                "stage3_deep_days": None,
                 "missing_ohlcv_pct": None,
                 "zero_volume_pct": None,
                 "volume_available": None,
@@ -248,9 +311,17 @@ def _write_preflight_reports(
                 "name": corpus.get("name"),
                 "status": corpus.get("status"),
                 "file_path": corpus.get("path"),
+                "csv_path": corpus.get("path"),
+                "row_count": corpus.get("rows"),
                 "rows": corpus.get("rows"),
+                "min_date": corpus.get("start_date"),
+                "max_date": corpus.get("end_date"),
                 "start_date": corpus.get("start_date"),
                 "end_date": corpus.get("end_date"),
+                "chosen_as_of_date": None,
+                "stage1_micro_days": None,
+                "stage2_short_days": None,
+                "stage3_deep_days": None,
                 "missing_ohlcv_pct": None,
                 "zero_volume_pct": None,
                 "volume_available": None,

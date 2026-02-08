@@ -165,6 +165,7 @@ def build_run_manifest(
         "as_of_date": as_of_date,
         "config_hash": config_hash,
         "config": _redact_config(config),
+        "effective_config": _redact_config(config),
         "ohlcv_dir": ohlcv_dir,
         "watchlist_file": str(watchlist_path) if watchlist_path else None,
         "watchlist_file_hash": watchlist_file_hash,

@@ -318,6 +318,9 @@ def run_pipeline(
             run_id=run_id,
             run_timestamp=run_timestamp,
             logger=logger,
+            as_of_date=as_of_date,
+            now_utc=now_utc,
+            staging_cfg=config.get("staging"),
             corpus_dir=corpus_paths.gdelt_conflict_dir,
             raw_events_dir=corpus_paths.gdelt_events_raw_dir,
         )
@@ -331,6 +334,7 @@ def run_pipeline(
         run_meta,
         logger,
         as_of_date=as_of_date,
+        now_utc=now_utc,
         silver_macro=silver_macro,
     )
 

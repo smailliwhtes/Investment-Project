@@ -36,7 +36,10 @@ from market_monitor.hash_utils import hash_file, hash_text
 from market_monitor.manifest import resolve_git_commit
 from market_monitor.paths import find_repo_root
 from market_monitor.pipeline import PipelineResult, run_pipeline
+from market_monitor.provider_factory import build_provider
 from market_monitor.themes import tag_themes
+from market_monitor.universe import read_watchlist
+from market_monitor.features import compute_features
 
 
 def _build_run_parser(parser: argparse.ArgumentParser) -> None:
@@ -487,6 +490,17 @@ def _run_doctor(args: argparse.Namespace) -> int:
     repo_root = find_repo_root(config_dir)
     base_dir = repo_root if repo_root.exists() else config_dir
     offline = bool(config.get("offline", True) or args.offline)
+    resolved_as_of, resolved_now = _resolve_time_anchors(
+        args,
+        config,
+        default_as_of_date=None,
+        default_now_utc=utcnow().isoformat(),
+    )
+    anchor_date = None
+    if resolved_as_of:
+        anchor_date = parse_as_of_date(resolved_as_of)
+    elif resolved_now:
+        anchor_date = parse_now_utc(resolved_now).date()
 
     def _resolve(path_value: str) -> Path:
         path = Path(path_value)
@@ -574,7 +588,97 @@ def _run_doctor(args: argparse.Namespace) -> int:
         )
 
     _print_doctor_summary(errors, warnings)
-    return 2 if errors else 0
+    if errors:
+        return 2
+
+    try:
+        watchlist_df = read_watchlist(watchlist_path)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[doctor] Failed to read watchlist: {exc}")
+        return 2
+
+    weights = _select_weights(config, opportunistic=False)
+    theme_rules = _load_watchlists(config_dir / "watchlists.yaml")
+    engine_config = map_to_engine_config(
+        blueprint=config,
+        config_hash=config_result.config_hash,
+        base_dir=base_dir,
+        theme_rules=theme_rules,
+        weights=weights,
+        as_of_date=resolved_as_of,
+        now_utc=resolved_now,
+    )
+    engine_config["data"]["offline_mode"] = offline
+
+    provider = build_provider(engine_config, logger=logging.getLogger("market_app"), base_dir=base_dir)
+    history_min_days = int(engine_config.get("staging", {}).get("history_min_days", 252))
+    gate_cfg = config.get("scoring", {}).get("gates", {})
+    rows = []
+
+    for _, row in watchlist_df.iterrows():
+        symbol = row.get("symbol")
+        name = row.get("name") or symbol
+        try:
+            df, file_path = provider.load_symbol_data(symbol)
+            df = df.copy()
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+            df = df.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
+            if anchor_date is not None:
+                df = df[df["Date"] <= pd.to_datetime(anchor_date)].reset_index(drop=True)
+            row_count = len(df)
+            min_date = df["Date"].min().strftime("%Y-%m-%d") if row_count else None
+            max_date = df["Date"].max().strftime("%Y-%m-%d") if row_count else None
+            freshness_days = (
+                max((anchor_date - df["Date"].max().date()).days, 0)
+                if anchor_date is not None and row_count
+                else None
+            )
+            gate_failures = []
+            if row_count <= 0:
+                gate_failures.append("NO_HISTORY")
+            else:
+                features = compute_features(df)
+                features_row = {"symbol": symbol, "name": name, **features}
+                eligible_df, _ = apply_blueprint_gates(
+                    pd.DataFrame([features_row]), gate_cfg
+                )
+                excluded = eligible_df["excluded_reasons"].iloc[0]
+                if excluded:
+                    gate_failures.extend([code for code in excluded.split(";") if code])
+                if int(features.get("history_days", 0)) < history_min_days:
+                    gate_failures.append(f"HISTORY<{history_min_days}")
+
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "path": str(file_path),
+                    "rows": row_count,
+                    "min_date": min_date,
+                    "max_date": max_date,
+                    "freshness_days": freshness_days,
+                    "failed_gates": ";".join(gate_failures),
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "path": "",
+                    "rows": 0,
+                    "min_date": None,
+                    "max_date": None,
+                    "freshness_days": None,
+                    "failed_gates": f"DATA_UNAVAILABLE:{exc}",
+                }
+            )
+
+    table = pd.DataFrame(rows)
+    print("\n[doctor] Data coverage")
+    if table.empty:
+        print("No symbols found in watchlist.")
+    else:
+        print(table.to_string(index=False))
+    return 0
 
 
 def _print_doctor_summary(

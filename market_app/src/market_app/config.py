@@ -149,4 +149,8 @@ def map_to_engine_config(
         engine["pipeline"]["asof_default"] = as_of_date
     if now_utc:
         engine["pipeline"]["now_utc"] = now_utc
+    if blueprint.get("staging"):
+        engine["staging"] = _deep_merge(engine.get("staging", {}), blueprint["staging"])
+    if blueprint.get("pipeline"):
+        engine["pipeline"] = _deep_merge(engine.get("pipeline", {}), blueprint["pipeline"])
     return engine

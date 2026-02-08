@@ -61,7 +61,7 @@ class NasdaqDailyProvider(HistoryProvider):
         return self.source.cache_dir / "nasdaq_daily" / f"{safe_symbol}.parquet"
 
     def _freshness_days(self, path: Path) -> float:
-        delta = pd.Timestamp(utcnow()) - pd.Timestamp(path.stat().st_mtime, unit="s")
+        delta = pd.Timestamp(utcnow()) - pd.Timestamp(path.stat().st_mtime, unit="s", tz="UTC")
         return float(delta.total_seconds() / 86400.0)
 
     @staticmethod
