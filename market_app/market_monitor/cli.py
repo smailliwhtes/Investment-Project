@@ -1,7 +1,6 @@
 import argparse
 import json
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +37,7 @@ from market_monitor.gdelt.doctor import normalize_corpus
 from market_monitor.logging_utils import get_console_logger
 from market_monitor.paths import find_repo_root, resolve_path
 from market_monitor.providers.base import ProviderError
+from market_monitor.timebase import utcnow
 from market_monitor.providers.http import RetryConfig
 from market_monitor.manifest import resolve_git_commit, run_id_from_inputs
 from market_monitor.offline import set_offline_mode
@@ -410,7 +410,7 @@ def run_preflight_command(args: argparse.Namespace) -> int:
 
     provider = build_provider(config, logger, base_dir)
     outputs_dir = resolve_path(base_dir, args.outdir or config["paths"]["outputs_dir"])
-    run_start = datetime.now(timezone.utc)
+    run_start = utcnow()
     run_timestamp = run_start.isoformat()
     run_id = run_id_from_inputs(
         timestamp=run_start,

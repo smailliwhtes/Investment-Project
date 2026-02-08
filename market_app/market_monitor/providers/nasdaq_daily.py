@@ -8,6 +8,7 @@ import pandas as pd
 
 from market_monitor.cache import CacheResult
 from market_monitor.providers.base import HistoryProvider, ProviderCapabilities, ProviderError
+from market_monitor.timebase import utcnow
 
 
 @dataclass(frozen=True)
@@ -60,7 +61,7 @@ class NasdaqDailyProvider(HistoryProvider):
         return self.source.cache_dir / "nasdaq_daily" / f"{safe_symbol}.parquet"
 
     def _freshness_days(self, path: Path) -> float:
-        delta = pd.Timestamp.utcnow() - pd.Timestamp(path.stat().st_mtime, unit="s")
+        delta = pd.Timestamp(utcnow()) - pd.Timestamp(path.stat().st_mtime, unit="s")
         return float(delta.total_seconds() / 86400.0)
 
     @staticmethod

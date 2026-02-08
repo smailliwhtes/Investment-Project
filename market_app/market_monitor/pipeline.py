@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +20,7 @@ from market_monitor.provider_factory import build_provider
 from market_monitor.report import write_report
 from market_monitor.scoring import score_frame
 from market_monitor.staging import stage_pipeline
+from market_monitor.timebase import parse_as_of_date, parse_now_utc, utcnow
 from market_monitor.universe import fetch_universe, filter_universe, read_watchlist, write_universe_csv
 
 
@@ -238,7 +238,8 @@ def run_pipeline(
         raise RuntimeError("Offline mode is required for this release.")
     set_offline_mode(offline_mode)
 
-    run_start = datetime.now(timezone.utc)
+    now_utc = config.get("pipeline", {}).get("now_utc")
+    run_start = parse_now_utc(now_utc) if now_utc else utcnow()
     run_timestamp = run_timestamp or run_start.isoformat()
 
     provider = build_provider(config, logger, base_dir)
@@ -291,11 +292,14 @@ def run_pipeline(
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     json_logger = JsonlLogger(logs_dir / f"run_{run_id}.jsonl")
+    asof_default = config.get("pipeline", {}).get("asof_default")
+    as_of_date = parse_as_of_date(asof_default).isoformat() if asof_default else None
     run_meta = {
         "run_id": run_id,
         "run_timestamp_utc": run_timestamp,
         "config_hash": config_hash,
         "provider_name": provider.name,
+        "as_of_date": as_of_date,
     }
 
     paths = resolve_data_paths(config, base_dir)
@@ -326,6 +330,7 @@ def run_pipeline(
         config,
         run_meta,
         logger,
+        as_of_date=as_of_date,
         silver_macro=silver_macro,
     )
 
@@ -419,11 +424,12 @@ def run_pipeline(
             context_summary=None,
         )
 
-        run_end = datetime.now(timezone.utc)
+        run_end = run_start if now_utc else utcnow()
         manifest = build_run_manifest(
             run_id=run_id,
             run_start=run_start,
             run_end=run_end,
+            as_of_date=as_of_date,
             config=config,
             config_hash=config_hash,
             watchlist_path=watchlist_path if mode == "watchlist" else None,
@@ -439,7 +445,7 @@ def run_pipeline(
             handle.write(manifest.to_json(indent=2))
         json_logger.log("summary", {"counts": summary})
 
-    run_end = datetime.now(timezone.utc)
+    run_end = run_start if now_utc else utcnow()
     logger.info(f"Outputs written to {output_dir}")
     return PipelineResult(
         run_id=run_id,

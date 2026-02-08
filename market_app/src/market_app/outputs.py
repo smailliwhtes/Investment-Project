@@ -275,6 +275,7 @@ def build_manifest(
     *,
     run_id: str,
     run_timestamp: str,
+    as_of_date: str | None,
     config_hash: str,
     git_sha: str | None,
     offline: bool,
@@ -282,11 +283,17 @@ def build_manifest(
     config_path: Path,
     dataset_paths: list[Path],
     dependency_versions: dict[str, str],
+    stable_outputs: list[str] | None = None,
+    outputs_override: dict[str, dict[str, Any]] | None = None,
 ) -> Manifest:
-    outputs = {}
-    for path in output_dir.glob("*"):
-        if path.is_file():
-            outputs[path.name] = {"sha256": hash_file(path), "bytes": path.stat().st_size}
+    outputs = outputs_override or {}
+    if not outputs:
+        stable_set = set(stable_outputs or [])
+        for path in output_dir.glob("*"):
+            if path.is_file():
+                if stable_set and path.name not in stable_set:
+                    continue
+                outputs[path.name] = {"sha256": hash_file(path), "bytes": path.stat().st_size}
 
     datasets = []
     for path in dataset_paths:
@@ -296,6 +303,7 @@ def build_manifest(
     payload = {
         "run_id": run_id,
         "run_timestamp_utc": run_timestamp,
+        "as_of_date": as_of_date,
         "config_hash": config_hash,
         "git_sha": git_sha,
         "offline": offline,

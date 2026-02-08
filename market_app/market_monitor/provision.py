@@ -4,13 +4,13 @@ import json
 import shutil
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
 from market_monitor.gdelt.doctor import normalize_corpus
 from market_monitor.hash_utils import hash_file
 from market_monitor.ohlcv_doctor import normalize_directory
+from market_monitor.timebase import utcnow
 
 
 @dataclass(frozen=True)
@@ -34,7 +34,7 @@ def _write_inventory(dest_dir: Path, source: str, files: list[Path]) -> Path:
             }
         )
     payload = Inventory(
-        created_at_utc=datetime.now(timezone.utc).isoformat(),
+        created_at_utc=utcnow().isoformat(),
         source=source,
         destination=str(dest_dir),
         files=entries,

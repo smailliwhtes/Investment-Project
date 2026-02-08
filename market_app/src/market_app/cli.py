@@ -5,7 +5,6 @@ import json
 import logging
 import logging.config
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +24,13 @@ from market_app.outputs import (
     normalize_features,
     write_csv,
 )
+from market_app.timebase import parse_as_of_date, parse_now_utc, today_utc, utcnow
+from market_monitor.determinism import (
+    STABLE_ARTIFACTS,
+    compare_runs,
+    resolve_allowlist,
+    stable_output_digests,
+)
 from market_monitor.hash_utils import hash_file, hash_text
 from market_monitor.manifest import resolve_git_commit
 from market_monitor.paths import find_repo_root
@@ -38,6 +44,8 @@ def _build_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--runs-dir", default=None)
     parser.add_argument("--top-n", "--top_n", dest="top_n", type=int, default=None)
+    parser.add_argument("--as-of-date", dest="as_of_date", default=None)
+    parser.add_argument("--now-utc", dest="now_utc", default=None)
     variant = parser.add_mutually_exclusive_group()
     variant.add_argument("--conservative", action="store_true")
     variant.add_argument("--opportunistic", action="store_true")
@@ -47,7 +55,19 @@ def _build_run_parser(parser: argparse.ArgumentParser) -> None:
 def _build_doctor_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--as-of-date", dest="as_of_date", default=None)
+    parser.add_argument("--now-utc", dest="now_utc", default=None)
     parser.set_defaults(command="doctor")
+
+
+def _build_determinism_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--config", default="config.yaml")
+    parser.add_argument("--run-id", "--run_id", dest="run_id", default="det_check")
+    parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--runs-dir", default=None)
+    parser.add_argument("--as-of-date", dest="as_of_date", default=None)
+    parser.add_argument("--now-utc", dest="now_utc", default=None)
+    parser.set_defaults(command="determinism-check")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -57,6 +77,10 @@ def _build_parser() -> argparse.ArgumentParser:
     _build_run_parser(run_parser)
     doctor_parser = subparsers.add_parser("doctor", help="Validate config and data paths")
     _build_doctor_parser(doctor_parser)
+    determinism_parser = subparsers.add_parser(
+        "determinism-check", help="Run two deterministic passes and compare outputs"
+    )
+    _build_determinism_parser(determinism_parser)
     return parser
 
 
@@ -201,12 +225,10 @@ def _write_digest(
     top_n: int,
     watchlist_path: Path,
     dataset_paths: list[Path],
+    as_of_date: str | None,
+    allowlist,
 ) -> dict[str, Any]:
-    stable_outputs = {}
-    for name in ("eligible.csv", "scored.csv", "features.csv", "classified.csv", "universe.csv"):
-        path = run_dir / name
-        if path.exists():
-            stable_outputs[name] = {"sha256": hash_file(path), "bytes": path.stat().st_size}
+    stable_outputs = stable_output_digests(run_dir, allowlist)
     datasets = []
     for path in dataset_paths:
         if path.exists():
@@ -217,6 +239,7 @@ def _write_digest(
         "offline": offline,
         "variant": variant,
         "top_n": top_n,
+        "as_of_date": as_of_date,
         "watchlist_hash": _watchlist_hash(watchlist_path),
         "outputs": stable_outputs,
         "datasets": datasets,
@@ -404,6 +427,28 @@ def _resolve_runs_dir(
     return runs_path
 
 
+def _resolve_time_anchors(
+    args: argparse.Namespace,
+    blueprint: dict[str, Any],
+    *,
+    default_as_of_date: str | None = None,
+    default_now_utc: str | None = None,
+) -> tuple[str | None, str | None]:
+    determinism_cfg = blueprint.get("determinism", {})
+    as_of_date = args.as_of_date or determinism_cfg.get("as_of_date") or default_as_of_date
+    now_utc = args.now_utc or determinism_cfg.get("now_utc") or default_now_utc
+    if as_of_date:
+        as_of_date = parse_as_of_date(as_of_date).isoformat()
+    if now_utc:
+        now_utc = parse_now_utc(now_utc).isoformat()
+    return as_of_date, now_utc
+
+
+def _resolve_allowlist(blueprint: dict[str, Any]):
+    determinism_cfg = blueprint.get("determinism", {})
+    return resolve_allowlist(determinism_cfg.get("allowed_vary_columns"))
+
+
 def _run_doctor(args: argparse.Namespace) -> int:
     config_path = Path(args.config).expanduser().resolve()
     errors = []
@@ -544,11 +589,13 @@ def _print_doctor_summary(
     print(f"[doctor] Summary: {summary} (errors={len(errors)}, warnings={len(warnings)})")
 
 
-def run_cli(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
-    if args.command == "doctor":
-        return _run_doctor(args)
-
+def _execute_run(
+    args: argparse.Namespace,
+    *,
+    run_id_override: str | None = None,
+    as_of_date: str | None = None,
+    now_utc: str | None = None,
+) -> Path:
     config_path = Path(args.config).expanduser().resolve()
     config_dir = config_path.parent
     repo_root = find_repo_root(config_dir)
@@ -556,11 +603,17 @@ def run_cli(argv: list[str] | None = None) -> int:
     config_result = load_config(config_path)
     blueprint = config_result.config
 
+    resolved_as_of, resolved_now = _resolve_time_anchors(args, blueprint)
+    as_of_date = as_of_date or resolved_as_of
+    now_utc = now_utc or resolved_now
+    now_anchor = parse_now_utc(now_utc) if now_utc else utcnow()
+
     offline = bool(blueprint.get("offline", True) or args.offline)
     watchlists_path = config_dir / "watchlists.yaml"
     theme_rules = _load_watchlists(watchlists_path)
-    variant = "opportunistic" if args.opportunistic else "conservative"
-    weights = _select_weights(blueprint, opportunistic=bool(args.opportunistic))
+    opportunistic = bool(getattr(args, "opportunistic", False))
+    variant = "opportunistic" if opportunistic else "conservative"
+    weights = _select_weights(blueprint, opportunistic=opportunistic)
     watchlist_path = Path(blueprint["paths"]["watchlist_file"])
     if not watchlist_path.is_absolute():
         watchlist_path = (base_dir / watchlist_path).resolve()
@@ -570,11 +623,13 @@ def run_cli(argv: list[str] | None = None) -> int:
         base_dir=base_dir,
         theme_rules=theme_rules,
         weights=weights,
+        as_of_date=as_of_date,
+        now_utc=now_utc,
     )
     engine_config["data"]["offline_mode"] = offline
-    top_n = args.top_n or blueprint["run"]["top_n"]
-    run_timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    run_id = args.run_id or _deterministic_run_id(
+    top_n = getattr(args, "top_n", None) or blueprint["run"]["top_n"]
+    run_timestamp = now_anchor.isoformat()
+    run_id = run_id_override or args.run_id or _deterministic_run_id(
         config_hash=config_result.config_hash,
         watchlist_path=watchlist_path,
         variant=variant,
@@ -636,9 +691,12 @@ def run_cli(argv: list[str] | None = None) -> int:
     )
     dataset_paths = _collect_dataset_paths(blueprint, base_dir)
     git_sha = resolve_git_commit(base_dir)
+    allowlist = _resolve_allowlist(blueprint)
+    stable_outputs = stable_output_digests(run_dir, allowlist)
     manifest = build_manifest(
         run_id=run_id,
         run_timestamp=run_timestamp,
+        as_of_date=as_of_date,
         config_hash=config_result.config_hash,
         git_sha=git_sha,
         offline=offline,
@@ -646,6 +704,8 @@ def run_cli(argv: list[str] | None = None) -> int:
         config_path=config_path,
         dataset_paths=dataset_paths,
         dependency_versions=_dependency_versions(),
+        stable_outputs=list(STABLE_ARTIFACTS),
+        outputs_override=stable_outputs,
     )
     (run_dir / "manifest.json").write_text(manifest.to_json(), encoding="utf-8")
     _write_digest(
@@ -657,9 +717,84 @@ def run_cli(argv: list[str] | None = None) -> int:
         top_n=top_n,
         watchlist_path=watchlist_path,
         dataset_paths=dataset_paths,
+        as_of_date=as_of_date,
+        allowlist=allowlist,
     )
     logger.info("Completed blueprint-compatible run")
     print(f"[done] Run artifacts: {run_dir}")
+    return run_dir
+
+
+def _run_determinism_check(
+    args: argparse.Namespace,
+    *,
+    run_fn=None,
+) -> int:
+    config_path = Path(args.config).expanduser().resolve()
+    config_result = load_config(config_path)
+    blueprint = config_result.config
+    base_as_of = args.as_of_date or blueprint.get("determinism", {}).get("as_of_date")
+    base_now = args.now_utc or blueprint.get("determinism", {}).get("now_utc")
+    as_of_date, now_utc = _resolve_time_anchors(
+        args,
+        blueprint,
+        default_as_of_date=base_as_of or today_utc().isoformat(),
+        default_now_utc=base_now or utcnow().isoformat(),
+    )
+
+    base_run_id = args.run_id or "det_check"
+    run_id_a = f"{base_run_id}_1"
+    run_id_b = f"{base_run_id}_2"
+    run_fn = run_fn or _execute_run
+
+    run_dir_a = run_fn(args, run_id_override=run_id_a, as_of_date=as_of_date, now_utc=now_utc)
+    run_dir_b = run_fn(args, run_id_override=run_id_b, as_of_date=as_of_date, now_utc=now_utc)
+
+    allowlist = _resolve_allowlist(blueprint)
+    diff_dir = run_dir_a.parent / "determinism_check" / base_run_id
+    report = compare_runs(
+        run_dir_a,
+        run_dir_b,
+        allowlist=allowlist,
+        diff_dir=diff_dir,
+        as_of_date=as_of_date,
+    )
+
+    for name, run_dir in {"run1": run_dir_a, "run2": run_dir_b}.items():
+        digest_path = run_dir / "digest.json"
+        if digest_path.exists():
+            target = diff_dir / f"digest_{name}.json"
+            target.write_text(digest_path.read_text(encoding="utf-8"), encoding="utf-8")
+
+    disallowed = report.disallowed
+    if disallowed:
+        print("[determinism-check] FAIL")
+        for file_name, keys in list(disallowed.items())[:5]:
+            print(f"  - {file_name}: {', '.join(keys[:5])}")
+        print(f"[determinism-check] diff artifacts: {report.diff_dir}")
+        return 2
+
+    any_diff = any(
+        info.get("status") != "match" for info in report.summary.get("files", {}).values()
+    )
+    if any_diff:
+        print("[determinism-check] PASS (allowed diffs only)")
+        print(f"[determinism-check] diff artifacts: {report.diff_dir}")
+    else:
+        print("[determinism-check] PASS")
+    print(f"[determinism-check] run1: {run_dir_a}")
+    print(f"[determinism-check] run2: {run_dir_b}")
+    return 0
+
+
+def run_cli(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    if args.command == "doctor":
+        return _run_doctor(args)
+    if args.command == "determinism-check":
+        return _run_determinism_check(args)
+
+    _execute_run(args)
     return 0
 
 

@@ -1,9 +1,9 @@
-from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from market_monitor.timebase import utcnow
 
 def write_report(
     path: Path,
@@ -21,7 +21,7 @@ def write_report(
     lines = [
         "# Market Monitor Report",
         "",
-        f"Generated: {datetime.now(timezone.utc).isoformat().replace('+00:00','Z')}",
+        f"Generated: {(run_timestamp or utcnow().isoformat()).replace('+00:00','Z')}",
         f"Run ID: {run_id or 'unknown'}",
         f"Run timestamp: {run_timestamp or 'unknown'}",
         "",

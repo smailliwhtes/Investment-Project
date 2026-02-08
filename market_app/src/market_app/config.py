@@ -13,6 +13,22 @@ from market_monitor.config_schema import DEFAULT_CONFIG
 DEFAULT_BLUEPRINT_CONFIG: dict[str, Any] = {
     "offline": True,
     "run": {"top_n": 15},
+    "determinism": {
+        "as_of_date": None,
+        "now_utc": None,
+        "allowed_vary_columns": {
+            "global": [],
+            "eligible.csv": [],
+            "scored.csv": ["run_id"],
+            "features.csv": ["run_id"],
+            "classified.csv": [],
+            "universe.csv": [],
+            "manifest.json": ["run_id"],
+            "digest.json": [],
+            "report.md": ["run_id"],
+            "report.html": [],
+        },
+    },
     "paths": {
         "data_dir": "./data",
         "output_dir": "./outputs/runs",
@@ -116,6 +132,8 @@ def map_to_engine_config(
     base_dir: Path,
     theme_rules: dict[str, dict[str, list[str]]],
     weights: dict[str, float],
+    as_of_date: str | None = None,
+    now_utc: str | None = None,
 ) -> dict[str, Any]:
     engine = json.loads(json.dumps(DEFAULT_CONFIG))
     engine["data"]["offline_mode"] = bool(blueprint.get("offline", True))
@@ -133,4 +151,8 @@ def map_to_engine_config(
     engine["themes"] = theme_rules
     engine["run"]["max_symbols_per_run"] = blueprint["run"]["top_n"]
     engine["config_hash"] = config_hash
+    if as_of_date:
+        engine["pipeline"]["asof_default"] = as_of_date
+    if now_utc:
+        engine["pipeline"]["now_utc"] = now_utc
     return engine

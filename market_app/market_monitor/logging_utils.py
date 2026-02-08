@@ -2,7 +2,7 @@ import json
 import logging
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from market_monitor.timebase import utcnow
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +14,7 @@ class JsonlLogger:
 
     def log(self, event_type: str, payload: dict[str, Any]) -> None:
         record = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": utcnow().isoformat(),
             "event": event_type,
             **payload,
         }
@@ -31,7 +31,7 @@ class LogPaths:
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": utcnow().isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
         }

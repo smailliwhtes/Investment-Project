@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +12,7 @@ from market_monitor.corpus.pipeline import (
     validate_corpus_sources,
 )
 from market_monitor.providers.base import HistoryProvider, ProviderError
+from market_monitor.timebase import utcnow
 
 
 @dataclass(frozen=True)
@@ -269,7 +269,7 @@ def _write_preflight_reports(
         "# Preflight Report",
         "",
         f"- Run ID: {run_id}",
-        f"- Generated: {datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')}",
+        f"- Generated: {utcnow().isoformat().replace('+00:00', 'Z')}",
         f"- Run timestamp: {run_timestamp}",
         "",
         "## Coverage Summary",

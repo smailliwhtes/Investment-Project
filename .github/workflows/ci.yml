@@ -39,3 +39,31 @@ jobs:
         working-directory: market_app
         run: |
           market-monitor run --watchlist watchlists/watchlist_smoke.csv --asof 2025-01-31 --run-id smoke --ohlcv-daily-dir tests/fixtures/ohlcv_daily --exogenous-daily-dir tests/fixtures/exogenous/daily_features
+
+  determinism:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e "./market_app[test]" --no-build-isolation
+      - name: Determinism check (offline)
+        working-directory: market_app
+        run: |
+          python -m market_app.cli determinism-check --config tests/fixtures/blueprint_config.yaml --runs-dir outputs/determinism_ci --offline --as-of-date 2025-01-31 --run-id ci_det
+      - name: Upload determinism artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: determinism-artifacts-${{ matrix.os }}
+          path: market_app/outputs/determinism_ci

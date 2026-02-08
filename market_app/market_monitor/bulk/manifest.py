@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 
 from market_monitor.bulk.models import BulkDownloadTask
+from market_monitor.timebase import utcnow
 
 
 @dataclass(frozen=True)
@@ -15,7 +15,7 @@ class BulkManifest:
 
     @staticmethod
     def create(tasks: list[BulkDownloadTask]) -> "BulkManifest":
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = utcnow().isoformat()
         return BulkManifest(created_at_utc=timestamp, tasks=tasks)
 
 

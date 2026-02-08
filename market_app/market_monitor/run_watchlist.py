@@ -5,7 +5,6 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -23,6 +22,7 @@ from market_monitor.scoring.explain import build_explanations
 from market_monitor.scoring.gates import GateConfig, apply_gates, join_pipe
 from market_monitor.scoring.score import ScoreConfig, compute_score
 from market_monitor.validation import validate_data
+from market_monitor.timebase import utcnow
 
 REQUIRED_WATCHLIST_COLUMNS = {"symbol", "theme_bucket", "asset_type"}
 OUTPUT_SCHEMA_VERSION = "v2"
@@ -525,7 +525,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     run_manifest = {
         "run_id": args.run_id,
         "asof_date": asof_date,
-        "started_utc": datetime.now(timezone.utc).isoformat(),
+        "started_utc": utcnow().isoformat(),
         "config_hash": config_hash,
         "schema_version": OUTPUT_SCHEMA_VERSION,
         "watchlist_content_hash": hash_file(watchlist_path),
