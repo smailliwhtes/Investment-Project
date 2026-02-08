@@ -1,0 +1,126 @@
+{
+  "allowlist": {
+    "global": [],
+    "per_file": {
+      "classified.csv": [],
+      "digest.json": [],
+      "eligible.csv": [],
+      "features.csv": [
+        "run_id"
+      ],
+      "manifest.json": [
+        "run_id"
+      ],
+      "report.html": [],
+      "report.md": [
+        "run_id"
+      ],
+      "scored.csv": [
+        "run_id"
+      ],
+      "universe.csv": []
+    }
+  },
+  "as_of_date": "2026-02-08",
+  "files": {
+    "classified.csv": {
+      "diff_examples_path": null,
+      "diff_keys": [],
+      "diff_rows": 0,
+      "disallowed_keys": [],
+      "example_keys": [],
+      "max_abs_delta": null,
+      "status": "match"
+    },
+    "digest.json": {
+      "diff_examples_path": null,
+      "diff_keys": [],
+      "diff_rows": null,
+      "disallowed_keys": [],
+      "example_keys": [],
+      "max_abs_delta": null,
+      "status": "match"
+    },
+    "eligible.csv": {
+      "diff_examples_path": null,
+      "diff_keys": [],
+      "diff_rows": 0,
+      "disallowed_keys": [],
+      "example_keys": [],
+      "max_abs_delta": null,
+      "status": "match"
+    },
+    "features.csv": {
+      "diff_examples_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\runs_acceptance\\determinism_check\\det_check\\diff_examples_features.csv",
+      "diff_keys": [
+        "run_id"
+      ],
+      "diff_rows": 3,
+      "disallowed_keys": [],
+      "example_keys": [
+        "AAA|AAA",
+        "BBB|BBB",
+        "SPY|SPY"
+      ],
+      "max_abs_delta": null,
+      "status": "diff"
+    },
+    "manifest.json": {
+      "diff_examples_path": null,
+      "diff_keys": [
+        "run_id"
+      ],
+      "diff_rows": null,
+      "disallowed_keys": [],
+      "example_keys": [
+        "run_id"
+      ],
+      "max_abs_delta": null,
+      "status": "diff"
+    },
+    "report.html": {
+      "diff_examples_path": null,
+      "diff_keys": [],
+      "diff_rows": null,
+      "disallowed_keys": [],
+      "example_keys": [],
+      "max_abs_delta": null,
+      "status": "absent"
+    },
+    "report.md": {
+      "diff_examples_path": null,
+      "diff_keys": [],
+      "diff_rows": null,
+      "disallowed_keys": [],
+      "example_keys": [],
+      "max_abs_delta": null,
+      "status": "match"
+    },
+    "scored.csv": {
+      "diff_examples_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\runs_acceptance\\determinism_check\\det_check\\diff_examples_scored.csv",
+      "diff_keys": [
+        "run_id"
+      ],
+      "diff_rows": 3,
+      "disallowed_keys": [],
+      "example_keys": [
+        "AAA|AAA",
+        "BBB|BBB",
+        "SPY|SPY"
+      ],
+      "max_abs_delta": null,
+      "status": "diff"
+    },
+    "universe.csv": {
+      "diff_examples_path": null,
+      "diff_keys": [],
+      "diff_rows": 0,
+      "disallowed_keys": [],
+      "example_keys": [],
+      "max_abs_delta": null,
+      "status": "match"
+    }
+  },
+  "run_dir_a": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\runs_acceptance\\det_check_1",
+  "run_dir_b": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\runs_acceptance\\det_check_2"
+}

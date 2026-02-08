@@ -1,0 +1,51 @@
+{
+  "as_of_date": "2026-02-08",
+  "config_hash": "8fb588bc948e588ea227724b90014193b2ddbaab162018cf21af2887a6927376",
+  "config_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\configs\\acceptance.yaml",
+  "datasets": [
+    {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\watchlist.txt",
+      "sha256": "51a17d032535b6acc61f1b22ecab4170b01420ed7005aab0c8a4726138da1cdc"
+    },
+    {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\macro\\term_spread.csv",
+      "sha256": "e70355e3d49a657234035b1f378af89175904a33cb711f01e4fa060a6f9bb442"
+    }
+  ],
+  "dependency_versions": {
+    "numpy": "2.1.3",
+    "pandas": "2.2.3",
+    "pyyaml": "6.0.2"
+  },
+  "git_sha": "9e03778b41473852d84656e625c48d069f3e8e54",
+  "manifest_hash": "ec675db3c099010a27568506c8e4296b4e84fd0eb1ea751dd2eaab03157362e7",
+  "offline": true,
+  "outputs": {
+    "classified.csv": {
+      "bytes": 277,
+      "sha256": "063afb83802690addcd2bcd046074d8fd15063874277cd52525a3a3565bdf1d7"
+    },
+    "eligible.csv": {
+      "bytes": 188,
+      "sha256": "efd6ef222bafe6dbebf3af976bea330fbbbd43157c5ff44a5a45829b3a3d605b"
+    },
+    "features.csv": {
+      "bytes": 4529,
+      "sha256": "cf38b890dad789459268a0ae6046b27b1ee197e44371de29143315556b79b34c"
+    },
+    "report.md": {
+      "bytes": 974,
+      "sha256": "15cb636d0f8c42cde10b9ebad705a045ad47bddf05193bbc9724b4967547f17f"
+    },
+    "scored.csv": {
+      "bytes": 5848,
+      "sha256": "ba11a479b81f89c43116243cc4b00b616c1c0a9650854bdd92da6a3fa25c8bbe"
+    },
+    "universe.csv": {
+      "bytes": 144,
+      "sha256": "7def0d4465560e2b014d42437da3cffca683475a490f24537965e7968e17d829"
+    }
+  },
+  "run_id": "det_check_1",
+  "run_timestamp_utc": "2026-02-08T19:16:02.374755+00:00"
+}

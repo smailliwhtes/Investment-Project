@@ -1,0 +1,4 @@
+symbol,name,column,run_a,run_b
+AAA,AAA,run_id,gui_ready_check_1,gui_ready_check_2
+BBB,BBB,run_id,gui_ready_check_1,gui_ready_check_2
+SPY,SPY,run_id,gui_ready_check_1,gui_ready_check_2

@@ -1,7 +1,7 @@
 # Market Monitor Report (Blueprint)
 
 Run ID: gui_ready_check_1
-Run timestamp: 20260208_152539
+Run timestamp: 2026-02-08T19:16:06.491301+00:00
 
 ## Regime Summary
 

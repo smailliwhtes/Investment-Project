@@ -1,0 +1,6 @@
+2026-02-08 14:16:02,381 [INFO] market_app - Starting blueprint-compatible run
+2026-02-08 14:16:02,404 [INFO] market_app - Stage 1: micro-history gate
+2026-02-08 14:16:02,417 [INFO] market_app - Stage 2: short-history gates
+2026-02-08 14:16:02,431 [INFO] market_app - Stage 3: deep history features + scoring
+2026-02-08 14:16:02,521 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_acceptance\det_check_1
+2026-02-08 14:16:02,808 [INFO] market_app - Completed blueprint-compatible run

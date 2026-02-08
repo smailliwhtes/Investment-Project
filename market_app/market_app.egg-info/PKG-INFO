@@ -60,6 +60,20 @@ python -m market_app.cli run --config ./config.yaml --offline
 This runs the canonical wrapper (`python -m market_app.cli run`) and writes
 output artifacts to `outputs/runs/<run_id>/` (or `--runs-dir` if provided).
 
+### Deterministic run (anchored time)
+
+To harden determinism, anchor the run to a fixed UTC day (and optionally a full timestamp):
+
+**Windows (PowerShell)**
+```powershell
+python -m market_app.cli run --config .\config.yaml --offline --as-of-date 2025-01-31 --now-utc 2025-01-31T00:00:00Z
+```
+
+**macOS/Linux (bash)**
+```bash
+python -m market_app.cli run --config ./config.yaml --offline --as-of-date 2025-01-31 --now-utc 2025-01-31T00:00:00Z
+```
+
 ## Doctor checks
 
 Validate environment + config (no run performed):
@@ -113,8 +127,30 @@ From the repo root:
 The verifier checks:
 - acceptance config exists and CLI is reachable
 - fixtures look repo-local (warns on absolute paths)
-- doctor + two runs complete with required artifacts
-- `digest.json` matches across runs
+- doctor + determinism check complete with required artifacts
+- determinism diffs (if any) are written to `outputs/runs/determinism_check/<run_id>`
+
+## Determinism check (single source of truth)
+
+The CLI can run two consecutive deterministic passes and compare stable artifacts:
+
+```powershell
+python -m market_app.cli determinism-check --config .\config.yaml --offline --as-of-date 2025-01-31 --run-id det_check
+```
+
+If diffs exist, the tool writes:
+- `diff_summary.json` with per-file diff metadata
+- `diff_report.md` with a human-readable summary
+- `diff_examples_<file>.csv` samples for CSV mismatches
+
+To allowlist a *specific* column (use sparingly), add to config:
+
+```yaml
+determinism:
+  allowed_vary_columns:
+    scored.csv:
+      - data_freshness_days
+```
 
 ## Run minimal GUI
 

@@ -1,5 +1,6 @@
 {
-  "config_hash": "3da57452ad0fa9ea09d1f91226fcd787fd9190ad9ac98046af15388a0d6314bc",
+  "as_of_date": "2026-02-08",
+  "config_hash": "8fb588bc948e588ea227724b90014193b2ddbaab162018cf21af2887a6927376",
   "config_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\configs\\acceptance.yaml",
   "datasets": [
     {
@@ -16,75 +17,43 @@
     "pandas": "2.2.3",
     "pyyaml": "6.0.2"
   },
-  "git_sha": "2cbd090405efd181c2fb349e58ae34984cdfc176",
-  "manifest_hash": "839641225c11a681de710f439c3117491d6218cbe45a7e1ba4e59ce50bf29174",
+  "git_sha": "9e03778b41473852d84656e625c48d069f3e8e54",
+  "manifest_hash": "1e9d0d682e7d8e50f2afd0d4cdadd449ef47f6688b124cf2994c466620e00972",
   "offline": true,
   "outputs": {
     "classified.csv": {
-      "bytes": 266,
-      "sha256": "1223f95bfff133e21ff52aeec9c7ea4cce6a3c6b276000ae12bb609b32d08c9b"
+      "bytes": 277,
+      "sha256": "063afb83802690addcd2bcd046074d8fd15063874277cd52525a3a3565bdf1d7"
+    },
+    "digest.json": {
+      "bytes": 1204,
+      "sha256": "24ce71e8c3fb9df67cb6ca835cc1ca329d99baaab81ced45c5cdeb60cb899fac"
     },
     "eligible.csv": {
-      "bytes": 192,
-      "sha256": "fead7d9e116aed608065930a31e93c1fdc85c320fc11fdbe491c36eadac06e35"
-    },
-    "eligible_gui_ready_check_2.csv": {
-      "bytes": 98,
-      "sha256": "d3f702689e6484c59707585836d0d4a56485837d47bacbc8510d70b5fb38cde6"
+      "bytes": 188,
+      "sha256": "efd6ef222bafe6dbebf3af976bea330fbbbd43157c5ff44a5a45829b3a3d605b"
     },
     "features.csv": {
-      "bytes": 4240,
-      "sha256": "16a76e44d0497342e8a49f76e3b6750cc4bd48c5b0c6ad4b44ed86043a904cb4"
+      "bytes": 4529,
+      "sha256": "a596db9fb38449e37b7f79fbef7c638cd8adce84f996ade3efb4adba6f04f35f"
     },
-    "features_gui_ready_check_2.csv": {
-      "bytes": 1944,
-      "sha256": "0b00098b6efcbda21a74a55975f5cf62f428ff1f796373b1482c5f7149690b95"
-    },
-    "preflight_report.csv": {
-      "bytes": 761,
-      "sha256": "5333c363434d67ad93b488d4a6e067cfc9718b3dc9de585aafee7f582f9c7cf1"
-    },
-    "preflight_report.md": {
-      "bytes": 773,
-      "sha256": "09ad2dff5d1960415ca6c40fa4b7275466583f5c6d2f18f36e28d7292ef4b0be"
-    },
-    "regime.json": {
-      "bytes": 228,
-      "sha256": "1b7b52ae9d502c3a4f091ec56787fad065ddbaa7c6aa2dc7b0a7bc3ca99e5e03"
+    "manifest.json": {
+      "bytes": 2632,
+      "sha256": "227233b0bf32a215bc9e002568932e82829c0b48495e548b8cae1a982aa39728"
     },
     "report.md": {
-      "bytes": 1017,
-      "sha256": "2efbbe49f4e84501cfb86d3e6b3768dbc49064bcd6d478d2596d7a6d70904bd9"
-    },
-    "run.log": {
-      "bytes": 472,
-      "sha256": "023d9d1a3caaaa98ccf92d6f2e1d58fd8694db173772b0ca77ab7f572dc30a5d"
-    },
-    "run_manifest.json": {
-      "bytes": 7058,
-      "sha256": "cfad8d4fd4ba11332bdced2c90944638da4f2783d162debba558f108f0c241bb"
-    },
-    "run_report.md": {
-      "bytes": 1139,
-      "sha256": "ec5ddcd4dea1ccb92f3687f39f196bacd5086e809ddd4b7df888675f80e6f70e"
-    },
-    "run_report_gui_ready_check_2.md": {
-      "bytes": 1139,
-      "sha256": "ec5ddcd4dea1ccb92f3687f39f196bacd5086e809ddd4b7df888675f80e6f70e"
+      "bytes": 974,
+      "sha256": "5b0b5defccf763536f6fc93750c8c9073789a81e6bbe945bc7a85ebf1bdb9a1c"
     },
     "scored.csv": {
-      "bytes": 5549,
-      "sha256": "96915acedd64eecd0fd94a2a85d9112c0712b14735a8f5912763914c10a8938f"
-    },
-    "scored_gui_ready_check_2.csv": {
-      "bytes": 404,
-      "sha256": "f48023916343b6cb74864bacc61272eb5a9f0d53603bd6708f02cec327845f05"
+      "bytes": 5848,
+      "sha256": "d72e79dc12f516e551dd9da770d07125fd664d75a8cb955a90973845c7e1a204"
     },
     "universe.csv": {
-      "bytes": 148,
-      "sha256": "ac327d37313e38417fe534669163f5464913eeeaf8509858b71f352d1467dfd0"
+      "bytes": 144,
+      "sha256": "7def0d4465560e2b014d42437da3cffca683475a490f24537965e7968e17d829"
     }
   },
   "run_id": "gui_ready_check_2",
-  "run_timestamp_utc": "20260208_152540"
+  "run_timestamp_utc": "2026-02-08T19:16:06.491301+00:00"
 }

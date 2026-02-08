@@ -1,8 +1,8 @@
 # Preflight Report
 
 - Run ID: gui_ready_check_1
-- Generated: 2026-02-08T15:25:39.891957Z
-- Run timestamp: 20260208_152539
+- Generated: 2026-02-08T19:16:06.520000Z
+- Run timestamp: 2026-02-08T19:16:06.491301+00:00
 
 ## Coverage Summary
 

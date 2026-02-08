@@ -1,0 +1,266 @@
+{
+  "as_of_date": "2026-02-08",
+  "config": {
+    "bulk": {
+      "paths": {
+        "curated_dir": "data/curated",
+        "manifest_dir": "data/manifests",
+        "raw_dir": "data/raw"
+      },
+      "sources": [
+        {
+          "base_url": "https://stooq.pl/q/d/l",
+          "file_extension": "",
+          "name": "stooq",
+          "symbol_template": "?s={symbol}.us&i=d"
+        },
+        {
+          "base_url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates",
+          "file_extension": "",
+          "name": "treasury_yield_curve",
+          "static_path": "/DailyTreasuryYieldCurveRateData.csv"
+        }
+      ]
+    },
+    "config_hash": "8fb588bc948e588ea227724b90014193b2ddbaab162018cf21af2887a6927376",
+    "corpus": {
+      "analogs": {
+        "forward_days": [
+          1,
+          5,
+          20
+        ],
+        "spike_stddev": 2.0,
+        "top_n": 8
+      },
+      "features": {
+        "country_top_k": 8,
+        "rootcode_top_n": 8
+      },
+      "gdelt_conflict_dir": "",
+      "gdelt_events_raw_dir": "gdelt_events_raw",
+      "root_dir": ""
+    },
+    "data": {
+      "budget": {
+        "alphavantage": {
+          "max_requests_per_run": 80
+        },
+        "finnhub": {
+          "max_requests_per_run": 200
+        },
+        "twelvedata": {
+          "max_requests_per_run": 600
+        }
+      },
+      "fallback_chain": [],
+      "max_cache_age_days": 2,
+      "max_workers": 6,
+      "offline_mode": true,
+      "paths": {
+        "market_app_data_root": "",
+        "nasdaq_daily_dir": "./tests/fixtures/ohlcv",
+        "silver_prices_dir": ""
+      },
+      "provider": "nasdaq_daily",
+      "throttling": {
+        "base_delay_s": 0.3,
+        "jitter_s": 0.2,
+        "max_retries": 3
+      }
+    },
+    "data_roots": {
+      "gdelt_dir": "",
+      "gdelt_raw_dir": "",
+      "ohlcv_dir": "",
+      "outputs_dir": "outputs"
+    },
+    "evaluation": {
+      "classification_threshold": 0.02,
+      "forward_return_days": 5,
+      "lookback_days": 252,
+      "min_history_days": 252,
+      "mode": "both",
+      "symbols": [],
+      "walk_forward_folds": 3
+    },
+    "gates": {
+      "price_max": null,
+      "price_min": null,
+      "risk_flags": {
+        "extreme_vol_annual": 1.2,
+        "gap_atr": 2.0,
+        "illiquid_adv20_dollar": 1000000,
+        "missing_day_rate": 0.2,
+        "penny_like": 1.0,
+        "short_history_days": 252,
+        "zero_volume_frac": 0.2
+      }
+    },
+    "paths": {
+      "cache_dir": "data/cache",
+      "exogenous_daily_dir": "data/exogenous/daily_features",
+      "logs_dir": "runs_acceptance\\logs",
+      "ohlcv_daily_dir": "data/ohlcv_daily",
+      "ohlcv_raw_dir": "data/ohlcv_raw",
+      "outputs_dir": "runs_acceptance",
+      "state_file": "data/state/batch_state.json",
+      "universe_csv": "data/universe/universe.csv",
+      "watchlist_file": "./tests/fixtures/watchlist.txt"
+    },
+    "pipeline": {
+      "asof_default": "2026-02-08",
+      "auto_normalize_ohlcv": true,
+      "benchmarks": [
+        "SPY",
+        "QQQ",
+        "IWM",
+        "TLT",
+        "GLD"
+      ],
+      "include_raw_exogenous_same_day": false,
+      "now_utc": "2026-02-08T19:16:02.374755+00:00"
+    },
+    "prediction": {
+      "drawdown_threshold": -0.2,
+      "embargo_days": 60,
+      "enabled": false,
+      "forward_drawdown_days": 60,
+      "forward_return_days": 20,
+      "lookback_days": 252,
+      "min_history_days": 252,
+      "walk_forward_folds": 3
+    },
+    "run": {
+      "asof_timezone": "America/New_York",
+      "batch_strategy": "round_robin",
+      "max_symbols_per_run": 5
+    },
+    "score": {
+      "weights": {
+        "attention": 0.05,
+        "dd_penalty": -0.1,
+        "liquidity": 0.2,
+        "momentum": 0.15,
+        "quality": 0.14,
+        "tail_penalty": 0.05,
+        "theme_bonus": 0.05,
+        "trend": 0.22,
+        "vol_penalty": -0.15,
+        "volume_missing_penalty": 0.05
+      }
+    },
+    "scoring": {
+      "average_dollar_volume_floor": 1000000.0,
+      "base_score": 5.0,
+      "liquidity_target": 1000000.0,
+      "max_vol_20d_cap": null,
+      "minimum_history_days": 252,
+      "price_floor": 1.0,
+      "regime_risk_off_penalty": 1.0,
+      "regime_risk_on_bonus": 0.3,
+      "vol_target": 0.4,
+      "weight_liquidity": 0.8,
+      "weight_momentum": 2.0,
+      "weight_stability": 1.2,
+      "weight_trend": 1.5
+    },
+    "staging": {
+      "history_min_days": 252,
+      "stage1_micro_days": 7,
+      "stage2_short_days": 60,
+      "stage3_deep_days": 600
+    },
+    "themes": {
+      "testtheme": {
+        "keywords": [
+          "<redacted>"
+        ],
+        "symbols": [
+          "AAA"
+        ]
+      }
+    },
+    "universe": {
+      "allowed_currencies": [
+        "USD"
+      ],
+      "allowed_security_types": [
+        "COMMON",
+        "ETF"
+      ],
+      "exclude_test_issues": true,
+      "include_etfs": true,
+      "mode": "watchlist"
+    }
+  },
+  "config_hash": "8fb588bc948e588ea227724b90014193b2ddbaab162018cf21af2887a6927376",
+  "corpus_files": [],
+  "corpus_manifest": {
+    "corpus_dir": "unset",
+    "files": [],
+    "raw_event_zips": []
+  },
+  "counts": {
+    "symbols_eligible": 3,
+    "symbols_found": 3,
+    "symbols_processed": 3,
+    "symbols_requested": 3
+  },
+  "end_timestamp_utc": "2026-02-08T19:16:02.374755+00:00",
+  "git_commit": "9e03778b41473852d84656e625c48d069f3e8e54",
+  "input_files": {
+    "AAA": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\ohlcv\\AAA.csv",
+      "sha256": "3c7ddd3ee94fe495936bf06f76575f73c70f2792fb85b8bf638589a05a206944"
+    },
+    "BBB": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\ohlcv\\BBB.csv",
+      "sha256": "4e7e21461eae8c76dbceb71f5f61c17b9d2932aa79b1d05810ee566669b9fdf6"
+    },
+    "SPY": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\ohlcv\\SPY.csv",
+      "sha256": "04f990ae10ce98d16366013892f5beec4decec3f5aa81a59dcf6ea06cf0212dd"
+    }
+  },
+  "ohlcv_dir": "./tests/fixtures/ohlcv",
+  "ohlcv_symbol_ranges": {
+    "AAA": {
+      "end_date": "2023-02-24",
+      "rows": 300,
+      "start_date": "2022-01-03"
+    },
+    "BBB": {
+      "end_date": "2023-02-24",
+      "rows": 300,
+      "start_date": "2022-01-03"
+    },
+    "SPY": {
+      "end_date": "2023-02-24",
+      "rows": 300,
+      "start_date": "2022-01-03"
+    }
+  },
+  "risk_summary": {
+    "AMBER": 3
+  },
+  "run_id": "det_check_2",
+  "start_timestamp_utc": "2026-02-08T19:16:02.374755+00:00",
+  "summary": {
+    "cache_hits": 9,
+    "cache_misses": 0,
+    "stage1": 3,
+    "stage2": 3,
+    "stage3": 3,
+    "universe": 3
+  },
+  "versions": {
+    "numpy": "2.1.3",
+    "pandas": "2.2.3",
+    "python": "3.12.10",
+    "requests": "2.32.3"
+  },
+  "watchlist_file": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\watchlist.txt",
+  "watchlist_file_hash": "51a17d032535b6acc61f1b22ecab4170b01420ed7005aab0c8a4726138da1cdc",
+  "watchlist_hash": "28bb6f3c7e026b45ce8727d69a6beefad6cd5d602ab4d5d0e04440b829a701d0"
+}

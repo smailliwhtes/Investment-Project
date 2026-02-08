@@ -1,4 +1,5 @@
 {
+  "as_of_date": "2026-02-08",
   "config": {
     "bulk": {
       "paths": {
@@ -21,7 +22,7 @@
         }
       ]
     },
-    "config_hash": "3da57452ad0fa9ea09d1f91226fcd787fd9190ad9ac98046af15388a0d6314bc",
+    "config_hash": "8fb588bc948e588ea227724b90014193b2ddbaab162018cf21af2887a6927376",
     "corpus": {
       "analogs": {
         "forward_days": [
@@ -108,7 +109,7 @@
       "watchlist_file": "./tests/fixtures/watchlist.txt"
     },
     "pipeline": {
-      "asof_default": null,
+      "asof_default": "2026-02-08",
       "auto_normalize_ohlcv": true,
       "benchmarks": [
         "SPY",
@@ -117,7 +118,8 @@
         "TLT",
         "GLD"
       ],
-      "include_raw_exogenous_same_day": false
+      "include_raw_exogenous_same_day": false,
+      "now_utc": "2026-02-08T19:16:06.491301+00:00"
     },
     "prediction": {
       "drawdown_threshold": -0.2,
@@ -192,7 +194,7 @@
       "mode": "watchlist"
     }
   },
-  "config_hash": "3da57452ad0fa9ea09d1f91226fcd787fd9190ad9ac98046af15388a0d6314bc",
+  "config_hash": "8fb588bc948e588ea227724b90014193b2ddbaab162018cf21af2887a6927376",
   "corpus_files": [],
   "corpus_manifest": {
     "corpus_dir": "unset",
@@ -205,11 +207,11 @@
     "symbols_processed": 3,
     "symbols_requested": 3
   },
-  "end_timestamp_utc": "2026-02-08T15:25:41.028460+00:00",
-  "git_commit": "2cbd090405efd181c2fb349e58ae34984cdfc176",
+  "end_timestamp_utc": "2026-02-08T19:16:06.491301+00:00",
+  "git_commit": "9e03778b41473852d84656e625c48d069f3e8e54",
   "input_files": {
     "AAA": {
-      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\ohlcv\\aaa.csv",
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\ohlcv\\AAA.csv",
       "sha256": "3c7ddd3ee94fe495936bf06f76575f73c70f2792fb85b8bf638589a05a206944"
     },
     "BBB": {
@@ -217,7 +219,7 @@
       "sha256": "4e7e21461eae8c76dbceb71f5f61c17b9d2932aa79b1d05810ee566669b9fdf6"
     },
     "SPY": {
-      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\ohlcv\\spy.csv",
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\ohlcv\\SPY.csv",
       "sha256": "04f990ae10ce98d16366013892f5beec4decec3f5aa81a59dcf6ea06cf0212dd"
     }
   },
@@ -243,7 +245,7 @@
     "AMBER": 3
   },
   "run_id": "gui_ready_check_2",
-  "start_timestamp_utc": "2026-02-08T15:25:40.961317+00:00",
+  "start_timestamp_utc": "2026-02-08T19:16:06.491301+00:00",
   "summary": {
     "cache_hits": 9,
     "cache_misses": 0,

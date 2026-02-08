@@ -1,8 +1,8 @@
 # Market Monitor Report
 
-Generated: 2026-02-08T15:25:39.939225Z
+Generated: 2026-02-08T19:16:06.491301Z
 Run ID: gui_ready_check_1
-Run timestamp: 20260208_152539
+Run timestamp: 2026-02-08T19:16:06.491301+00:00
 
 ## Stage Summary
 

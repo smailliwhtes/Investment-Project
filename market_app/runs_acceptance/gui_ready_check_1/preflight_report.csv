@@ -1,5 +1,5 @@
 section,name,status,file_path,rows,start_date,end_date,missing_ohlcv_pct,zero_volume_pct,volume_available,adjusted_close_available,detail
 symbol,AAA,FOUND,C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\tests\fixtures\ohlcv\AAA.csv,300.0,2022-01-03,2023-02-24,0.0,0.0,True,False,
 symbol,BBB,FOUND,C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\tests\fixtures\ohlcv\bbb.csv,300.0,2022-01-03,2023-02-24,0.0,0.0,True,False,
-symbol,SPY,FOUND,C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\tests\fixtures\ohlcv\spy.csv,300.0,2022-01-03,2023-02-24,0.0,0.0,True,False,
+symbol,SPY,FOUND,C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\tests\fixtures\ohlcv\SPY.csv,300.0,2022-01-03,2023-02-24,0.0,0.0,True,False,
 corpus,gdelt_conflict,EMPTY,C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\gdelt_events_raw,,,,,,,,No CSV or raw ZIP files discovered.
