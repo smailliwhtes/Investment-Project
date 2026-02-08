@@ -1,0 +1,12 @@
+2026-02-08 16:18:49,191 [INFO] market_app - Starting blueprint-compatible run
+2026-02-08 16:18:49,404 [INFO] market_app - Stage 1: micro-history gate
+2026-02-08 16:18:49,455 [INFO] market_app - Stage 2: short-history gates
+2026-02-08 16:18:49,502 [INFO] market_app - Stage 3: deep history features + scoring
+2026-02-08 16:18:49,640 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_smoke\smoke_1
+2026-02-08 16:18:54,570 [INFO] market_app - Completed blueprint-compatible run
+2026-02-08 16:19:16,215 [INFO] market_app - Starting blueprint-compatible run
+2026-02-08 16:19:16,427 [INFO] market_app - Stage 1: micro-history gate
+2026-02-08 16:19:16,476 [INFO] market_app - Stage 2: short-history gates
+2026-02-08 16:19:16,525 [INFO] market_app - Stage 3: deep history features + scoring
+2026-02-08 16:19:16,658 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_smoke\smoke_1
+2026-02-08 16:19:21,412 [INFO] market_app - Completed blueprint-compatible run

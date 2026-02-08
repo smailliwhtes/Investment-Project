@@ -1,12 +1,5 @@
 {
-  "indicators": [
-    {
-      "label": "neutral",
-      "latest_value": 1.1,
-      "name": "term_spread",
-      "zscore": 0.7071067811865481
-    }
-  ],
-  "regime_label": "Neutral",
-  "timestamp": "2026-02-08T19:16:02.374755+00:00"
+  "indicators": [],
+  "regime_label": "Unknown",
+  "timestamp": "2026-02-08T21:15:15.329865+00:00"
 }

@@ -1,24 +1,12 @@
 {
   "allowlist": {
-    "global": [],
-    "per_file": {
-      "classified.csv": [],
-      "digest.json": [],
-      "eligible.csv": [],
-      "features.csv": [
-        "run_id"
-      ],
-      "manifest.json": [
-        "run_id"
-      ],
-      "report.html": [],
-      "report.md": [
-        "run_id"
-      ],
-      "scored.csv": [
-        "run_id"
-      ],
-      "universe.csv": []
+    "csv": {
+      "global": [],
+      "per_file": {}
+    },
+    "json": {
+      "global": [],
+      "per_file": {}
     }
   },
   "as_of_date": "2026-02-08",
@@ -51,32 +39,22 @@
       "status": "match"
     },
     "features.csv": {
-      "diff_examples_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\runs_acceptance\\determinism_check\\det_check\\diff_examples_features.csv",
-      "diff_keys": [
-        "run_id"
-      ],
-      "diff_rows": 3,
+      "diff_examples_path": null,
+      "diff_keys": [],
+      "diff_rows": 0,
       "disallowed_keys": [],
-      "example_keys": [
-        "AAA|AAA",
-        "BBB|BBB",
-        "SPY|SPY"
-      ],
+      "example_keys": [],
       "max_abs_delta": null,
-      "status": "diff"
+      "status": "match"
     },
     "manifest.json": {
       "diff_examples_path": null,
-      "diff_keys": [
-        "run_id"
-      ],
+      "diff_keys": [],
       "diff_rows": null,
       "disallowed_keys": [],
-      "example_keys": [
-        "run_id"
-      ],
+      "example_keys": [],
       "max_abs_delta": null,
-      "status": "diff"
+      "status": "match"
     },
     "report.html": {
       "diff_examples_path": null,
@@ -97,19 +75,13 @@
       "status": "match"
     },
     "scored.csv": {
-      "diff_examples_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\runs_acceptance\\determinism_check\\det_check\\diff_examples_scored.csv",
-      "diff_keys": [
-        "run_id"
-      ],
-      "diff_rows": 3,
+      "diff_examples_path": null,
+      "diff_keys": [],
+      "diff_rows": 0,
       "disallowed_keys": [],
-      "example_keys": [
-        "AAA|AAA",
-        "BBB|BBB",
-        "SPY|SPY"
-      ],
+      "example_keys": [],
       "max_abs_delta": null,
-      "status": "diff"
+      "status": "match"
     },
     "universe.csv": {
       "diff_examples_path": null,

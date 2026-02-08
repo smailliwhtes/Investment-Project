@@ -4,3 +4,61 @@
 2026-02-08 14:16:02,431 [INFO] market_app - Stage 3: deep history features + scoring
 2026-02-08 14:16:02,521 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_acceptance\det_check_1
 2026-02-08 14:16:02,808 [INFO] market_app - Completed blueprint-compatible run
+2026-02-08 15:29:18,018 [INFO] market_app - Starting blueprint-compatible run
+2026-02-08 15:29:18,018 [WARNING] market_app - Provider nasdaq_daily unavailable: MARKET_APP_NASDAQ_DAILY_DIR is not configured.. Falling back to []
+2026-02-08 15:40:39,168 [INFO] market_app - Starting blueprint-compatible run
+2026-02-08 15:40:39,172 [WARNING] market_app - [preflight] SPY: NASDAQ_DAILY_MISSING:SPY
+2026-02-08 15:40:39,172 [WARNING] market_app - [preflight] TLT: NASDAQ_DAILY_MISSING:TLT
+2026-02-08 15:40:39,174 [WARNING] market_app - [preflight] IEF: NASDAQ_DAILY_MISSING:IEF
+2026-02-08 15:40:39,174 [WARNING] market_app - [preflight] SHY: NASDAQ_DAILY_MISSING:SHY
+2026-02-08 15:40:39,174 [WARNING] market_app - [preflight] TIP: NASDAQ_DAILY_MISSING:TIP
+2026-02-08 15:40:39,175 [WARNING] market_app - [preflight] UUP: NASDAQ_DAILY_MISSING:UUP
+2026-02-08 15:40:39,175 [WARNING] market_app - [preflight] GLD: NASDAQ_DAILY_MISSING:GLD
+2026-02-08 15:40:39,175 [WARNING] market_app - [preflight] SLV: NASDAQ_DAILY_MISSING:SLV
+2026-02-08 15:40:39,175 [WARNING] market_app - [preflight] PSLV: NASDAQ_DAILY_MISSING:PSLV
+2026-02-08 15:40:39,177 [WARNING] market_app - [preflight] PHYS: NASDAQ_DAILY_MISSING:PHYS
+2026-02-08 15:40:39,177 [WARNING] market_app - [preflight] GDX: NASDAQ_DAILY_MISSING:GDX
+2026-02-08 15:40:39,177 [WARNING] market_app - [preflight] GDXJ: NASDAQ_DAILY_MISSING:GDXJ
+2026-02-08 15:40:39,178 [WARNING] market_app - [preflight] SIL: NASDAQ_DAILY_MISSING:SIL
+2026-02-08 15:40:39,178 [WARNING] market_app - [preflight] XME: NASDAQ_DAILY_MISSING:XME
+2026-02-08 15:40:39,178 [WARNING] market_app - [preflight] COPX: NASDAQ_DAILY_MISSING:COPX
+2026-02-08 15:40:39,179 [WARNING] market_app - [preflight] LIT: NASDAQ_DAILY_MISSING:LIT
+2026-02-08 15:40:39,179 [WARNING] market_app - [preflight] REMX: NASDAQ_DAILY_MISSING:REMX
+2026-02-08 15:40:39,179 [WARNING] market_app - [preflight] URA: NASDAQ_DAILY_MISSING:URA
+2026-02-08 15:40:39,179 [WARNING] market_app - [preflight] ITA: NASDAQ_DAILY_MISSING:ITA
+2026-02-08 15:40:39,181 [WARNING] market_app - [preflight] XAR: NASDAQ_DAILY_MISSING:XAR
+2026-02-08 15:40:39,184 [INFO] market_app - Stage 1: micro-history gate
+2026-02-08 15:40:39,206 [INFO] market_app - Stage 2: short-history gates
+2026-02-08 15:40:39,224 [INFO] market_app - Stage 3: deep history features + scoring
+2026-02-08 15:40:39,294 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_acceptance\det_check_1
+2026-02-08 15:48:40,876 [INFO] market_app - Starting blueprint-compatible run
+2026-02-08 15:48:40,889 [WARNING] market_app - [preflight] SPY: NASDAQ_DAILY_SCHEMA_MISSING:SPY:date,open,high,low,close
+2026-02-08 15:48:40,897 [WARNING] market_app - [preflight] TLT: NASDAQ_DAILY_SCHEMA_MISSING:TLT:date,open,high,low,close
+2026-02-08 15:48:40,903 [WARNING] market_app - [preflight] IEF: NASDAQ_DAILY_SCHEMA_MISSING:IEF:date,open,high,low,close
+2026-02-08 15:48:40,908 [WARNING] market_app - [preflight] SHY: NASDAQ_DAILY_SCHEMA_MISSING:SHY:date,open,high,low,close
+2026-02-08 15:48:40,913 [WARNING] market_app - [preflight] TIP: NASDAQ_DAILY_SCHEMA_MISSING:TIP:date,open,high,low,close
+2026-02-08 15:48:40,919 [WARNING] market_app - [preflight] UUP: NASDAQ_DAILY_SCHEMA_MISSING:UUP:date,open,high,low,close
+2026-02-08 15:48:40,923 [WARNING] market_app - [preflight] GLD: NASDAQ_DAILY_SCHEMA_MISSING:GLD:date,open,high,low,close
+2026-02-08 15:48:40,928 [WARNING] market_app - [preflight] SLV: NASDAQ_DAILY_SCHEMA_MISSING:SLV:date,open,high,low,close
+2026-02-08 15:48:40,932 [WARNING] market_app - [preflight] PSLV: NASDAQ_DAILY_SCHEMA_MISSING:PSLV:date,open,high,low,close
+2026-02-08 15:48:40,936 [WARNING] market_app - [preflight] PHYS: NASDAQ_DAILY_SCHEMA_MISSING:PHYS:date,open,high,low,close
+2026-02-08 15:48:40,941 [WARNING] market_app - [preflight] GDX: NASDAQ_DAILY_SCHEMA_MISSING:GDX:date,open,high,low,close
+2026-02-08 15:48:40,946 [WARNING] market_app - [preflight] GDXJ: NASDAQ_DAILY_SCHEMA_MISSING:GDXJ:date,open,high,low,close
+2026-02-08 15:48:40,951 [WARNING] market_app - [preflight] SIL: NASDAQ_DAILY_SCHEMA_MISSING:SIL:date,open,high,low,close
+2026-02-08 15:48:40,956 [WARNING] market_app - [preflight] XME: NASDAQ_DAILY_SCHEMA_MISSING:XME:date,open,high,low,close
+2026-02-08 15:48:40,960 [WARNING] market_app - [preflight] COPX: NASDAQ_DAILY_SCHEMA_MISSING:COPX:date,open,high,low,close
+2026-02-08 15:48:40,965 [WARNING] market_app - [preflight] LIT: NASDAQ_DAILY_SCHEMA_MISSING:LIT:date,open,high,low,close
+2026-02-08 15:48:40,970 [WARNING] market_app - [preflight] REMX: NASDAQ_DAILY_SCHEMA_MISSING:REMX:date,open,high,low,close
+2026-02-08 15:48:40,973 [WARNING] market_app - [preflight] URA: NASDAQ_DAILY_SCHEMA_MISSING:URA:date,open,high,low,close
+2026-02-08 15:48:40,979 [WARNING] market_app - [preflight] ITA: NASDAQ_DAILY_SCHEMA_MISSING:ITA:date,open,high,low,close
+2026-02-08 15:48:40,984 [WARNING] market_app - [preflight] XAR: NASDAQ_DAILY_SCHEMA_MISSING:XAR:date,open,high,low,close
+2026-02-08 15:48:40,987 [INFO] market_app - Stage 1: micro-history gate
+2026-02-08 15:48:41,091 [INFO] market_app - Stage 2: short-history gates
+2026-02-08 15:48:41,201 [INFO] market_app - Stage 3: deep history features + scoring
+2026-02-08 15:48:41,268 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_acceptance\det_check_1
+2026-02-08 16:15:15,339 [INFO] market_app - Starting blueprint-compatible run
+2026-02-08 16:15:15,549 [INFO] market_app - Stage 1: micro-history gate
+2026-02-08 16:15:15,846 [INFO] market_app - Stage 2: short-history gates
+2026-02-08 16:15:15,914 [INFO] market_app - Stage 3: deep history features + scoring
+2026-02-08 16:15:16,079 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_acceptance\det_check_1
+2026-02-08 16:15:21,645 [INFO] market_app - Completed blueprint-compatible run

@@ -1,0 +1,410 @@
+{
+  "as_of_date": null,
+  "config": {
+    "bulk": {
+      "paths": {
+        "curated_dir": "data/curated",
+        "manifest_dir": "data/manifests",
+        "raw_dir": "data/raw"
+      },
+      "sources": [
+        {
+          "base_url": "https://stooq.pl/q/d/l",
+          "file_extension": "",
+          "name": "stooq",
+          "symbol_template": "?s={symbol}.us&i=d"
+        },
+        {
+          "base_url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates",
+          "file_extension": "",
+          "name": "treasury_yield_curve",
+          "static_path": "/DailyTreasuryYieldCurveRateData.csv"
+        }
+      ]
+    },
+    "config_hash": "09a4d9500ec70e2410fcfeab08740bf55f910b0a75e38a2c58b2a2f46fadf5d6",
+    "corpus": {
+      "analogs": {
+        "forward_days": [
+          1,
+          5,
+          20
+        ],
+        "spike_stddev": 2.0,
+        "top_n": 8
+      },
+      "features": {
+        "country_top_k": 8,
+        "rootcode_top_n": 8
+      },
+      "gdelt_conflict_dir": "",
+      "gdelt_events_raw_dir": "gdelt_events_raw",
+      "root_dir": ""
+    },
+    "data": {
+      "budget": {
+        "alphavantage": {
+          "max_requests_per_run": 80
+        },
+        "finnhub": {
+          "max_requests_per_run": 200
+        },
+        "twelvedata": {
+          "max_requests_per_run": 600
+        }
+      },
+      "fallback_chain": [],
+      "max_cache_age_days": 2,
+      "max_workers": 6,
+      "offline_mode": true,
+      "paths": {
+        "market_app_data_root": "",
+        "nasdaq_daily_dir": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm",
+        "silver_prices_dir": ""
+      },
+      "provider": "nasdaq_daily",
+      "throttling": {
+        "base_delay_s": 0.3,
+        "jitter_s": 0.2,
+        "max_retries": 3
+      }
+    },
+    "data_roots": {
+      "gdelt_dir": "",
+      "gdelt_raw_dir": "",
+      "ohlcv_dir": "",
+      "outputs_dir": "outputs"
+    },
+    "evaluation": {
+      "classification_threshold": 0.02,
+      "forward_return_days": 5,
+      "lookback_days": 252,
+      "min_history_days": 252,
+      "mode": "both",
+      "symbols": [],
+      "walk_forward_folds": 3
+    },
+    "gates": {
+      "price_max": null,
+      "price_min": null,
+      "risk_flags": {
+        "extreme_vol_annual": 1.2,
+        "gap_atr": 2.0,
+        "illiquid_adv20_dollar": 1000000,
+        "missing_day_rate": 0.2,
+        "penny_like": 1.0,
+        "short_history_days": 252,
+        "zero_volume_frac": 0.2
+      }
+    },
+    "paths": {
+      "cache_dir": "data/cache",
+      "exogenous_daily_dir": "data/exogenous/daily_features",
+      "logs_dir": "outputs\\runs\\logs",
+      "ohlcv_daily_dir": "data/ohlcv_daily",
+      "ohlcv_raw_dir": "data/ohlcv_raw",
+      "outputs_dir": "outputs\\runs",
+      "state_file": "data/state/batch_state.json",
+      "universe_csv": "data/universe/universe.csv",
+      "watchlist_file": "watchlists/watchlist_core.csv"
+    },
+    "pipeline": {
+      "asof_default": null,
+      "auto_normalize_ohlcv": true,
+      "benchmarks": [
+        "SPY",
+        "QQQ",
+        "IWM",
+        "TLT",
+        "GLD"
+      ],
+      "include_raw_exogenous_same_day": false,
+      "now_utc": "2026-02-08T21:00:00+00:00"
+    },
+    "prediction": {
+      "drawdown_threshold": -0.2,
+      "embargo_days": 60,
+      "enabled": false,
+      "forward_drawdown_days": 60,
+      "forward_return_days": 20,
+      "lookback_days": 252,
+      "min_history_days": 252,
+      "walk_forward_folds": 3
+    },
+    "run": {
+      "asof_timezone": "America/New_York",
+      "batch_strategy": "round_robin",
+      "max_symbols_per_run": 15
+    },
+    "score": {
+      "weights": {
+        "attention": 0.05,
+        "dd_penalty": -0.1,
+        "liquidity": 0.2,
+        "momentum": 0.15,
+        "quality": 0.14,
+        "tail_penalty": 0.05,
+        "theme_bonus": 0.05,
+        "trend": 0.22,
+        "vol_penalty": -0.15,
+        "volume_missing_penalty": 0.05
+      }
+    },
+    "scoring": {
+      "average_dollar_volume_floor": 1000000.0,
+      "base_score": 5.0,
+      "liquidity_target": 1000000.0,
+      "max_vol_20d_cap": null,
+      "minimum_history_days": 252,
+      "price_floor": 1.0,
+      "regime_risk_off_penalty": 1.0,
+      "regime_risk_on_bonus": 0.3,
+      "vol_target": 0.4,
+      "weight_liquidity": 0.8,
+      "weight_momentum": 2.0,
+      "weight_stability": 1.2,
+      "weight_trend": 1.5
+    },
+    "staging": {
+      "history_min_days": 252,
+      "stage1_micro_days": 7,
+      "stage2_short_days": 60,
+      "stage3_deep_days": 600
+    },
+    "themes": {},
+    "universe": {
+      "allowed_currencies": [
+        "USD"
+      ],
+      "allowed_security_types": [
+        "COMMON",
+        "ETF"
+      ],
+      "exclude_test_issues": true,
+      "include_etfs": true,
+      "mode": "watchlist"
+    }
+  },
+  "config_hash": "09a4d9500ec70e2410fcfeab08740bf55f910b0a75e38a2c58b2a2f46fadf5d6",
+  "corpus_files": [],
+  "corpus_manifest": {
+    "corpus_dir": "unset",
+    "files": [],
+    "raw_event_zips": []
+  },
+  "counts": {
+    "symbols_eligible": 20,
+    "symbols_found": 20,
+    "symbols_processed": 20,
+    "symbols_requested": 20
+  },
+  "end_timestamp_utc": "2026-02-08T21:00:00+00:00",
+  "git_commit": "58cd0fea50c4f64fc3fb679756e25e249b74fe96",
+  "input_files": {
+    "COPX": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\COPX.csv",
+      "sha256": "7a64d3b5307deb93ceb1c7b2e08d2427616ef4d88ce3ccae02b71e57e7c130af"
+    },
+    "GDX": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\GDX.csv",
+      "sha256": "3ee696ac8c0fab008c624b7e6b3c916ba27146e355f13311f90106384cdd9baa"
+    },
+    "GDXJ": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\gdxj.csv",
+      "sha256": "327c2c70c2b633bcfa8927da85672491dfaf22e5b14c5cefa96cc72f681e4534"
+    },
+    "GLD": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\gld.csv",
+      "sha256": "4db6687fc2592ddc6bd88b4f145b3861a112c748dbcd7a93384f5912a33fadfd"
+    },
+    "IEF": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\ief.csv",
+      "sha256": "6148f8e40e3df0a0e3f2ffeeda6a134b427710aa3928b29e94ff3383a1b97826"
+    },
+    "ITA": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\ita.csv",
+      "sha256": "065ef6f1c085bc4ecca52f8249d3699b2c49da2a599ac0a80fa355fdc2b73f1f"
+    },
+    "LIT": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\LIT.csv",
+      "sha256": "0ec95e611a2a9be17f616bd482f7e3b6d3d6a77982f000a3c4104cc91f5381c0"
+    },
+    "PHYS": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\phys.csv",
+      "sha256": "e38d1e85d16ad40db687c36778ee6dd5bf43ed64c98da8011b639594d1db5693"
+    },
+    "PSLV": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\pslv.csv",
+      "sha256": "c1a29f18d757a9f10154f075df9103c02e83966a2bbbb1205e2822fb0f0ff366"
+    },
+    "REMX": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\remx.csv",
+      "sha256": "16aab129f77ed4a095721e7246706ab170ea0a8e7432469c93119d36adc19d23"
+    },
+    "SHY": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\shy.csv",
+      "sha256": "5dce5ad96390aa2c0f9243b4a326f68bff739c4de771e85096f7d9524bc0dd0f"
+    },
+    "SIL": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\SIL.csv",
+      "sha256": "63c959dda1e984befd4e048312037bc647f1815179a040e9eb6dc4b2d3b225e9"
+    },
+    "SLV": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\slv.csv",
+      "sha256": "e08e145db579201d1574f19bf2ef4e3355a27874ed42c8a8a61407aa63fd1b7b"
+    },
+    "SPY": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\SPY.csv",
+      "sha256": "8232962e3370835ac88fdea1eb6f504c2905b82dd41a8e4bc1747e02aa4c907b"
+    },
+    "TIP": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\tip.csv",
+      "sha256": "a877d4bdaaef34423b2d6e3931ef2a38e29f3effc3b98857ceef8992266fe37b"
+    },
+    "TLT": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\TLT.csv",
+      "sha256": "deff5e41085e4ef749bbdc831f89bedc75f0008fc2c01a9de6d861bd698b9dbf"
+    },
+    "URA": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\ura.csv",
+      "sha256": "b11391f988c1c3536daa745fc2f3f85b9fb6ea34335cbecdb341cf4eecad9841"
+    },
+    "UUP": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\uup.csv",
+      "sha256": "0adf5627f74598b965bf7b6a174323f5bb871948536613bcdf7cfae189b980f5"
+    },
+    "XAR": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\XAR.csv",
+      "sha256": "88aa152e4403c17bf98b9df5227b14fbb289b34bfec97667fac4ed1b603aa313"
+    },
+    "XME": {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm\\xme.csv",
+      "sha256": "5c545cec8508ac70c4a59fb292087f9f105ffe5a0a2355b19fbb0b755b8be612"
+    }
+  },
+  "ohlcv_dir": "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files\\_nasdaq_daily_flat_norm",
+  "ohlcv_symbol_ranges": {
+    "COPX": {
+      "end_date": "2026-01-27",
+      "rows": 3965,
+      "start_date": "2010-04-20"
+    },
+    "GDX": {
+      "end_date": "2026-01-27",
+      "rows": 4951,
+      "start_date": "2006-05-22"
+    },
+    "GDXJ": {
+      "end_date": "2026-01-27",
+      "rows": 4075,
+      "start_date": "2009-11-11"
+    },
+    "GLD": {
+      "end_date": "2026-01-27",
+      "rows": 5262,
+      "start_date": "2005-02-25"
+    },
+    "IEF": {
+      "end_date": "2026-01-27",
+      "rows": 5262,
+      "start_date": "2005-02-25"
+    },
+    "ITA": {
+      "end_date": "2026-01-27",
+      "rows": 4962,
+      "start_date": "2006-05-05"
+    },
+    "LIT": {
+      "end_date": "2026-01-27",
+      "rows": 3898,
+      "start_date": "2010-07-23"
+    },
+    "PHYS": {
+      "end_date": "2026-01-27",
+      "rows": 4001,
+      "start_date": "2010-02-25"
+    },
+    "PSLV": {
+      "end_date": "2026-01-27",
+      "rows": 3826,
+      "start_date": "2010-11-03"
+    },
+    "REMX": {
+      "end_date": "2026-01-27",
+      "rows": 3828,
+      "start_date": "2010-11-01"
+    },
+    "SHY": {
+      "end_date": "2026-01-27",
+      "rows": 5262,
+      "start_date": "2005-02-25"
+    },
+    "SIL": {
+      "end_date": "2026-01-27",
+      "rows": 3967,
+      "start_date": "2010-04-20"
+    },
+    "SLV": {
+      "end_date": "2026-01-27",
+      "rows": 4967,
+      "start_date": "2006-04-28"
+    },
+    "SPY": {
+      "end_date": "2026-01-27",
+      "rows": 5262,
+      "start_date": "2005-02-25"
+    },
+    "TIP": {
+      "end_date": "2026-01-27",
+      "rows": 5262,
+      "start_date": "2005-02-25"
+    },
+    "TLT": {
+      "end_date": "2026-01-27",
+      "rows": 5262,
+      "start_date": "2005-02-25"
+    },
+    "URA": {
+      "end_date": "2026-01-27",
+      "rows": 3824,
+      "start_date": "2010-11-10"
+    },
+    "UUP": {
+      "end_date": "2026-01-27",
+      "rows": 4763,
+      "start_date": "2007-02-20"
+    },
+    "XAR": {
+      "end_date": "2026-01-27",
+      "rows": 3474,
+      "start_date": "2011-10-04"
+    },
+    "XME": {
+      "end_date": "2026-01-27",
+      "rows": 4928,
+      "start_date": "2006-06-22"
+    }
+  },
+  "risk_summary": {
+    "AMBER": 20
+  },
+  "run_id": "daily_2026-02-08",
+  "start_timestamp_utc": "2026-02-08T21:00:00+00:00",
+  "summary": {
+    "cache_hits": 60,
+    "cache_misses": 0,
+    "stage1": 20,
+    "stage2": 20,
+    "stage3": 20,
+    "universe": 20
+  },
+  "versions": {
+    "numpy": "2.4.2",
+    "pandas": "2.3.3",
+    "python": "3.12.10",
+    "requests": "2.32.5"
+  },
+  "watchlist_file": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\watchlists\\watchlist_core.csv",
+  "watchlist_file_hash": "a27455402051c7ad17016d0e8ff01d420d25952e77d934ab022cb66e13221998",
+  "watchlist_hash": "869970fa5ab936ee8534eb8aa5381bddbcd6c68ed16de3333d88444775550924"
+}

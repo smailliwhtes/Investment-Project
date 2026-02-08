@@ -1,15 +1,11 @@
 {
   "as_of_date": "2026-02-08",
-  "config_hash": "8fb588bc948e588ea227724b90014193b2ddbaab162018cf21af2887a6927376",
-  "config_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\configs\\acceptance.yaml",
+  "config_hash": "09a4d9500ec70e2410fcfeab08740bf55f910b0a75e38a2c58b2a2f46fadf5d6",
+  "config_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\config.yaml",
   "datasets": [
     {
-      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\watchlist.txt",
-      "sha256": "51a17d032535b6acc61f1b22ecab4170b01420ed7005aab0c8a4726138da1cdc"
-    },
-    {
-      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\macro\\term_spread.csv",
-      "sha256": "e70355e3d49a657234035b1f378af89175904a33cb711f01e4fa060a6f9bb442"
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\watchlists\\watchlist_core.csv",
+      "sha256": "a27455402051c7ad17016d0e8ff01d420d25952e77d934ab022cb66e13221998"
     }
   ],
   "dependency_versions": {
@@ -17,35 +13,35 @@
     "pandas": "2.2.3",
     "pyyaml": "6.0.2"
   },
-  "git_sha": "9e03778b41473852d84656e625c48d069f3e8e54",
-  "manifest_hash": "ec675db3c099010a27568506c8e4296b4e84fd0eb1ea751dd2eaab03157362e7",
+  "git_sha": "58cd0fea50c4f64fc3fb679756e25e249b74fe96",
+  "manifest_hash": "ed33358873e52103fb72515d0d00c973ff84e8ea048ed5a822a57f9cb894ee07",
   "offline": true,
   "outputs": {
     "classified.csv": {
-      "bytes": 277,
-      "sha256": "063afb83802690addcd2bcd046074d8fd15063874277cd52525a3a3565bdf1d7"
+      "bytes": 1638,
+      "sha256": "a94d0a07c37ab2eb6addb51a4c6ed30e1f7608b81b56930952ab1ff882305c4f"
     },
     "eligible.csv": {
-      "bytes": 188,
-      "sha256": "efd6ef222bafe6dbebf3af976bea330fbbbd43157c5ff44a5a45829b3a3d605b"
+      "bytes": 1048,
+      "sha256": "67f7737a8ed85060b5d44afbad6ede0a7531af52ba91783a21547df1e9cc93ac"
     },
     "features.csv": {
-      "bytes": 4529,
-      "sha256": "cf38b890dad789459268a0ae6046b27b1ee197e44371de29143315556b79b34c"
+      "bytes": 19436,
+      "sha256": "e32b0f82694019fafcddf5fe82d761751978c8d071f8c919c6389f67fcbd158c"
     },
     "report.md": {
-      "bytes": 974,
-      "sha256": "15cb636d0f8c42cde10b9ebad705a045ad47bddf05193bbc9724b4967547f17f"
+      "bytes": 1266,
+      "sha256": "f50fa4366f13c65cc342cc089f0350c9bcdf01c5658106a08f614f896a66f19e"
     },
     "scored.csv": {
-      "bytes": 5848,
-      "sha256": "ba11a479b81f89c43116243cc4b00b616c1c0a9650854bdd92da6a3fa25c8bbe"
+      "bytes": 26040,
+      "sha256": "d93b6570f3a81df363024a8c8b72fd1a82a0c93535b6125ebe0baf4873575bc1"
     },
     "universe.csv": {
-      "bytes": 144,
-      "sha256": "7def0d4465560e2b014d42437da3cffca683475a490f24537965e7968e17d829"
+      "bytes": 969,
+      "sha256": "774e3e0db2b22ba0c6e207470b0afb5098d2e7a91f90e0dedb9d0afbce708c24"
     }
   },
   "run_id": "det_check_2",
-  "run_timestamp_utc": "2026-02-08T19:16:02.374755+00:00"
+  "run_timestamp_utc": "2026-02-08T21:15:15.329865+00:00"
 }

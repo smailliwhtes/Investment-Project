@@ -1,0 +1,41 @@
+{
+  "as_of_date": null,
+  "config_hash": "09a4d9500ec70e2410fcfeab08740bf55f910b0a75e38a2c58b2a2f46fadf5d6",
+  "datasets": [
+    {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\watchlists\\watchlist_core.csv",
+      "sha256": "a27455402051c7ad17016d0e8ff01d420d25952e77d934ab022cb66e13221998"
+    }
+  ],
+  "git_sha": "58cd0fea50c4f64fc3fb679756e25e249b74fe96",
+  "offline": true,
+  "outputs": {
+    "classified.csv": {
+      "bytes": 1638,
+      "sha256": "a94d0a07c37ab2eb6addb51a4c6ed30e1f7608b81b56930952ab1ff882305c4f"
+    },
+    "eligible.csv": {
+      "bytes": 1048,
+      "sha256": "67f7737a8ed85060b5d44afbad6ede0a7531af52ba91783a21547df1e9cc93ac"
+    },
+    "features.csv": {
+      "bytes": 19436,
+      "sha256": "e32b0f82694019fafcddf5fe82d761751978c8d071f8c919c6389f67fcbd158c"
+    },
+    "report.md": {
+      "bytes": 1441,
+      "sha256": "ca29033d7c7246436e206abac76e207feaa9f4bfcb55100c87508124601d1eeb"
+    },
+    "scored.csv": {
+      "bytes": 27870,
+      "sha256": "57b28c1c439ceb301f5f0a9ca120f2795be899146faec0eabd9efedec1529bc6"
+    },
+    "universe.csv": {
+      "bytes": 969,
+      "sha256": "774e3e0db2b22ba0c6e207470b0afb5098d2e7a91f90e0dedb9d0afbce708c24"
+    }
+  },
+  "top_n": 25,
+  "variant": "conservative",
+  "watchlist_hash": "a27455402051c7ad17016d0e8ff01d420d25952e77d934ab022cb66e13221998"
+}

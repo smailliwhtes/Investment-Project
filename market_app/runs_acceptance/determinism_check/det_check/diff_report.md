@@ -10,13 +10,11 @@ No disallowed diffs detected.
 
 ## Per-file Summary
 - eligible.csv: match (diff_keys=[])
-- scored.csv: diff (diff_keys=['run_id'])
-  - examples: C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_acceptance\determinism_check\det_check\diff_examples_scored.csv
-- features.csv: diff (diff_keys=['run_id'])
-  - examples: C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_acceptance\determinism_check\det_check\diff_examples_features.csv
+- scored.csv: match (diff_keys=[])
+- features.csv: match (diff_keys=[])
 - classified.csv: match (diff_keys=[])
 - universe.csv: match (diff_keys=[])
-- manifest.json: diff (diff_keys=['run_id'])
+- manifest.json: match (diff_keys=[])
 - digest.json: match (diff_keys=[])
 - report.md: match (diff_keys=[])
 - report.html: absent (diff_keys=[])

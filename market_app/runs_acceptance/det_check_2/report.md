@@ -1,15 +1,13 @@
 # Market Monitor Report (Blueprint)
 
 Run ID: det_check_2
-Run timestamp: 2026-02-08T19:16:02.374755+00:00
+Run timestamp: 2026-02-08T21:15:15.329865+00:00
 
 ## Regime Summary
 
-- Regime label: Neutral
+- Regime label: Unknown
 
-| Indicator | Latest Value | Z-Score | Label |
-| --- | --- | --- | --- |
-| term_spread | 1.1 | 0.7071067811865481 | neutral |
+No macro indicators available.
 
 ## Risk Flag Distribution
 
@@ -19,16 +17,28 @@ No flags recorded.
 
 | Symbol | Theme | Score | Flags |
 | --- | --- | --- | --- |
-| AAA | testtheme | 0.0733 |  |
-| BBB | Unclassified | 0.0333 |  |
+| SLV | Unclassified | 0.0592 |  |
+| COPX | Unclassified | 0.0554 |  |
+| SIL | Unclassified | 0.0544 |  |
+| GDX | Unclassified | 0.0530 |  |
+| GDXJ | Unclassified | 0.0521 |  |
+| PHYS | Unclassified | 0.0519 |  |
+| GLD | Unclassified | 0.0515 |  |
+| REMX | Unclassified | 0.0514 |  |
+| URA | Unclassified | 0.0511 |  |
+| LIT | Unclassified | 0.0501 |  |
+| XME | Unclassified | 0.0484 |  |
+| ITA | Unclassified | 0.0478 |  |
+| XAR | Unclassified | 0.0464 |  |
+| PSLV | Unclassified | 0.0341 |  |
 | SPY | Unclassified | 0.0333 |  |
 
 ## Forward Outcome Summary (Historical Bands)
 
 | Horizon (days) | Count | P05 | P25 | P50 | P75 | P95 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 21 | 777 | 0.020383566553564242 | 0.022592046010825723 | 0.024573483116235972 | 0.027033428649392073 | 0.029462214809298542 |
-| 63 | 651 | 0.06980508897475401 | 0.07422906397386309 | 0.07932636962000315 | 0.08538084753324468 | 0.09227825805666268 |
+| 21 | 85219 | -0.1244177307188939 | -0.03410349958676314 | -0.0012599485227431455 | 0.029943370027261454 | 0.12747165408887243 |
+| 63 | 84379 | -0.19845008751911372 | -0.05050532991175359 | 0.002711665328277643 | 0.06360466215203084 | 0.24527114877801384 |
 
 ## Notes
 This report is monitoring-only and contains no trading recommendations.

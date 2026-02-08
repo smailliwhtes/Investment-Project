@@ -15,7 +15,7 @@ function Fail($s) { Write-Host $s -ForegroundColor Red; exit 1 }
 function Pass($s) { Write-Host $s -ForegroundColor Green }
 
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot = Resolve-Path (Join-Path $ScriptRoot ".." "..")
+$RepoRoot = Resolve-Path (Join-Path $ScriptRoot "..\")
 
 function Resolve-RepoPath([string]$Candidate) {
   if ([System.IO.Path]::IsPathRooted($Candidate)) {
