@@ -1,0 +1,40 @@
+{
+  "config_hash": "3da57452ad0fa9ea09d1f91226fcd787fd9190ad9ac98046af15388a0d6314bc",
+  "datasets": [
+    {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\watchlist.txt",
+      "sha256": "51a17d032535b6acc61f1b22ecab4170b01420ed7005aab0c8a4726138da1cdc"
+    },
+    {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\macro\\term_spread.csv",
+      "sha256": "e70355e3d49a657234035b1f378af89175904a33cb711f01e4fa060a6f9bb442"
+    }
+  ],
+  "git_sha": "2cbd090405efd181c2fb349e58ae34984cdfc176",
+  "offline": true,
+  "outputs": {
+    "classified.csv": {
+      "bytes": 266,
+      "sha256": "1223f95bfff133e21ff52aeec9c7ea4cce6a3c6b276000ae12bb609b32d08c9b"
+    },
+    "eligible.csv": {
+      "bytes": 192,
+      "sha256": "fead7d9e116aed608065930a31e93c1fdc85c320fc11fdbe491c36eadac06e35"
+    },
+    "features.csv": {
+      "bytes": 4243,
+      "sha256": "e33e5ef460f1b94c59f7d8df7a292e7c9f8537fbbd4fedc45adddc7e9d5d5f5e"
+    },
+    "scored.csv": {
+      "bytes": 5552,
+      "sha256": "dba63bc47ea3fbbc6614c3dfb5f40c28bdc7b0f9a4cb0bb4ee209cb74c261dca"
+    },
+    "universe.csv": {
+      "bytes": 148,
+      "sha256": "ac327d37313e38417fe534669163f5464913eeeaf8509858b71f352d1467dfd0"
+    }
+  },
+  "top_n": 5,
+  "variant": "conservative",
+  "watchlist_hash": "51a17d032535b6acc61f1b22ecab4170b01420ed7005aab0c8a4726138da1cdc"
+}

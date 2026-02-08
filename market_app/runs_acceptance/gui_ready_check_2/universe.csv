@@ -1,0 +1,4 @@
+symbol,name,exchange,security_type,status,currency,theme_bucket,asset_type
+AAA,AAA,,COMMON,,USD,,
+BBB,BBB,,COMMON,,USD,,
+SPY,SPY,,COMMON,,USD,,

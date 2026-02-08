@@ -4,6 +4,16 @@ Version: 0.1.0
 Summary: Offline-first market monitor and watchlist tooling.
 Requires-Python: <3.14,>=3.10
 Description-Content-Type: text/markdown
+Requires-Dist: pandas==2.2.3
+Requires-Dist: numpy==2.1.3
+Requires-Dist: requests==2.32.3
+Requires-Dist: python-dateutil==2.9.0.post0
+Requires-Dist: PyYAML==6.0.2
+Requires-Dist: tomli==2.0.1; python_version < "3.11"
+Provides-Extra: test
+Requires-Dist: pytest==8.3.4; extra == "test"
+Requires-Dist: scikit-learn==1.5.2; extra == "test"
+Requires-Dist: pyarrow==17.0.0; extra == "test"
 Provides-Extra: dev
 Requires-Dist: pandas==2.2.3; extra == "dev"
 Requires-Dist: numpy==2.1.3; extra == "dev"
@@ -33,16 +43,116 @@ Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. 
 - Scenario sensitivity (defense/tech/metals)
 - Offline corpus context + historical analog summaries
 
-## One-Command Run (Blueprint Wrapper)
+## Run the monitor (canonical command)
 
 From the repo root:
 
+**Windows (PowerShell)**
 ```powershell
-.\scripts\run.ps1 -Config .\config\config.yaml
+python -m market_app.cli run --config .\config.yaml --offline
 ```
 
-This runs the blueprint-compatible wrapper (`python -m market_app.cli`) and writes
-output artifacts to `outputs/runs/<run_id>/`.
+**macOS/Linux (bash)**
+```bash
+python -m market_app.cli run --config ./config.yaml --offline
+```
+
+This runs the canonical wrapper (`python -m market_app.cli run`) and writes
+output artifacts to `outputs/runs/<run_id>/` (or `--runs-dir` if provided).
+
+## Doctor checks
+
+Validate environment + config (no run performed):
+
+**Windows (PowerShell)**
+```powershell
+python -m market_app.cli doctor --config .\config.yaml
+```
+
+**macOS/Linux (bash)**
+```bash
+python -m market_app.cli doctor --config ./config.yaml
+```
+
+The doctor command verifies required paths (config, watchlist, data dirs) and
+warns about optional assets like macro series files or missing theme watchlists.
+
+### Troubleshooting
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| Doctor fails with missing NASDAQ daily data | Offline mode without local OHLCV fixtures | Point `paths.nasdaq_daily_dir` at `tests/fixtures/ohlcv` or your own dataset. |
+| Doctor fails with missing watchlist | `paths.watchlist_file` not found | Update the config path or create the watchlist file. |
+| Warnings about macro series | Optional macro CSVs not present | Add the CSVs under `paths.data_dir` or remove the entries from config. |
+
+## Acceptance gate (fresh-clone proof)
+
+These scripts clone the repo to a temp directory, create a venv, install deps,
+run tests, run doctor, run the pipeline twice, and check determinism via
+`digest.json`.
+
+**Windows (PowerShell)**
+```powershell
+.\scripts\acceptance_gate.ps1
+```
+
+**macOS/Linux (bash)**
+```bash
+bash scripts/acceptance_gate.sh
+```
+
+## Verify ready for GUI
+
+Runs the canonical CLI in offline mode twice and confirms deterministic `digest.json` output.
+From the repo root:
+
+```powershell
+.\market_app\scripts\verify_ready_for_gui.ps1
+```
+
+The verifier checks:
+- acceptance config exists and CLI is reachable
+- fixtures look repo-local (warns on absolute paths)
+- doctor + two runs complete with required artifacts
+- `digest.json` matches across runs
+
+## Run minimal GUI
+
+Launch the offline-first Tkinter wrapper:
+
+```powershell
+python -m market_app.ui
+```
+
+Buttons and expected artifacts:
+- **Validate (doctor)**: runs `python -m market_app.cli doctor` and streams output.
+- **Run pipeline**: runs `python -m market_app.cli run` and streams output into the log view.
+- **Open latest report**: opens `report.html`, `report.md`, or `report.pdf` from the newest run folder.
+- **Open latest log**: opens `run.log` (or `logs/run.log`) from the newest run folder.
+- **Open runs folder**: opens the configured runs directory in your file explorer.
+
+## Day-to-day wrapper (Windows)
+
+```powershell
+.\scripts\run_monitor.ps1 -Config .\config.yaml -Offline
+```
+
+## Windows setup (LF fixtures + bootstrap)
+
+This repo expects **LF line endings** for fixtures to keep golden manifests stable across
+Windows and Linux. `.gitattributes` already enforces LF under `tests/fixtures/**`, but you
+should also configure your local git settings to avoid CRLF drift:
+
+```powershell
+git config core.autocrlf false
+git config core.eol lf
+```
+
+Bootstrap the Windows dev/test environment from the repo root:
+
+```powershell
+.\scripts\bootstrap.ps1
+```
 
 ## Makefile-Equivalent Commands (PowerShell)
 
@@ -54,10 +164,10 @@ python -m pip install -r .\requirements.txt
 python -m pytest -q
 
 # run the blueprint wrapper (offline)
-.\scripts\run.ps1 -Config .\config\config.yaml -Offline -TopN 15 -Variant conservative
+python -m market_app.cli run --config .\config.yaml --offline --top-n 15 --conservative
 
 # run acceptance (fresh clone flow)
-.\scripts\acceptance.ps1
+.\scripts\acceptance_gate.ps1
 ```
 
 ## Legacy One-Command Run (PowerShell)
@@ -86,7 +196,7 @@ Optional flags (examples):
 
 ```powershell
 # Blueprint wrapper (preferred)
-python -m market_app.cli --config config/config.yaml --offline --run_id demo_run --top_n 15 --conservative
+python -m market_app.cli run --config config.yaml --offline --run-id demo_run --top-n 15 --conservative
 
 # Legacy Market Monitor CLI
 # Validate config

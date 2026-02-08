@@ -1,0 +1,12 @@
+{
+  "indicators": [
+    {
+      "label": "neutral",
+      "latest_value": 1.1,
+      "name": "term_spread",
+      "zscore": 0.7071067811865481
+    }
+  ],
+  "regime_label": "Neutral",
+  "timestamp": "20260208_152539"
+}

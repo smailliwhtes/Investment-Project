@@ -1,0 +1,98 @@
+{
+  "config_hash": "3da57452ad0fa9ea09d1f91226fcd787fd9190ad9ac98046af15388a0d6314bc",
+  "config_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\configs\\acceptance.yaml",
+  "datasets": [
+    {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\watchlist.txt",
+      "sha256": "51a17d032535b6acc61f1b22ecab4170b01420ed7005aab0c8a4726138da1cdc"
+    },
+    {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\macro\\term_spread.csv",
+      "sha256": "e70355e3d49a657234035b1f378af89175904a33cb711f01e4fa060a6f9bb442"
+    }
+  ],
+  "dependency_versions": {
+    "numpy": "2.1.3",
+    "pandas": "2.2.3",
+    "pyyaml": "6.0.2"
+  },
+  "git_sha": "2cbd090405efd181c2fb349e58ae34984cdfc176",
+  "manifest_hash": "d5ca2f01e3830f0c7bf5c469858a18998fdc7bdcbf2ba44eca9d925b6ac724b4",
+  "offline": true,
+  "outputs": {
+    "classified.csv": {
+      "bytes": 266,
+      "sha256": "1223f95bfff133e21ff52aeec9c7ea4cce6a3c6b276000ae12bb609b32d08c9b"
+    },
+    "digest.json": {
+      "bytes": 1469,
+      "sha256": "0321579a59bf3de892338abb32409d5890be4611ace63d0d7a5d38b98acc6821"
+    },
+    "eligible.csv": {
+      "bytes": 192,
+      "sha256": "fead7d9e116aed608065930a31e93c1fdc85c320fc11fdbe491c36eadac06e35"
+    },
+    "eligible_gui_ready_check_1.csv": {
+      "bytes": 98,
+      "sha256": "d3f702689e6484c59707585836d0d4a56485837d47bacbc8510d70b5fb38cde6"
+    },
+    "features.csv": {
+      "bytes": 4243,
+      "sha256": "e33e5ef460f1b94c59f7d8df7a292e7c9f8537fbbd4fedc45adddc7e9d5d5f5e"
+    },
+    "features_gui_ready_check_1.csv": {
+      "bytes": 1947,
+      "sha256": "64cffc7fd12cca2c12ac12c69441e9b87c9e65463e28cdb88fa33d713b170d59"
+    },
+    "manifest.json": {
+      "bytes": 3302,
+      "sha256": "d2235daac51ec74a003c88f31d1deb7cbd796b2952f2a5a94883f968122f7817"
+    },
+    "preflight_report.csv": {
+      "bytes": 761,
+      "sha256": "bed84499dbc22c3c3343e7ff1fc831e182fb67638cb5f8ab91183b87163186ff"
+    },
+    "preflight_report.md": {
+      "bytes": 773,
+      "sha256": "1431f6507c763a93cbc6fd04c9a1cb7d88a0ffe570de87475179161753542c8d"
+    },
+    "regime.json": {
+      "bytes": 228,
+      "sha256": "651f356f39dc9be6e0afad9ca206c08b7c73a658d6bbdf69a01de3babdf0bac2"
+    },
+    "report.md": {
+      "bytes": 1017,
+      "sha256": "0c3f66db9854b351c1722c49e01452a6c72145a40da864dab029543dda847262"
+    },
+    "run.log": {
+      "bytes": 1024,
+      "sha256": "85d28e7cc535341da64d2351ac4228dc3124526c78c73872595a2ce04817fcf5"
+    },
+    "run_manifest.json": {
+      "bytes": 7058,
+      "sha256": "d403f17ace287f7c85a7d213004c1bff67d97b6bbf384a09014509f879843e6b"
+    },
+    "run_report.md": {
+      "bytes": 1139,
+      "sha256": "14f3fdb87c43ba68cacf7713e49996ff43cd8836bdc1ab93b66378b358bec9c0"
+    },
+    "run_report_gui_ready_check_1.md": {
+      "bytes": 1139,
+      "sha256": "14f3fdb87c43ba68cacf7713e49996ff43cd8836bdc1ab93b66378b358bec9c0"
+    },
+    "scored.csv": {
+      "bytes": 5552,
+      "sha256": "dba63bc47ea3fbbc6614c3dfb5f40c28bdc7b0f9a4cb0bb4ee209cb74c261dca"
+    },
+    "scored_gui_ready_check_1.csv": {
+      "bytes": 404,
+      "sha256": "f48023916343b6cb74864bacc61272eb5a9f0d53603bd6708f02cec327845f05"
+    },
+    "universe.csv": {
+      "bytes": 148,
+      "sha256": "ac327d37313e38417fe534669163f5464913eeeaf8509858b71f352d1467dfd0"
+    }
+  },
+  "run_id": "gui_ready_check_1",
+  "run_timestamp_utc": "20260208_152539"
+}

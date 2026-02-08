@@ -1,0 +1,4 @@
+symbol,theme,confidence,evidence
+AAA,testtheme,0.8,"{""matched_keywords"": [], ""matched_symbols"": [""AAA""]}"
+BBB,Unclassified,0.1,"{""matched_keywords"": [], ""matched_symbols"": []}"
+SPY,Unclassified,0.1,"{""matched_keywords"": [], ""matched_symbols"": []}"

@@ -1,0 +1,90 @@
+{
+  "config_hash": "3da57452ad0fa9ea09d1f91226fcd787fd9190ad9ac98046af15388a0d6314bc",
+  "config_path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\configs\\acceptance.yaml",
+  "datasets": [
+    {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\watchlist.txt",
+      "sha256": "51a17d032535b6acc61f1b22ecab4170b01420ed7005aab0c8a4726138da1cdc"
+    },
+    {
+      "path": "C:\\Users\\micha\\OneDrive\\Desktop\\Investment-Project\\market_app\\tests\\fixtures\\macro\\term_spread.csv",
+      "sha256": "e70355e3d49a657234035b1f378af89175904a33cb711f01e4fa060a6f9bb442"
+    }
+  ],
+  "dependency_versions": {
+    "numpy": "2.1.3",
+    "pandas": "2.2.3",
+    "pyyaml": "6.0.2"
+  },
+  "git_sha": "2cbd090405efd181c2fb349e58ae34984cdfc176",
+  "manifest_hash": "839641225c11a681de710f439c3117491d6218cbe45a7e1ba4e59ce50bf29174",
+  "offline": true,
+  "outputs": {
+    "classified.csv": {
+      "bytes": 266,
+      "sha256": "1223f95bfff133e21ff52aeec9c7ea4cce6a3c6b276000ae12bb609b32d08c9b"
+    },
+    "eligible.csv": {
+      "bytes": 192,
+      "sha256": "fead7d9e116aed608065930a31e93c1fdc85c320fc11fdbe491c36eadac06e35"
+    },
+    "eligible_gui_ready_check_2.csv": {
+      "bytes": 98,
+      "sha256": "d3f702689e6484c59707585836d0d4a56485837d47bacbc8510d70b5fb38cde6"
+    },
+    "features.csv": {
+      "bytes": 4240,
+      "sha256": "16a76e44d0497342e8a49f76e3b6750cc4bd48c5b0c6ad4b44ed86043a904cb4"
+    },
+    "features_gui_ready_check_2.csv": {
+      "bytes": 1944,
+      "sha256": "0b00098b6efcbda21a74a55975f5cf62f428ff1f796373b1482c5f7149690b95"
+    },
+    "preflight_report.csv": {
+      "bytes": 761,
+      "sha256": "5333c363434d67ad93b488d4a6e067cfc9718b3dc9de585aafee7f582f9c7cf1"
+    },
+    "preflight_report.md": {
+      "bytes": 773,
+      "sha256": "09ad2dff5d1960415ca6c40fa4b7275466583f5c6d2f18f36e28d7292ef4b0be"
+    },
+    "regime.json": {
+      "bytes": 228,
+      "sha256": "1b7b52ae9d502c3a4f091ec56787fad065ddbaa7c6aa2dc7b0a7bc3ca99e5e03"
+    },
+    "report.md": {
+      "bytes": 1017,
+      "sha256": "2efbbe49f4e84501cfb86d3e6b3768dbc49064bcd6d478d2596d7a6d70904bd9"
+    },
+    "run.log": {
+      "bytes": 472,
+      "sha256": "023d9d1a3caaaa98ccf92d6f2e1d58fd8694db173772b0ca77ab7f572dc30a5d"
+    },
+    "run_manifest.json": {
+      "bytes": 7058,
+      "sha256": "cfad8d4fd4ba11332bdced2c90944638da4f2783d162debba558f108f0c241bb"
+    },
+    "run_report.md": {
+      "bytes": 1139,
+      "sha256": "ec5ddcd4dea1ccb92f3687f39f196bacd5086e809ddd4b7df888675f80e6f70e"
+    },
+    "run_report_gui_ready_check_2.md": {
+      "bytes": 1139,
+      "sha256": "ec5ddcd4dea1ccb92f3687f39f196bacd5086e809ddd4b7df888675f80e6f70e"
+    },
+    "scored.csv": {
+      "bytes": 5549,
+      "sha256": "96915acedd64eecd0fd94a2a85d9112c0712b14735a8f5912763914c10a8938f"
+    },
+    "scored_gui_ready_check_2.csv": {
+      "bytes": 404,
+      "sha256": "f48023916343b6cb74864bacc61272eb5a9f0d53603bd6708f02cec327845f05"
+    },
+    "universe.csv": {
+      "bytes": 148,
+      "sha256": "ac327d37313e38417fe534669163f5464913eeeaf8509858b71f352d1467dfd0"
+    }
+  },
+  "run_id": "gui_ready_check_2",
+  "run_timestamp_utc": "20260208_152540"
+}
