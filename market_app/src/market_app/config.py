@@ -18,15 +18,9 @@ DEFAULT_BLUEPRINT_CONFIG: dict[str, Any] = {
         "now_utc": None,
         "allowed_vary_columns": {
             "global": [],
-            "eligible.csv": [],
-            "scored.csv": ["run_id"],
-            "features.csv": ["run_id"],
-            "classified.csv": [],
-            "universe.csv": [],
-            "manifest.json": ["run_id"],
-            "digest.json": [],
-            "report.md": ["run_id"],
-            "report.html": [],
+        },
+        "allowed_vary_json_keys": {
+            "global": [],
         },
     },
     "paths": {

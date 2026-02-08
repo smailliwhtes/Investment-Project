@@ -30,13 +30,16 @@ REQUIRED_FEATURES = [
 ]
 
 
+FLOAT_FORMAT = "%.6f"
+
+
 def write_csv(df: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     cleaned = df.copy()
     float_cols = cleaned.select_dtypes(include=["float", "float32", "float64"]).columns
     if len(float_cols):
         cleaned[float_cols] = cleaned[float_cols].round(6)
-    cleaned.to_csv(path, index=False)
+    cleaned.to_csv(path, index=False, float_format=FLOAT_FORMAT, lineterminator="\n", na_rep="")
 
 
 def normalize_features(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:

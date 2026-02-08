@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import logging.config
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -28,7 +29,7 @@ from market_app.timebase import parse_as_of_date, parse_now_utc, today_utc, utcn
 from market_monitor.determinism import (
     STABLE_ARTIFACTS,
     compare_runs,
-    resolve_allowlist,
+    resolve_allowlists,
     stable_output_digests,
 )
 from market_monitor.hash_utils import hash_file, hash_text
@@ -446,7 +447,10 @@ def _resolve_time_anchors(
 
 def _resolve_allowlist(blueprint: dict[str, Any]):
     determinism_cfg = blueprint.get("determinism", {})
-    return resolve_allowlist(determinism_cfg.get("allowed_vary_columns"))
+    return resolve_allowlists(
+        allowed_vary_columns=determinism_cfg.get("allowed_vary_columns"),
+        allowed_vary_json_keys=determinism_cfg.get("allowed_vary_json_keys"),
+    )
 
 
 def _run_doctor(args: argparse.Namespace) -> int:
@@ -730,6 +734,10 @@ def _run_determinism_check(
     *,
     run_fn=None,
 ) -> int:
+    os.environ.setdefault("PYTHONHASHSEED", "0")
+    for key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+        os.environ.setdefault(key, "1")
+
     config_path = Path(args.config).expanduser().resolve()
     config_result = load_config(config_path)
     blueprint = config_result.config
@@ -772,6 +780,8 @@ def _run_determinism_check(
         for file_name, keys in list(disallowed.items())[:5]:
             print(f"  - {file_name}: {', '.join(keys[:5])}")
         print(f"[determinism-check] diff artifacts: {report.diff_dir}")
+        if report.diff_dir:
+            print(f"[determinism-check] diff report: {report.diff_dir / 'diff_report.md'}")
         return 2
 
     any_diff = any(

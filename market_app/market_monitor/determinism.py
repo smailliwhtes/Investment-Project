@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from difflib import unified_diff
 from pathlib import Path
 from typing import Any, Iterable
 
 import pandas as pd
 
 from market_monitor.hash_utils import hash_text
+from market_monitor.paths import find_repo_root
 
 STABLE_ARTIFACTS = (
     "eligible.csv",
@@ -21,11 +23,35 @@ STABLE_ARTIFACTS = (
     "report.html",
 )
 
+_SKIP_OUTPUTS_FOR_DIGEST = {"manifest.json", "digest.json"}
+_VOLATILE_JSON_FIELDS = {
+    "run_id",
+    "run_dir",
+    "run_directory",
+    "generated_at",
+    "timestamp",
+    "timestamps",
+    "start_timestamp_utc",
+    "end_timestamp_utc",
+    "run_timestamp",
+    "run_timestamp_utc",
+}
+_VOLATILE_CSV_COLUMNS = {"run_id", "run_timestamp", "run_timestamp_utc"}
+_VOLATILE_TEXT_KEYS = {"run_id", "run_timestamp", "run_timestamp_utc"}
+_PATH_KEYS = {"path", "config_path", "watchlist_file", "watchlist_path", "run_dir", "run_dir_a", "run_dir_b"}
+
 
 @dataclass(frozen=True)
 class AllowlistConfig:
     global_allowlist: set[str]
     per_file: dict[str, set[str]]
+
+
+@dataclass(frozen=True)
+class AllowlistBundle:
+    csv: AllowlistConfig
+    json: AllowlistConfig
+    text: AllowlistConfig
 
 
 @dataclass(frozen=True)
@@ -47,27 +73,42 @@ class DeterminismReport:
     disallowed: dict[str, list[str]]
 
 
-def resolve_allowlist(allowed_vary_columns: dict[str, Any] | None) -> AllowlistConfig:
-    allowed_vary_columns = allowed_vary_columns or {}
-    global_allow = set(allowed_vary_columns.get("global", []))
+def _resolve_allowlist(allowed_vary: dict[str, Any] | None) -> AllowlistConfig:
+    allowed_vary = allowed_vary or {}
+    global_allow = set(allowed_vary.get("global", []))
     per_file = {}
-    for key, value in allowed_vary_columns.items():
+    for key, value in allowed_vary.items():
         if key == "global":
             continue
         per_file[key] = set(value or [])
     return AllowlistConfig(global_allowlist=global_allow, per_file=per_file)
 
 
+def resolve_allowlists(
+    *,
+    allowed_vary_columns: dict[str, Any] | None,
+    allowed_vary_json_keys: dict[str, Any] | None,
+) -> AllowlistBundle:
+    return AllowlistBundle(
+        csv=_resolve_allowlist(allowed_vary_columns),
+        json=_resolve_allowlist(allowed_vary_json_keys),
+        text=_resolve_allowlist({}),
+    )
+
+
 def stable_output_digests(
     run_dir: Path,
-    allowlist: AllowlistConfig,
+    allowlist: AllowlistBundle,
 ) -> dict[str, dict[str, Any]]:
     outputs: dict[str, dict[str, Any]] = {}
     for name in STABLE_ARTIFACTS:
+        if name in _SKIP_OUTPUTS_FOR_DIGEST:
+            continue
         path = run_dir / name
         if not path.exists():
             continue
-        drop_keys = allowlist.global_allowlist | allowlist.per_file.get(name, set())
+        allow = _select_allowlist(path, allowlist)
+        drop_keys = allow.global_allowlist | allow.per_file.get(name, set())
         payload = canonical_bytes(path, drop_keys=drop_keys)
         outputs[name] = {"sha256": hash_text(payload.decode("utf-8")), "bytes": len(payload)}
     return outputs
@@ -85,7 +126,7 @@ def compare_runs(
     run_dir_a: Path,
     run_dir_b: Path,
     *,
-    allowlist: AllowlistConfig,
+    allowlist: AllowlistBundle,
     diff_dir: Path,
     as_of_date: str | None,
 ) -> DeterminismReport:
@@ -96,8 +137,14 @@ def compare_runs(
         "run_dir_b": str(run_dir_b),
         "files": {},
         "allowlist": {
-            "global": sorted(allowlist.global_allowlist),
-            "per_file": {k: sorted(v) for k, v in allowlist.per_file.items()},
+            "csv": {
+                "global": sorted(allowlist.csv.global_allowlist),
+                "per_file": {k: sorted(v) for k, v in allowlist.csv.per_file.items()},
+            },
+            "json": {
+                "global": sorted(allowlist.json.global_allowlist),
+                "per_file": {k: sorted(v) for k, v in allowlist.json.per_file.items()},
+            },
         },
     }
     disallowed: dict[str, list[str]] = {}
@@ -131,13 +178,14 @@ def compare_runs(
             disallowed[name] = diff.disallowed_keys
             continue
 
-        allowed = allowlist.global_allowlist | allowlist.per_file.get(name, set())
+        allow = _select_allowlist(path_a, allowlist)
+        allowed_keys = allow.global_allowlist | allow.per_file.get(name, set())
         if path_a.suffix.lower() == ".csv":
-            diff = _compare_csv(path_a, path_b, allowed_keys=allowed, diff_dir=diff_dir)
+            diff = _compare_csv(path_a, path_b, allowed_keys=allowed_keys, diff_dir=diff_dir)
         elif path_a.suffix.lower() == ".json":
-            diff = _compare_json(path_a, path_b, allowed_keys=allowed)
+            diff = _compare_json(path_a, path_b, allowed_keys=allowed_keys, diff_dir=diff_dir)
         else:
-            diff = _compare_text(path_a, path_b, allowed_keys=allowed)
+            diff = _compare_text(path_a, path_b, allowed_keys=allowed_keys, diff_dir=diff_dir)
 
         diffs[name] = diff
         if diff.disallowed_keys:
@@ -159,6 +207,7 @@ def compare_runs(
     summary_path = diff_dir / "diff_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     _write_diff_report(diff_dir / "diff_report.md", summary, disallowed)
+    _write_diff_report_html(diff_dir / "diff_report.html", summary, disallowed)
 
     ok = not disallowed
     return DeterminismReport(ok=ok, diff_dir=diff_dir, summary=summary, disallowed=disallowed)
@@ -166,7 +215,7 @@ def compare_runs(
 
 def _canonical_csv_bytes(path: Path, *, drop_keys: Iterable[str] | None = None) -> bytes:
     df = pd.read_csv(path)
-    drop_keys = set(drop_keys or [])
+    drop_keys = set(drop_keys or []) | _VOLATILE_CSV_COLUMNS
     if drop_keys:
         df = df.drop(columns=[col for col in drop_keys if col in df.columns], errors="ignore")
     df = _canonicalize_frame(df)
@@ -177,15 +226,15 @@ def _canonical_csv_bytes(path: Path, *, drop_keys: Iterable[str] | None = None) 
 def _canonical_json_bytes(path: Path, *, drop_keys: Iterable[str] | None = None) -> bytes:
     payload = json.loads(path.read_text(encoding="utf-8"))
     drop_keys = set(drop_keys or [])
-    for key in drop_keys:
-        _delete_json_path(payload, key)
+    repo_root = find_repo_root(path.parent)
+    payload = _canonicalize_json_payload(payload, drop_keys=drop_keys, root=repo_root)
     serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return serialized.encode("utf-8")
 
 
 def _canonical_text_bytes(path: Path, *, drop_keys: Iterable[str] | None = None) -> bytes:
     text = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
-    drop_keys = set(drop_keys or [])
+    drop_keys = set(drop_keys or []) | _VOLATILE_TEXT_KEYS
     if drop_keys:
         lines = text.split("\n")
         filtered = []
@@ -223,6 +272,8 @@ def _compare_csv(
 ) -> DiffFileResult:
     df_a = pd.read_csv(path_a)
     df_b = pd.read_csv(path_b)
+    df_a = df_a.drop(columns=[col for col in _VOLATILE_CSV_COLUMNS if col in df_a.columns], errors="ignore")
+    df_b = df_b.drop(columns=[col for col in _VOLATILE_CSV_COLUMNS if col in df_b.columns], errors="ignore")
     df_a = _canonicalize_frame(df_a)
     df_b = _canonicalize_frame(df_b)
 
@@ -247,13 +298,25 @@ def _compare_csv(
     )
 
 
-def _compare_json(path_a: Path, path_b: Path, *, allowed_keys: set[str]) -> DiffFileResult:
-    payload_a = json.loads(path_a.read_text(encoding="utf-8"))
-    payload_b = json.loads(path_b.read_text(encoding="utf-8"))
+def _compare_json(
+    path_a: Path, path_b: Path, *, allowed_keys: set[str], diff_dir: Path
+) -> DiffFileResult:
+    repo_root = find_repo_root(path_a.parent)
+    payload_a = _canonicalize_json_payload(
+        json.loads(path_a.read_text(encoding="utf-8")),
+        drop_keys=_VOLATILE_JSON_FIELDS,
+        root=repo_root,
+    )
+    payload_b = _canonicalize_json_payload(
+        json.loads(path_b.read_text(encoding="utf-8")),
+        drop_keys=_VOLATILE_JSON_FIELDS,
+        root=repo_root,
+    )
     flat_a = _flatten_json(payload_a)
     flat_b = _flatten_json(payload_b)
     diff_keys = sorted({key for key in flat_a.keys() | flat_b.keys() if flat_a.get(key) != flat_b.get(key)})
     disallowed = sorted([key for key in diff_keys if key not in allowed_keys])
+    diff_path = _write_text_diff(path_a, path_b, diff_dir=diff_dir) if diff_keys else None
     status = "match" if not diff_keys else "diff"
     return DiffFileResult(
         status=status,
@@ -262,17 +325,20 @@ def _compare_json(path_a: Path, path_b: Path, *, allowed_keys: set[str]) -> Diff
         diff_rows=None,
         max_abs_delta=None,
         example_keys=diff_keys[:5],
-        diff_examples_path=None,
+        diff_examples_path=diff_path,
     )
 
 
-def _compare_text(path_a: Path, path_b: Path, *, allowed_keys: set[str]) -> DiffFileResult:
+def _compare_text(
+    path_a: Path, path_b: Path, *, allowed_keys: set[str], diff_dir: Path
+) -> DiffFileResult:
     text_a = _canonical_text_bytes(path_a, drop_keys=allowed_keys)
     text_b = _canonical_text_bytes(path_b, drop_keys=allowed_keys)
     diff_keys = []
     if text_a != text_b:
         diff_keys = ["__content__"]
     disallowed = sorted([key for key in diff_keys if key not in allowed_keys])
+    diff_path = _write_text_diff(path_a, path_b, diff_dir=diff_dir) if diff_keys else None
     status = "match" if not diff_keys else "diff"
     return DiffFileResult(
         status=status,
@@ -281,7 +347,7 @@ def _compare_text(path_a: Path, path_b: Path, *, allowed_keys: set[str]) -> Diff
         diff_rows=None,
         max_abs_delta=None,
         example_keys=diff_keys,
-        diff_examples_path=None,
+        diff_examples_path=diff_path,
     )
 
 
@@ -398,6 +464,54 @@ def _flatten_json(payload: Any, prefix: str = "") -> dict[str, Any]:
     return items
 
 
+def _canonicalize_json_payload(
+    payload: Any, *, drop_keys: Iterable[str], root: Path
+) -> Any:
+    drop_set = set(drop_keys) | _VOLATILE_JSON_FIELDS
+    for key in drop_keys:
+        _delete_json_path(payload, key)
+
+    def normalize(value: Any, parent_key: str | None = None) -> Any:
+        if isinstance(value, dict):
+            normalized: dict[str, Any] = {}
+            for key, item in value.items():
+                if key in drop_set:
+                    continue
+                normalized[key] = normalize(item, key)
+            return normalized
+        if isinstance(value, list):
+            return [normalize(item, parent_key) for item in value]
+        if isinstance(value, str) and parent_key in _PATH_KEYS:
+            return _normalize_path_value(value, root=root)
+        return value
+
+    return normalize(payload)
+
+
+def _normalize_path_value(value: str, *, root: Path) -> str:
+    if not value:
+        return value
+    normalized = value
+    if _is_windows_absolute_path(value):
+        parts = value.replace("\\", "/").split(":", 1)
+        normalized = parts[-1].lstrip("/\\")
+    elif Path(value).is_absolute():
+        try:
+            normalized = str(Path(value).relative_to(root))
+        except ValueError:
+            normalized = str(Path(value))
+            normalized = str(Path(normalized).as_posix())
+            normalized = str(Path(*Path(normalized).parts[1:]))
+    normalized = normalized.replace("\\", "/")
+    return normalized
+
+
+def _is_windows_absolute_path(value: str) -> bool:
+    if len(value) < 3:
+        return False
+    return value[1:3] in {":\\", ":/"}
+
+
 def _delete_json_path(payload: Any, path: str) -> None:
     if not path:
         return
@@ -437,6 +551,28 @@ def _delete_json_path(payload: Any, path: str) -> None:
         current.pop(final, None)
 
 
+def _write_text_diff(path_a: Path, path_b: Path, *, diff_dir: Path) -> str | None:
+    try:
+        text_a = path_a.read_text(encoding="utf-8").splitlines()
+        text_b = path_b.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    diff_lines = list(
+        unified_diff(
+            text_a,
+            text_b,
+            fromfile=path_a.name,
+            tofile=path_b.name,
+            lineterm="",
+        )
+    )
+    if not diff_lines:
+        return None
+    diff_path = diff_dir / f"diff_{path_a.name}.txt"
+    diff_path.write_text("\n".join(diff_lines) + "\n", encoding="utf-8")
+    return str(diff_path)
+
+
 def _write_diff_report(path: Path, summary: dict[str, Any], disallowed: dict[str, list[str]]) -> None:
     lines = [
         "# Determinism Check Report",
@@ -466,3 +602,41 @@ def _write_diff_report(path: Path, summary: dict[str, Any], disallowed: dict[str
             lines.append(f"  - examples: {diff_examples}")
 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _write_diff_report_html(path: Path, summary: dict[str, Any], disallowed: dict[str, list[str]]) -> None:
+    status = "FAIL" if disallowed else "PASS"
+    rows = []
+    for name, info in summary.get("files", {}).items():
+        diff_examples = info.get("diff_examples_path") or ""
+        rows.append(
+            f"<tr><td>{name}</td><td>{info.get('status')}</td>"
+            f"<td>{', '.join(info.get('diff_keys') or [])}</td>"
+            f"<td>{diff_examples}</td></tr>"
+        )
+    html = [
+        "<!doctype html>",
+        "<html><head><meta charset='utf-8'><title>Determinism Check Report</title></head>",
+        "<body>",
+        "<h1>Determinism Check Report</h1>",
+        f"<p><strong>Result:</strong> {status}</p>",
+        f"<p><strong>As-of date:</strong> {summary.get('as_of_date') or 'unset'}</p>",
+        f"<p><strong>Run A:</strong> {summary.get('run_dir_a')}</p>",
+        f"<p><strong>Run B:</strong> {summary.get('run_dir_b')}</p>",
+        "<h2>Per-file Summary</h2>",
+        "<table border='1' cellpadding='4' cellspacing='0'>",
+        "<tr><th>File</th><th>Status</th><th>Diff Keys</th><th>Diff Artifacts</th></tr>",
+        *rows,
+        "</table>",
+        "</body></html>",
+    ]
+    path.write_text("\n".join(html) + "\n", encoding="utf-8")
+
+
+def _select_allowlist(path: Path, allowlist: AllowlistBundle) -> AllowlistConfig:
+    suffix = path.suffix.lower()
+    if suffix == ".csv":
+        return allowlist.csv
+    if suffix == ".json":
+        return allowlist.json
+    return allowlist.text
