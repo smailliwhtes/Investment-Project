@@ -134,6 +134,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "auto_normalize_ohlcv": True,
         "include_raw_exogenous_same_day": False,
         "asof_default": None,
+        "now_utc": None,
         "benchmarks": ["SPY", "QQQ", "IWM", "TLT", "GLD"],
     },
     "scoring": {

@@ -11,6 +11,7 @@ from market_monitor.data_sources.stooq_txt import (
     discover_stooq_txt,
     parse_stooq_symbol_and_asof,
 )
+from market_monitor.timebase import today_utc
 
 SECURITY_MASTER_COLUMNS = [
     "symbol",
@@ -56,7 +57,7 @@ class SecurityMasterConfig:
 def build_security_master(config: SecurityMasterConfig) -> list[SecurityMasterRecord]:
     stooq_files = discover_stooq_txt(config.stooq_root)
     required_symbols = load_required_symbols(config.required_symbols_path)
-    asof_date = (config.asof_date or date.today()).isoformat()
+    asof_date = (config.asof_date or today_utc()).isoformat()
 
     records: list[SecurityMasterRecord] = []
     for path in stooq_files:

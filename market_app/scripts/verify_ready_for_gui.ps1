@@ -43,49 +43,18 @@ if ($Offline) { $doctorArgs += "--offline" }
 & $Py @doctorArgs | Out-Host
 if ($LASTEXITCODE -ne 0) { Fail "[error] doctor failed (exit $LASTEXITCODE)" }
 
-Info "[step] Run #1"
-$runId1 = "gui_ready_check_1"
-$runArgs1 = @("-m","market_app.cli","run","--config",$ConfigPath,"--runs-dir",$RunsDirPath,"--run-id",$runId1)
-if ($Offline) { $runArgs1 += "--offline" }
-& $Py @runArgs1 | Out-Host
-if ($LASTEXITCODE -ne 0) { Fail "[error] run #1 failed (exit $LASTEXITCODE)" }
+Info "[step] Determinism check"
+$asOfDate = & $Py -c "import datetime, yaml, pathlib; cfg=yaml.safe_load(pathlib.Path(r'$ConfigPath').read_text(encoding='utf-8')) or {}; det=cfg.get('determinism', {}); value=det.get('as_of_date') or datetime.datetime.now(datetime.timezone.utc).date().isoformat(); print(value)"
 
-Info "[step] Run #2"
-$runId2 = "gui_ready_check_2"
-$runArgs2 = @("-m","market_app.cli","run","--config",$ConfigPath,"--runs-dir",$RunsDirPath,"--run-id",$runId2)
-if ($Offline) { $runArgs2 += "--offline" }
-& $Py @runArgs2 | Out-Host
-if ($LASTEXITCODE -ne 0) { Fail "[error] run #2 failed (exit $LASTEXITCODE)" }
-
-$runDir1 = Join-Path $RunsDirPath $runId1
-$runDir2 = Join-Path $RunsDirPath $runId2
-
-foreach ($d in @($runDir1,$runDir2)) {
-  if (-not (Test-Path $d)) { Fail "[error] missing run dir: $d" }
-  foreach ($f in @("manifest.json","digest.json")) {
-    $p = Join-Path $d $f
-    if (-not (Test-Path $p)) { Fail "[error] missing $f in $d" }
-  }
-
-  $report = Get-ChildItem $d -File -Filter "report.*" -ErrorAction SilentlyContinue | Select-Object -First 1
-  if (-not $report) { Warn "[warn] no report.* found in $d" }
-
-  $log = Get-ChildItem $d -Recurse -File -Filter "run.log" -ErrorAction SilentlyContinue | Select-Object -First 1
-  if (-not $log) { Warn "[warn] no run.log found under $d" }
-}
-
-Info "[step] Determinism: compare digest.json SHA256"
-$h1 = (Get-FileHash (Join-Path $runDir1 "digest.json") -Algorithm SHA256).Hash
-$h2 = (Get-FileHash (Join-Path $runDir2 "digest.json") -Algorithm SHA256).Hash
-
-if ($h1 -ne $h2) {
-  Warn "[warn] digest mismatch:"
-  Warn "  $runDir1 -> $h1"
-  Warn "  $runDir2 -> $h2"
-  Fail "[summary] FAIL"
-}
+$detArgs = @(
+  "-m","market_app.cli","determinism-check",
+  "--config",$ConfigPath,
+  "--runs-dir",$RunsDirPath,
+  "--as-of-date",$asOfDate,
+  "--run-id","gui_ready_check"
+)
+if ($Offline) { $detArgs += "--offline" }
+& $Py @detArgs | Out-Host
+if ($LASTEXITCODE -ne 0) { Fail "[summary] FAIL" }
 
 Pass "[summary] PASS"
-Pass "Runs:"
-Info "  $runDir1"
-Info "  $runDir2"

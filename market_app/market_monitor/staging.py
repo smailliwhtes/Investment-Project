@@ -13,6 +13,7 @@ from market_monitor.providers.base import HistoryProvider, ProviderError, Provid
 from market_monitor.risk import assess_risk
 from market_monitor.scenarios import scenario_scores
 from market_monitor.themes import tag_themes
+from market_monitor.timebase import today_utc
 
 
 def _history_fetch(provider: HistoryProvider, symbol: str, days: int) -> pd.DataFrame:
@@ -43,6 +44,8 @@ def stage_pipeline(
     config: dict[str, Any],
     run_meta: dict[str, Any],
     logger,
+    *,
+    as_of_date: str | None = None,
     silver_macro: dict[str, float] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, int]]:
     staging_cfg = config["staging"]
@@ -84,13 +87,32 @@ def stage_pipeline(
         cache_misses += int(not cache_res.used_cache)
         return cache_res
 
+    def _filter_as_of(df: pd.DataFrame) -> pd.DataFrame:
+        if not as_of_date or "Date" not in df.columns:
+            return df
+        filtered = df.copy()
+        filtered["Date"] = pd.to_datetime(filtered["Date"], errors="coerce")
+        filtered = filtered.dropna(subset=["Date"])
+        filtered = filtered[filtered["Date"] <= pd.to_datetime(as_of_date)]
+        return filtered.sort_values("Date").reset_index(drop=True)
+
+    def _data_freshness_days(df: pd.DataFrame) -> int:
+        if df.empty or "Date" not in df.columns:
+            return 0
+        dates = pd.to_datetime(df["Date"], errors="coerce").dropna()
+        if dates.empty:
+            return 0
+        last_date = dates.max().date()
+        anchor = pd.to_datetime(as_of_date).date() if as_of_date else today_utc()
+        return max((anchor - last_date).days, 0)
+
     logger.info("Stage 1: micro-history gate")
     for _, row in symbols.iterrows():
         symbol = row["symbol"]
         name = row.get("name") or symbol
         try:
             cache_res = fetch_cached(symbol, staging_cfg["stage1_micro_days"])
-            df, adjusted_mode = _apply_adjusted(cache_res.df, provider)
+            df, adjusted_mode = _apply_adjusted(_filter_as_of(cache_res.df), provider)
             if df.empty:
                 status = "DATA_UNAVAILABLE"
                 stage1_survivors.append(
@@ -148,7 +170,7 @@ def stage_pipeline(
         name = row.get("name") or symbol
         try:
             cache_res = fetch_cached(symbol, staging_cfg["stage2_short_days"])
-            df, adjusted_mode = _apply_adjusted(cache_res.df, provider)
+            df, adjusted_mode = _apply_adjusted(_filter_as_of(cache_res.df), provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
             status, reason_codes = _compute_data_status(
@@ -200,7 +222,7 @@ def stage_pipeline(
         name = row.get("name") or symbol
         try:
             cache_res = fetch_cached(symbol, staging_cfg["stage3_deep_days"])
-            df, adjusted_mode = _apply_adjusted(cache_res.df, provider)
+            df, adjusted_mode = _apply_adjusted(_filter_as_of(cache_res.df), provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
             status, reason_codes = _compute_data_status(
@@ -216,9 +238,9 @@ def stage_pipeline(
             notes = "Eligible for monitoring" if status == "OK" else "Data issue"
             confidence_score = _confidence_score(features, theme_confidence)
             silver_payload = _maybe_attach_silver(theme_tags, symbol, silver_macro)
-            as_of_date = None
+            last_data_date = None
             if "Date" in df.columns and not df.empty:
-                as_of_date = pd.to_datetime(df["Date"].iloc[-1], errors="coerce")
+                last_data_date = pd.to_datetime(df["Date"].iloc[-1], errors="coerce")
             stage3_rows.append(
                 {
                     **run_meta,
@@ -226,7 +248,7 @@ def stage_pipeline(
                     "name": name,
                     "data_status": status,
                     "data_reason_codes": ";".join(reason_codes),
-                    "data_freshness_days": cache_res.data_freshness_days,
+                    "data_freshness_days": _data_freshness_days(df),
                     "adjusted_mode": adjusted_mode,
                     "theme_tags": ";".join(theme_tags),
                     "theme_confidence": theme_confidence,
@@ -238,7 +260,9 @@ def stage_pipeline(
                     "gate_fail_codes": "",
                     "notes": notes,
                     "confidence_score": confidence_score,
-                    "as_of_date": as_of_date.strftime("%Y-%m-%d") if as_of_date is not None else None,
+                    "as_of_date": last_data_date.strftime("%Y-%m-%d")
+                    if last_data_date is not None
+                    else None,
                     **features,
                     **scenario,
                     **silver_payload,

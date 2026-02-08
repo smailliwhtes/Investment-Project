@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from market_monitor.timebase import utcnow
 
 @dataclass
 class CacheResult:
@@ -60,7 +61,7 @@ def save_cache(path: Path, df: pd.DataFrame) -> None:
 
 
 def freshness_days(path: Path) -> float:
-    age_seconds = time.time() - path.stat().st_mtime
+    age_seconds = utcnow().timestamp() - path.stat().st_mtime
     return age_seconds / 86400.0
 
 

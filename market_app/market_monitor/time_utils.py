@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from market_monitor.timebase import utcnow
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return utcnow().isoformat()
