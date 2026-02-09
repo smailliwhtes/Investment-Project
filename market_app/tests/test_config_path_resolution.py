@@ -10,6 +10,53 @@ from market_monitor.data_paths import resolve_data_paths
 from market_monitor.paths import resolve_path
 
 
+def test_load_config_accepts_str_absolute(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("{}", encoding="utf-8")
+
+    config = load_config(str(config_path)).config
+
+    assert config["paths"]["watchlist_file"]
+
+
+def test_load_config_accepts_path_absolute(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("{}", encoding="utf-8")
+
+    config = load_config(config_path).config
+
+    assert config["paths"]["watchlist_file"]
+
+
+def test_load_config_env_override(tmp_path: Path, monkeypatch) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("paths:\n  watchlist_file: env_watchlist.csv\n", encoding="utf-8")
+
+    other_path = tmp_path / "other.yaml"
+    other_path.write_text("paths:\n  watchlist_file: other_watchlist.csv\n", encoding="utf-8")
+
+    monkeypatch.setenv("MARKET_APP_CONFIG", str(config_path))
+
+    config = load_config(other_path).config
+
+    assert config["paths"]["watchlist_file"] == "env_watchlist.csv"
+
+
+def test_load_config_relative_resolves_repo_root(tmp_path: Path, monkeypatch) -> None:
+    repo_root = tmp_path / "repo"
+    nested_dir = repo_root / "nested" / "child"
+    nested_dir.mkdir(parents=True)
+
+    config_path = repo_root / "config.yaml"
+    config_path.write_text("paths:\n  watchlist_file: repo_watchlist.csv\n", encoding="utf-8")
+
+    monkeypatch.chdir(nested_dir)
+
+    config = load_config("config.yaml").config
+
+    assert config["paths"]["watchlist_file"] == "repo_watchlist.csv"
+
+
 def test_config_paths_resolve_relative_to_config(monkeypatch, tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     config_path = repo_root / "tests" / "fixtures" / "minimal_config.yaml"

@@ -362,9 +362,7 @@ def _apply_data_roots(config: dict[str, Any]) -> None:
 
 def _load_config_file(path: Path) -> dict[str, Any]:
     if not path.exists():
-        raise ConfigError(
-            f"Config file not found at {path}. Create one with 'python -m market_monitor init-config --out {path}'."
-        )
+        raise ConfigError(f"Config file not found at {path}.")
     suffix = path.suffix.lower()
     content = path.read_text(encoding="utf-8-sig")
     if suffix in {".yaml", ".yml"}:
@@ -385,8 +383,48 @@ def _load_config_file(path: Path) -> dict[str, Any]:
     return data
 
 
-def load_config(path: Path, overrides: dict[str, Any] | None = None) -> ConfigResult:
-    config_data = _load_config_file(path)
+def _find_repo_root(start: Path) -> Path | None:
+    try:
+        start = start.resolve(strict=False)
+    except FileNotFoundError:
+        start = start.resolve()
+
+    for candidate in [start, *start.parents]:
+        if (candidate / "config.yaml").exists():
+            return candidate
+
+    for candidate in [start, *start.parents]:
+        if (candidate / "pyproject.toml").exists() or (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def load_config(path: str | Path = "config.yaml", overrides: dict[str, Any] | None = None) -> ConfigResult:
+    path = Path(path)
+    repo_root = _find_repo_root(Path.cwd()) or _find_repo_root(Path(__file__).resolve())
+    env_path_value = os.getenv("MARKET_APP_CONFIG")
+    if env_path_value:
+        env_path = Path(env_path_value)
+        if not env_path.is_absolute():
+            env_path = (repo_root or Path.cwd()) / env_path
+        path = env_path
+
+    if path.is_absolute():
+        resolved_path = path
+    else:
+        resolved_path = (repo_root or Path.cwd()) / path
+
+    resolved_path = resolved_path.expanduser().resolve(strict=False)
+    repo_root_display = (repo_root or Path.cwd().resolve()).expanduser().resolve(strict=False)
+
+    if not resolved_path.exists():
+        suggestion_path = repo_root_display / "config.yaml"
+        raise ConfigError(
+            "Config file not found at "
+            f"{resolved_path}. Create one with 'python -m market_monitor init-config --out {suggestion_path}'."
+        )
+
+    config_data = _load_config_file(resolved_path)
 
     config = _deep_merge(DEFAULT_CONFIG, config_data)
     env_overrides = _load_env_overrides()

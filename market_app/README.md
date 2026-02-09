@@ -80,6 +80,18 @@ run tests, run doctor, run the pipeline twice, and check determinism via
 bash scripts/acceptance_gate.sh
 ```
 
+## Local verification (one command, Windows)
+
+Run a full local check (venv, requirements, pytest, offline acceptance) from the repo root:
+
+```powershell
+.\scripts\verify_local.ps1 -DailyDir "C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm"
+```
+
+Notes:
+- `MARKET_APP_CONFIG` overrides the config path if set in your environment.
+- The daily CSV directory must contain at least `SPY.csv` (case-insensitive).
+
 ## Verify ready for GUI
 
 Runs the canonical CLI in offline mode twice and confirms deterministic `digest.json` output.

@@ -1,6 +1,7 @@
 param(
-  [string]$Config = ".\config.yaml",
-  [string]$RunsDir = ".\runs_daily",
+  [Parameter(Mandatory=$true)][string]$DailyDir,
+  [string]$ConfigPath = "",
+  [string]$RunsDir = "runs_daily",
   [string]$RunId = "daily_fix_spy",
   [string]$NowUtc = "2026-02-08T21:00:00Z"
 )
@@ -8,29 +9,38 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location (Resolve-Path "$Root\..")
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+Set-Location $RepoRoot
 
-function Get-PythonSpec {
-  $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
-  if ($pyLauncher) {
-    try {
-      & py -3.11 -c "import sys" | Out-Null
-      if ($LASTEXITCODE -eq 0) { return @{ exe="py"; args=@("-3.11") } }
-    } catch {}
-  }
-  $py = Get-Command python -ErrorAction SilentlyContinue
-  if ($py) { return @{ exe="python"; args=@() } }
-  throw "No Python found. Install Python 3.11 and reopen PowerShell."
+if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+  $ConfigPath = Join-Path $RepoRoot "config.yaml"
 }
 
-$PySpec = Get-PythonSpec
-$VenvPath = Join-Path $Root "..\.venv"
+if (-not (Test-Path $DailyDir)) {
+  throw "Daily data directory not found at $DailyDir"
+}
+
+if (-not [System.IO.Path]::IsPathRooted($RunsDir)) {
+  $RunsDir = Join-Path $RepoRoot $RunsDir
+}
+
+$DailyDir = [System.IO.Path]::GetFullPath($DailyDir)
+$ConfigPath = [System.IO.Path]::GetFullPath($ConfigPath)
+$RunsDir = [System.IO.Path]::GetFullPath($RunsDir)
+
+$VenvPath = Join-Path $RepoRoot ".venv"
 $VenvPy   = Join-Path $VenvPath "Scripts\python.exe"
 
 if (-not (Test-Path $VenvPy)) {
+  $BasePy = Get-Command python -ErrorAction SilentlyContinue
+  if (-not $BasePy) {
+    throw "Python not found. Install Python 3.11+ and reopen PowerShell."
+  }
   Write-Host "[stage] creating venv"
-  & $PySpec.exe @($PySpec.args) -m venv $VenvPath
+  & $BasePy.Source -m venv $VenvPath
+  if (-not (Test-Path $VenvPy)) {
+    throw "Virtual environment python not found at $VenvPy"
+  }
 }
 
 Write-Host "[stage] upgrading pip"
@@ -46,18 +56,21 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "[stage] running offline run"
-& $VenvPy -m market_app.cli run --config $Config --offline --runs-dir $RunsDir --run-id $RunId --now-utc $NowUtc --top-n 50
+$env:MARKET_APP_NASDAQ_DAILY_DIR = $DailyDir
+$env:MARKET_APP_CONFIG = $ConfigPath
+
+& $VenvPy -m market_app.cli run --config $ConfigPath --offline --runs-dir $RunsDir --run-id $RunId --now-utc $NowUtc --top-n 50
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[error] Pipeline run failed. See logs in $RunsDir\$RunId"
   exit $LASTEXITCODE
 }
 
-$env:MARKET_APP_ACCEPT_CONFIG = [System.IO.Path]::GetFullPath($Config)
-$env:MARKET_APP_ACCEPT_RUNS_DIR = [System.IO.Path]::GetFullPath($RunsDir)
+$env:MARKET_APP_ACCEPT_CONFIG = $ConfigPath
+$env:MARKET_APP_ACCEPT_RUNS_DIR = $RunsDir
 $env:MARKET_APP_ACCEPT_RUN_ID = $RunId
 $env:MARKET_APP_ACCEPT_NOW_UTC = $NowUtc
 
-$checkScript = @'
+$checkScript = @"
 import os
 from pathlib import Path
 
@@ -68,7 +81,7 @@ from market_monitor.data_paths import resolve_data_paths
 from market_monitor.providers.nasdaq_daily import NasdaqDailyProvider, NasdaqDailySource
 from market_monitor.timebase import parse_now_utc
 
-config_path = Path(os.environ["MARKET_APP_ACCEPT_CONFIG"]).resolve()
+config_path = Path(r"$ConfigPath").resolve()
 config = load_config(config_path).config
 base_dir = config_path.parent
 paths = resolve_data_paths(config, base_dir)
@@ -148,7 +161,7 @@ if freshness != expected_freshness:
     raise SystemExit(f"Expected data_freshness_days {expected_freshness}, got {freshness}.")
 
 print("SPY acceptance check passed.")
-'@
+"@
 
 $checkScript | & $VenvPy -
 if ($LASTEXITCODE -ne 0) {
