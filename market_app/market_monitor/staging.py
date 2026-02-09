@@ -120,19 +120,29 @@ def stage_pipeline(
             cache_res = fetch_cached(symbol, staging_cfg["stage1_micro_days"])
             df, adjusted_mode = _apply_adjusted(_filter_as_of(cache_res.df), provider)
             if df.empty:
-                status = "DATA_UNAVAILABLE"
                 stage1_survivors.append(
                     {
                         **run_meta,
                         "symbol": symbol,
                         "name": name,
-                        "data_status": status,
+                        "as_of_date_micro": None,
+                        "history_days_micro": 0,
+                        "stage1_micro_days": staging_cfg["stage1_micro_days"],
+                        "stage2_short_days": staging_cfg["stage2_short_days"],
+                        "stage3_deep_days": staging_cfg["stage3_deep_days"],
+                        "stage2_min_history_days": staging_cfg["history_min_days"],
+                        "stage3_min_history_days": staging_cfg["history_min_days"],
+                        "data_status": "DATA_UNAVAILABLE",
                         "data_reason_codes": "NO_HISTORY",
                     }
                 )
                 continue
             last_price = float(df["Close"].iloc[-1])
             features = compute_features(df)
+            history_days = int(features.get("history_days", 0))
+            last_data_date = None
+            if "Date" in df.columns and not df.empty:
+                last_data_date = pd.to_datetime(df["Date"].iloc[-1], errors="coerce")
             features["last_price"] = last_price
             eligible_by_price, _ = apply_gates(
                 features,
@@ -147,6 +157,15 @@ def stage_pipeline(
                     "symbol": symbol,
                     "name": name,
                     "last_price": last_price,
+                    "as_of_date_micro": last_data_date.strftime("%Y-%m-%d")
+                    if last_data_date is not None
+                    else None,
+                    "history_days_micro": history_days,
+                    "stage1_micro_days": staging_cfg["stage1_micro_days"],
+                    "stage2_short_days": staging_cfg["stage2_short_days"],
+                    "stage3_deep_days": staging_cfg["stage3_deep_days"],
+                    "stage2_min_history_days": staging_cfg["history_min_days"],
+                    "stage3_min_history_days": staging_cfg["history_min_days"],
                 }
             )
         except ProviderLimitError:
@@ -155,6 +174,13 @@ def stage_pipeline(
                     **run_meta,
                     "symbol": symbol,
                     "name": name,
+                    "as_of_date_micro": None,
+                    "history_days_micro": 0,
+                    "stage1_micro_days": staging_cfg["stage1_micro_days"],
+                    "stage2_short_days": staging_cfg["stage2_short_days"],
+                    "stage3_deep_days": staging_cfg["stage3_deep_days"],
+                    "stage2_min_history_days": staging_cfg["history_min_days"],
+                    "stage3_min_history_days": staging_cfg["history_min_days"],
                     "data_status": "DATA_UNAVAILABLE",
                     "data_reason_codes": "LIMIT_EXCEEDED",
                 }
@@ -165,6 +191,13 @@ def stage_pipeline(
                     **run_meta,
                     "symbol": symbol,
                     "name": name,
+                    "as_of_date_micro": None,
+                    "history_days_micro": 0,
+                    "stage1_micro_days": staging_cfg["stage1_micro_days"],
+                    "stage2_short_days": staging_cfg["stage2_short_days"],
+                    "stage3_deep_days": staging_cfg["stage3_deep_days"],
+                    "stage2_min_history_days": staging_cfg["history_min_days"],
+                    "stage3_min_history_days": staging_cfg["history_min_days"],
                     "data_status": "DATA_UNAVAILABLE",
                     "data_reason_codes": str(exc),
                 }
@@ -179,15 +212,19 @@ def stage_pipeline(
             df, adjusted_mode = _apply_adjusted(_filter_as_of(cache_res.df), provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
+            history_days = int(features.get("history_days", 0))
+            last_data_date = None
+            if "Date" in df.columns and not df.empty:
+                last_data_date = pd.to_datetime(df["Date"].iloc[-1], errors="coerce")
             status, reason_codes = _compute_data_status(
-                int(features.get("history_days", 0)), staging_cfg["history_min_days"]
+                history_days, staging_cfg["history_min_days"]
             )
             logger.info(
                 "Stage 2: %s lookback=%s rows=%s history_days=%s min_history=%s status=%s",
                 symbol,
                 staging_cfg["stage2_short_days"],
                 len(df),
-                int(features.get("history_days", 0)),
+                history_days,
                 staging_cfg["history_min_days"],
                 status,
             )
@@ -202,6 +239,10 @@ def stage_pipeline(
                     {
                         **row,
                         "name": name,
+                        "as_of_date_short": last_data_date.strftime("%Y-%m-%d")
+                        if last_data_date is not None
+                        else None,
+                        "history_days_short": history_days,
                     }
                 )
             row.update(
@@ -210,6 +251,10 @@ def stage_pipeline(
                     "data_reason_codes": ";".join(reason_codes),
                     "eligible": eligible,
                     "gate_fail_codes": ";".join(gate_fail),
+                    "as_of_date_short": last_data_date.strftime("%Y-%m-%d")
+                    if last_data_date is not None
+                    else None,
+                    "history_days_short": history_days,
                 }
             )
         except ProviderLimitError:
@@ -240,15 +285,16 @@ def stage_pipeline(
             df, adjusted_mode = _apply_adjusted(_filter_as_of(cache_res.df), provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
+            history_days = int(features.get("history_days", 0))
             status, reason_codes = _compute_data_status(
-                int(features.get("history_days", 0)), staging_cfg["history_min_days"]
+                history_days, staging_cfg["history_min_days"]
             )
             logger.info(
                 "Stage 3: %s lookback=%s rows=%s history_days=%s min_history=%s status=%s",
                 symbol,
                 staging_cfg["stage3_deep_days"],
                 len(df),
-                int(features.get("history_days", 0)),
+                history_days,
                 staging_cfg["history_min_days"],
                 status,
             )
@@ -274,6 +320,23 @@ def stage_pipeline(
                     "data_reason_codes": ";".join(reason_codes),
                     "data_freshness_days": _data_freshness_days(df),
                     "adjusted_mode": adjusted_mode,
+                    "as_of_date_micro": row.get("as_of_date_micro"),
+                    "history_days_micro": row.get("history_days_micro"),
+                    "as_of_date_short": row.get("as_of_date_short"),
+                    "history_days_short": row.get("history_days_short"),
+                    "as_of_date_deep": last_data_date.strftime("%Y-%m-%d")
+                    if last_data_date is not None
+                    else None,
+                    "history_days_deep": history_days,
+                    "stage1_micro_days": row.get("stage1_micro_days", staging_cfg["stage1_micro_days"]),
+                    "stage2_short_days": row.get("stage2_short_days", staging_cfg["stage2_short_days"]),
+                    "stage3_deep_days": row.get("stage3_deep_days", staging_cfg["stage3_deep_days"]),
+                    "stage2_min_history_days": row.get(
+                        "stage2_min_history_days", staging_cfg["history_min_days"]
+                    ),
+                    "stage3_min_history_days": row.get(
+                        "stage3_min_history_days", staging_cfg["history_min_days"]
+                    ),
                     "theme_tags": ";".join(theme_tags),
                     "theme_confidence": theme_confidence,
                     "theme_unknown": theme_unknown,

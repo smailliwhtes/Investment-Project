@@ -67,3 +67,5 @@ def test_stage_pipeline_uses_symbol_max_date_before_now_utc(tmp_path: Path) -> N
     )
 
     assert stage3_df.loc[0, "as_of_date"] == "2026-01-27"
+    assert stage3_df.loc[0, "history_days"] == 600
+    assert stage3_df.loc[0, "as_of_date_deep"] == "2026-01-27"

@@ -321,6 +321,7 @@ def run_pipeline(
             as_of_date=as_of_date,
             now_utc=now_utc,
             staging_cfg=config.get("staging"),
+            gates_cfg=config.get("gates"),
             corpus_dir=corpus_paths.gdelt_conflict_dir,
             raw_events_dir=corpus_paths.gdelt_events_raw_dir,
         )
