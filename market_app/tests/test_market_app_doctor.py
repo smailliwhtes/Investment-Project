@@ -51,3 +51,5 @@ def test_market_app_doctor_passes(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr or result.stdout
     assert "Summary: PASS" in result.stdout
+    assert "[doctor] Data coverage" in result.stdout
+    assert "failed_gates" in result.stdout

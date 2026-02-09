@@ -22,10 +22,25 @@ class LimitedProvider(HistoryProvider):
         self.budget = budget
         self.name = provider.name
         self.capabilities = provider.capabilities
+        self.supports_history_cache = hasattr(provider, "get_history_with_cache")
 
     def get_history(self, symbol: str, days: int):
         self.budget.consume()
         return self.provider.get_history(symbol, days)
+
+    def get_history_with_cache(
+        self,
+        symbol: str,
+        days: int,
+        *,
+        max_cache_age_days: float,
+    ):
+        if not self.supports_history_cache:
+            return self.get_history(symbol, days)
+        self.budget.consume()
+        return self.provider.get_history_with_cache(
+            symbol, days, max_cache_age_days=max_cache_age_days
+        )
 
     def get_quote(self, symbol: str):
         self.budget.consume()

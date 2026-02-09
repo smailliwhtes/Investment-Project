@@ -33,3 +33,11 @@ def test_provider_missing_symbol(tmp_path: Path) -> None:
     provider = _provider(tmp_path)
     with pytest.raises(ProviderError):
         provider.load_symbol_data("MISSING")
+
+
+def test_provider_parses_iso_dates_and_quoted_headers(tmp_path: Path) -> None:
+    provider = _provider(tmp_path)
+    df, _ = provider.load_symbol_data("ISO_QUOTED")
+    dates = pd.to_datetime(df["Date"])
+    assert dates.is_monotonic_increasing
+    assert dates.iloc[-1].strftime("%Y-%m-%d") == "2026-01-27"

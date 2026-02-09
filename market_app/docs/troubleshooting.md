@@ -28,3 +28,17 @@ python -m market_monitor.ohlcv_doctor normalize --raw-dir data/ohlcv_raw --out-d
 **Symptoms:** `volume_missing` risk flag, `avg_dollar_vol` is null, or liquidity gates are skipped.
 
 **Fix:** Provide volume in the OHLCV input, or lower/disable `scoring.average_dollar_volume_floor` in `config.yaml`.
+
+## Searching logs and reports on Windows
+
+Use PowerShell’s built-in `Select-String` to search logs or CSVs without extra tools:
+
+```powershell
+Select-String -Path .\outputs\logs\run_*.jsonl -Pattern "INSUFFICIENT_HISTORY"
+```
+
+If you prefer ripgrep (`rg`), install it with `winget install BurntSushi.ripgrep` and use:
+
+```powershell
+rg "INSUFFICIENT_HISTORY" .\outputs\logs
+```
