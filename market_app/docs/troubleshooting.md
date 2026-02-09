@@ -29,6 +29,27 @@ python -m market_monitor.ohlcv_doctor normalize --raw-dir data/ohlcv_raw --out-d
 
 **Fix:** Provide volume in the OHLCV input, or lower/disable `scoring.average_dollar_volume_floor` in `config.yaml`.
 
+## Persistent environment overrides
+
+**Symptoms:** Tests or offline runs keep resolving to an unexpected OHLCV/output directory even after editing `config.yaml`.
+
+**Cause:** Environment variables like `MARKET_APP_NASDAQ_DAILY_DIR` and `MARKET_APP_OHLCV_DIR` override config paths.
+On Windows, values set with `setx` persist into new shells until you clear them.
+
+**Fix:** Inspect and clear overrides in the current session, then restart the shell if you used `setx`:
+
+```powershell
+Get-ChildItem Env:MARKET_APP_* | Format-Table -AutoSize
+Remove-Item Env:MARKET_APP_NASDAQ_DAILY_DIR -ErrorAction SilentlyContinue
+Remove-Item Env:MARKET_APP_OHLCV_DIR -ErrorAction SilentlyContinue
+```
+
+If you previously ran `setx MARKET_APP_NASDAQ_DAILY_DIR ...`, clear it with:
+
+```powershell
+setx MARKET_APP_NASDAQ_DAILY_DIR ""
+```
+
 ## Searching logs and reports on Windows
 
 Use PowerShell’s built-in `Select-String` to search logs or CSVs without extra tools:

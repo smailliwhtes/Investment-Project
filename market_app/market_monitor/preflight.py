@@ -11,6 +11,7 @@ from market_monitor.corpus.pipeline import (
     discover_corpus_sources,
     validate_corpus_sources,
 )
+from market_monitor.gates import apply_gates
 from market_monitor.providers.base import HistoryProvider, ProviderError
 from market_monitor.timebase import parse_as_of_date, parse_now_utc, utcnow
 
@@ -31,6 +32,18 @@ class PreflightSymbolReport:
     stage1_micro_days: int | None
     stage2_short_days: int | None
     stage3_deep_days: int | None
+    stage1_min_history_days: int | None
+    stage2_min_history_days: int | None
+    stage3_min_history_days: int | None
+    stage1_as_of_date: str | None
+    stage2_as_of_date: str | None
+    stage3_as_of_date: str | None
+    stage1_history_days: int | None
+    stage2_history_days: int | None
+    stage3_history_days: int | None
+    stage1_gate_fail_codes: str | None
+    stage2_gate_fail_codes: str | None
+    stage3_gate_fail_codes: str | None
 
 
 @dataclass(frozen=True)
@@ -55,6 +68,7 @@ def run_preflight(
     as_of_date: str | None = None,
     now_utc: str | None = None,
     staging_cfg: dict[str, Any] | None = None,
+    gates_cfg: dict[str, Any] | None = None,
     corpus_dir: Path | None = None,
     raw_events_dir: Path | None = None,
 ) -> PreflightReport:
@@ -63,6 +77,9 @@ def run_preflight(
     stage1_days = staging_cfg.get("stage1_micro_days") if staging_cfg else None
     stage2_days = staging_cfg.get("stage2_short_days") if staging_cfg else None
     stage3_days = staging_cfg.get("stage3_deep_days") if staging_cfg else None
+    stage_min_history = staging_cfg.get("history_min_days") if staging_cfg else None
+    price_min = gates_cfg.get("price_min") if gates_cfg else None
+    price_max = gates_cfg.get("price_max") if gates_cfg else None
     for _, row in universe_df.iterrows():
         symbol = row["symbol"]
         try:
@@ -84,12 +101,48 @@ def run_preflight(
                     stage1_micro_days=stage1_days,
                     stage2_short_days=stage2_days,
                     stage3_deep_days=stage3_days,
+                    stage1_min_history_days=None,
+                    stage2_min_history_days=stage_min_history,
+                    stage3_min_history_days=stage_min_history,
+                    stage1_as_of_date=None,
+                    stage2_as_of_date=None,
+                    stage3_as_of_date=None,
+                    stage1_history_days=0,
+                    stage2_history_days=0,
+                    stage3_history_days=0,
+                    stage1_gate_fail_codes="NO_HISTORY",
+                    stage2_gate_fail_codes="NO_HISTORY",
+                    stage3_gate_fail_codes="NO_HISTORY",
                 )
             )
             logger.warning(f"[preflight] {symbol}: {exc}")
             continue
 
         stats = _compute_symbol_stats(df, anchor_date=anchor_date)
+        stage1 = _stage_snapshot(
+            df,
+            stage1_days,
+            anchor_date=anchor_date,
+            min_history=None,
+            price_min=price_min,
+            price_max=price_max,
+        )
+        stage2 = _stage_snapshot(
+            df,
+            stage2_days,
+            anchor_date=anchor_date,
+            min_history=stage_min_history,
+            price_min=price_min,
+            price_max=price_max,
+        )
+        stage3 = _stage_snapshot(
+            df,
+            stage3_days,
+            anchor_date=anchor_date,
+            min_history=stage_min_history,
+            price_min=price_min,
+            price_max=price_max,
+        )
         logger.info(
             "[preflight] %s path=%s rows=%s min_date=%s max_date=%s chosen_as_of_date=%s lookback=(%s/%s/%s)",
             symbol,
@@ -118,6 +171,18 @@ def run_preflight(
                 stage1_micro_days=stage1_days,
                 stage2_short_days=stage2_days,
                 stage3_deep_days=stage3_days,
+                stage1_min_history_days=None,
+                stage2_min_history_days=stage_min_history,
+                stage3_min_history_days=stage_min_history,
+                stage1_as_of_date=stage1["as_of_date"],
+                stage2_as_of_date=stage2["as_of_date"],
+                stage3_as_of_date=stage3["as_of_date"],
+                stage1_history_days=stage1["history_days"],
+                stage2_history_days=stage2["history_days"],
+                stage3_history_days=stage3["history_days"],
+                stage1_gate_fail_codes=stage1["gate_fail_codes"],
+                stage2_gate_fail_codes=stage2["gate_fail_codes"],
+                stage3_gate_fail_codes=stage3["gate_fail_codes"],
             )
         )
 
@@ -175,6 +240,43 @@ def _compute_symbol_stats(df: pd.DataFrame, *, anchor_date=None) -> dict[str, An
         "volume_available": bool(volume_available),
         "adjusted_close_available": bool(adjusted_close_available),
         "chosen_as_of_date": chosen_as_of_date,
+    }
+
+
+def _stage_snapshot(
+    df: pd.DataFrame,
+    days: int | None,
+    *,
+    anchor_date,
+    min_history: int | None,
+    price_min: float | None,
+    price_max: float | None,
+) -> dict[str, Any]:
+    frame = df.copy()
+    if "Date" in frame.columns:
+        frame["Date"] = pd.to_datetime(frame["Date"], errors="coerce")
+        frame = frame.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
+    if anchor_date is not None and "Date" in frame.columns:
+        frame = frame[frame["Date"] <= pd.to_datetime(anchor_date)].reset_index(drop=True)
+    if days is not None and days > 0:
+        frame = frame.tail(days).reset_index(drop=True)
+    history_days = int(len(frame))
+    as_of_date = None
+    if not frame.empty and "Date" in frame.columns:
+        as_of_date = pd.to_datetime(frame["Date"].iloc[-1], errors="coerce").strftime("%Y-%m-%d")
+    gate_fail = []
+    if history_days <= 0:
+        gate_fail.append("NO_HISTORY")
+    if min_history is not None and history_days < min_history:
+        gate_fail.append(f"HISTORY<{min_history}")
+    if not frame.empty and "Close" in frame.columns:
+        last_price = float(frame["Close"].iloc[-1])
+        _, price_fail = apply_gates({"last_price": last_price}, price_min, price_max)
+        gate_fail.extend(price_fail)
+    return {
+        "as_of_date": as_of_date,
+        "history_days": history_days,
+        "gate_fail_codes": ";".join(code for code in gate_fail if code),
     }
 
 
@@ -253,6 +355,41 @@ def _write_preflight_reports(
     csv_path = outputs_dir / "preflight_report.csv"
     md_path = outputs_dir / "preflight_report.md"
 
+    columns = [
+        "section",
+        "name",
+        "status",
+        "file_path",
+        "csv_path",
+        "row_count",
+        "rows",
+        "min_date",
+        "max_date",
+        "start_date",
+        "end_date",
+        "chosen_as_of_date",
+        "stage1_micro_days",
+        "stage2_short_days",
+        "stage3_deep_days",
+        "stage1_min_history_days",
+        "stage2_min_history_days",
+        "stage3_min_history_days",
+        "stage1_as_of_date",
+        "stage2_as_of_date",
+        "stage3_as_of_date",
+        "stage1_history_days",
+        "stage2_history_days",
+        "stage3_history_days",
+        "stage1_gate_fail_codes",
+        "stage2_gate_fail_codes",
+        "stage3_gate_fail_codes",
+        "missing_ohlcv_pct",
+        "zero_volume_pct",
+        "volume_available",
+        "adjusted_close_available",
+        "detail",
+    ]
+
     rows = []
     for symbol in report.symbols:
         rows.append(
@@ -272,6 +409,18 @@ def _write_preflight_reports(
                 "stage1_micro_days": symbol.stage1_micro_days,
                 "stage2_short_days": symbol.stage2_short_days,
                 "stage3_deep_days": symbol.stage3_deep_days,
+                "stage1_min_history_days": symbol.stage1_min_history_days,
+                "stage2_min_history_days": symbol.stage2_min_history_days,
+                "stage3_min_history_days": symbol.stage3_min_history_days,
+                "stage1_as_of_date": symbol.stage1_as_of_date,
+                "stage2_as_of_date": symbol.stage2_as_of_date,
+                "stage3_as_of_date": symbol.stage3_as_of_date,
+                "stage1_history_days": symbol.stage1_history_days,
+                "stage2_history_days": symbol.stage2_history_days,
+                "stage3_history_days": symbol.stage3_history_days,
+                "stage1_gate_fail_codes": symbol.stage1_gate_fail_codes,
+                "stage2_gate_fail_codes": symbol.stage2_gate_fail_codes,
+                "stage3_gate_fail_codes": symbol.stage3_gate_fail_codes,
                 "missing_ohlcv_pct": symbol.missing_ohlcv_pct,
                 "zero_volume_pct": symbol.zero_volume_pct,
                 "volume_available": symbol.volume_available,
@@ -297,6 +446,18 @@ def _write_preflight_reports(
                 "stage1_micro_days": None,
                 "stage2_short_days": None,
                 "stage3_deep_days": None,
+                "stage1_min_history_days": None,
+                "stage2_min_history_days": None,
+                "stage3_min_history_days": None,
+                "stage1_as_of_date": None,
+                "stage2_as_of_date": None,
+                "stage3_as_of_date": None,
+                "stage1_history_days": None,
+                "stage2_history_days": None,
+                "stage3_history_days": None,
+                "stage1_gate_fail_codes": None,
+                "stage2_gate_fail_codes": None,
+                "stage3_gate_fail_codes": None,
                 "missing_ohlcv_pct": None,
                 "zero_volume_pct": None,
                 "volume_available": None,
@@ -322,6 +483,18 @@ def _write_preflight_reports(
                 "stage1_micro_days": None,
                 "stage2_short_days": None,
                 "stage3_deep_days": None,
+                "stage1_min_history_days": None,
+                "stage2_min_history_days": None,
+                "stage3_min_history_days": None,
+                "stage1_as_of_date": None,
+                "stage2_as_of_date": None,
+                "stage3_as_of_date": None,
+                "stage1_history_days": None,
+                "stage2_history_days": None,
+                "stage3_history_days": None,
+                "stage1_gate_fail_codes": None,
+                "stage2_gate_fail_codes": None,
+                "stage3_gate_fail_codes": None,
                 "missing_ohlcv_pct": None,
                 "zero_volume_pct": None,
                 "volume_available": None,
@@ -330,7 +503,7 @@ def _write_preflight_reports(
             }
         )
 
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows, columns=columns)
     df.to_csv(csv_path, index=False)
 
     total = len(report.symbols)

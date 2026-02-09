@@ -21,3 +21,26 @@ def block_network(monkeypatch: pytest.MonkeyPatch) -> None:
         raise RuntimeError("Network access is blocked during tests.")
 
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
+
+
+@pytest.fixture(autouse=True)
+def clear_market_app_env_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
+    override_vars = [
+        "MARKET_APP_DATA_ROOT",
+        "MARKET_APP_OHLCV_DIR",
+        "MARKET_APP_NASDAQ_DAILY_DIR",
+        "NASDAQ_DAILY_DIR",
+        "MARKET_APP_SILVER_PRICES_DIR",
+        "SILVER_PRICES_DIR",
+        "SILVER_PRICES_CSV",
+        "MARKET_APP_CORPUS_ROOT",
+        "MARKET_APP_GDELT_DIR",
+        "MARKET_APP_GDELT_CONFLICT_DIR",
+        "MARKET_APP_GDELT_RAW_DIR",
+        "MARKET_APP_GDELT_EVENTS_RAW_DIR",
+        "MARKET_APP_OUTPUTS_DIR",
+        "OUTPUTS_DIR",
+        "OFFLINE_MODE",
+    ]
+    for key in override_vars:
+        monkeypatch.delenv(key, raising=False)

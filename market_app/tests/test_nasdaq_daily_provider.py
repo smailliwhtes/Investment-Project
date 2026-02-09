@@ -41,3 +41,60 @@ def test_provider_parses_iso_dates_and_quoted_headers(tmp_path: Path) -> None:
     dates = pd.to_datetime(df["Date"])
     assert dates.is_monotonic_increasing
     assert dates.iloc[-1].strftime("%Y-%m-%d") == "2026-01-27"
+
+
+def test_cache_invalidation_on_file_change(tmp_path: Path) -> None:
+    source_dir = tmp_path / "source"
+    cache_dir = tmp_path / "cache"
+    source_dir.mkdir()
+    cache_dir.mkdir()
+
+    try:
+        pd.DataFrame({"a": [1]}).to_parquet(tmp_path / "probe.parquet")
+    except ImportError:
+        pytest.skip("Parquet engine not available for cache tests.")
+
+    spy_path = source_dir / "SPY.csv"
+    df = pd.DataFrame(
+        {
+            "Date": ["2026-01-24", "2026-01-25"],
+            "Open": [100, 101],
+            "High": [101, 102],
+            "Low": [99, 100],
+            "Close": [100, 101],
+            "Volume": [1000, 1100],
+        }
+    )
+    df.to_csv(spy_path, index=False)
+
+    provider = NasdaqDailyProvider(NasdaqDailySource(directory=source_dir, cache_dir=cache_dir))
+    first = provider.get_history_with_cache("SPY", 0, max_cache_age_days=999)
+    assert first.used_cache is False
+    assert len(first.df) == 2
+
+    second = provider.get_history_with_cache("SPY", 0, max_cache_age_days=999)
+    assert second.used_cache is True
+    assert second.cache_path == first.cache_path
+
+    df_updated = pd.concat(
+        [
+            df,
+            pd.DataFrame(
+                {
+                    "Date": ["2026-01-27"],
+                    "Open": [102],
+                    "High": [103],
+                    "Low": [101],
+                    "Close": [102],
+                    "Volume": [1200],
+                }
+            ),
+        ],
+        ignore_index=True,
+    )
+    df_updated.to_csv(spy_path, index=False)
+
+    third = provider.get_history_with_cache("SPY", 0, max_cache_age_days=999)
+    assert third.used_cache is False
+    assert len(third.df) == 3
+    assert third.cache_path != first.cache_path
