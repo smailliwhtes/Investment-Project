@@ -254,6 +254,80 @@ def _load_env_overrides() -> dict[str, Any]:
     return overrides
 
 
+def _is_blank(value: Any) -> bool:
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
+def _has_config_value(config_data: dict[str, Any], keys: list[str]) -> bool:
+    node: Any = config_data
+    for key in keys:
+        if not isinstance(node, dict) or key not in node:
+            return False
+        node = node[key]
+    return not _is_blank(node)
+
+
+def _apply_env_overrides(
+    config: dict[str, Any],
+    env_overrides: dict[str, Any],
+    config_data: dict[str, Any],
+) -> dict[str, Any]:
+    data_paths = config.setdefault("data", {}).setdefault("paths", {})
+    data_roots = config.setdefault("data_roots", {})
+    corpus_cfg = config.setdefault("corpus", {})
+    paths_cfg = config.setdefault("paths", {})
+
+    env_data_paths = env_overrides.get("data", {}).get("paths", {})
+    env_data_roots = env_overrides.get("data_roots", {})
+    env_corpus = env_overrides.get("corpus", {})
+    env_paths = env_overrides.get("paths", {})
+
+    if env_data_paths.get("market_app_data_root") and not _has_config_value(
+        config_data, ["data", "paths", "market_app_data_root"]
+    ):
+        data_paths["market_app_data_root"] = env_data_paths["market_app_data_root"]
+
+    if env_data_paths.get("nasdaq_daily_dir") and not (
+        _has_config_value(config_data, ["data", "paths", "nasdaq_daily_dir"])
+        or _has_config_value(config_data, ["data_roots", "ohlcv_dir"])
+    ):
+        data_paths["nasdaq_daily_dir"] = env_data_paths["nasdaq_daily_dir"]
+        data_roots["ohlcv_dir"] = env_data_paths["nasdaq_daily_dir"]
+
+    if env_data_paths.get("silver_prices_dir") and not _has_config_value(
+        config_data, ["data", "paths", "silver_prices_dir"]
+    ):
+        data_paths["silver_prices_dir"] = env_data_paths["silver_prices_dir"]
+
+    if env_corpus.get("root_dir") and not _has_config_value(config_data, ["corpus", "root_dir"]):
+        corpus_cfg["root_dir"] = env_corpus["root_dir"]
+    if env_corpus.get("gdelt_conflict_dir") and not _has_config_value(
+        config_data, ["corpus", "gdelt_conflict_dir"]
+    ):
+        corpus_cfg["gdelt_conflict_dir"] = env_corpus["gdelt_conflict_dir"]
+        if not _has_config_value(config_data, ["data_roots", "gdelt_dir"]):
+            data_roots["gdelt_dir"] = env_corpus["gdelt_conflict_dir"]
+    if env_corpus.get("gdelt_events_raw_dir") and not _has_config_value(
+        config_data, ["corpus", "gdelt_events_raw_dir"]
+    ):
+        corpus_cfg["gdelt_events_raw_dir"] = env_corpus["gdelt_events_raw_dir"]
+        if not _has_config_value(config_data, ["data_roots", "gdelt_raw_dir"]):
+            data_roots["gdelt_raw_dir"] = env_corpus["gdelt_events_raw_dir"]
+
+    if env_paths.get("outputs_dir") and not (
+        _has_config_value(config_data, ["paths", "outputs_dir"])
+        or _has_config_value(config_data, ["data_roots", "outputs_dir"])
+    ):
+        paths_cfg["outputs_dir"] = env_paths["outputs_dir"]
+        if not _has_config_value(config_data, ["data_roots", "outputs_dir"]):
+            data_roots["outputs_dir"] = env_paths["outputs_dir"]
+
+    if "offline_mode" in env_overrides.get("data", {}):
+        config.setdefault("data", {})["offline_mode"] = env_overrides["data"]["offline_mode"]
+
+    return config
+
+
 def _apply_data_roots(config: dict[str, Any]) -> None:
     data_roots = config.setdefault("data_roots", {})
     data_cfg = config.setdefault("data", {})
@@ -317,7 +391,7 @@ def load_config(path: Path, overrides: dict[str, Any] | None = None) -> ConfigRe
     config = _deep_merge(DEFAULT_CONFIG, config_data)
     env_overrides = _load_env_overrides()
     if env_overrides:
-        config = _deep_merge(config, env_overrides)
+        config = _apply_env_overrides(config, env_overrides, config_data)
     if overrides:
         config = _deep_merge(config, overrides)
 

@@ -371,6 +371,12 @@ def _prepare_features(scored: pd.DataFrame) -> pd.DataFrame:
             "zero_volume_frac": "zero_volume_fraction",
         }
     )
+    for column in ("missing_day_rate", "stale_price_flag", "corp_action_suspect"):
+        if column not in df.columns:
+            df[column] = 0.0
+    for column in ("symbol", "name"):
+        if column not in df.columns:
+            df[column] = pd.Series(dtype=object)
     df["missing_data"] = df["missing_day_rate"] > 0.2
     df["stale_data"] = df["stale_price_flag"] > 0
     df["split_suspect"] = df["corp_action_suspect"] > 0

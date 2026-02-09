@@ -101,6 +101,7 @@ def build_run_manifest(
     scored: pd.DataFrame,
     preflight: PreflightReport | None,
     git_commit: str | None,
+    effective_config: dict[str, Any] | None = None,
     corpus_manifest: dict[str, Any] | None = None,
 ) -> RunManifest:
     watchlist_file_hash = None
@@ -165,7 +166,7 @@ def build_run_manifest(
         "as_of_date": as_of_date,
         "config_hash": config_hash,
         "config": _redact_config(config),
-        "effective_config": _redact_config(config),
+        "effective_config": _redact_config(effective_config or config),
         "ohlcv_dir": ohlcv_dir,
         "watchlist_file": str(watchlist_path) if watchlist_path else None,
         "watchlist_file_hash": watchlist_file_hash,

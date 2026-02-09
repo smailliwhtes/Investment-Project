@@ -22,7 +22,7 @@ class FixtureProvider(HistoryProvider):
         self.df = df
 
     def get_history(self, symbol: str, days: int) -> pd.DataFrame:
-        return self.df.tail(days).copy()
+        return self.df.tail(days).copy() if days > 0 else self.df.copy()
 
 
 def test_smoke_pipeline(tmp_path: Path):

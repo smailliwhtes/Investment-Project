@@ -63,21 +63,14 @@ def stage_pipeline(
     elif now_utc:
         anchor_date = parse_now_utc(now_utc).date()
 
-    def fetch_cached(symbol: str, days: int):
+    def fetch_cached(symbol: str):
         nonlocal cache_hits, cache_misses
         if getattr(provider, "supports_history_cache", False):
             cache_res = provider.get_history_with_cache(
-                symbol, days, max_cache_age_days=max_cache_age_days
+                symbol, 0, max_cache_age_days=max_cache_age_days
             )
             cache_hits += int(cache_res.used_cache)
             cache_misses += int(not cache_res.used_cache)
-            if days > 0:
-                cache_res = cache_res.__class__(
-                    df=cache_res.df.tail(days).copy(),
-                    data_freshness_days=cache_res.data_freshness_days,
-                    cache_path=cache_res.cache_path,
-                    used_cache=cache_res.used_cache,
-                )
             return cache_res
 
         cache_res = get_or_fetch(
@@ -86,7 +79,7 @@ def stage_pipeline(
             symbol=symbol,
             adjusted_mode="UNADJUSTED",
             max_cache_age_days=max_cache_age_days,
-            fetch_fn=lambda: _history_fetch(provider, symbol, days),
+            fetch_fn=lambda: _history_fetch(provider, symbol, 0),
             delta_days=10,
         )
         cache_hits += int(cache_res.used_cache)
@@ -101,6 +94,12 @@ def stage_pipeline(
         filtered = filtered.dropna(subset=["Date"])
         filtered = filtered[filtered["Date"] <= pd.to_datetime(anchor_date)]
         return filtered.sort_values("Date").reset_index(drop=True)
+
+    def _apply_stage_lookback(df: pd.DataFrame, lookback_days: int) -> pd.DataFrame:
+        frame = _filter_as_of(df)
+        if lookback_days > 0:
+            frame = frame.tail(lookback_days).reset_index(drop=True)
+        return frame
 
     def _data_freshness_days(df: pd.DataFrame) -> int:
         if df.empty or "Date" not in df.columns:
@@ -117,8 +116,9 @@ def stage_pipeline(
         symbol = row["symbol"]
         name = row.get("name") or symbol
         try:
-            cache_res = fetch_cached(symbol, staging_cfg["stage1_micro_days"])
-            df, adjusted_mode = _apply_adjusted(_filter_as_of(cache_res.df), provider)
+            cache_res = fetch_cached(symbol)
+            df_stage = _apply_stage_lookback(cache_res.df, staging_cfg["stage1_micro_days"])
+            df, adjusted_mode = _apply_adjusted(df_stage, provider)
             if df.empty:
                 stage1_survivors.append(
                     {
@@ -208,8 +208,9 @@ def stage_pipeline(
         symbol = row["symbol"]
         name = row.get("name") or symbol
         try:
-            cache_res = fetch_cached(symbol, staging_cfg["stage2_short_days"])
-            df, adjusted_mode = _apply_adjusted(_filter_as_of(cache_res.df), provider)
+            cache_res = fetch_cached(symbol)
+            df_stage = _apply_stage_lookback(cache_res.df, staging_cfg["stage2_short_days"])
+            df, adjusted_mode = _apply_adjusted(df_stage, provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
             history_days = int(features.get("history_days", 0))
@@ -281,8 +282,9 @@ def stage_pipeline(
         symbol = row["symbol"]
         name = row.get("name") or symbol
         try:
-            cache_res = fetch_cached(symbol, staging_cfg["stage3_deep_days"])
-            df, adjusted_mode = _apply_adjusted(_filter_as_of(cache_res.df), provider)
+            cache_res = fetch_cached(symbol)
+            df_stage = _apply_stage_lookback(cache_res.df, staging_cfg["stage3_deep_days"])
+            df, adjusted_mode = _apply_adjusted(df_stage, provider)
             features = compute_features(df)
             features["last_price"] = float(df["Close"].iloc[-1]) if not df.empty else math.nan
             history_days = int(features.get("history_days", 0))

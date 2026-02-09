@@ -44,6 +44,8 @@ Remove-Item Env:MARKET_APP_NASDAQ_DAILY_DIR -ErrorAction SilentlyContinue
 Remove-Item Env:MARKET_APP_OHLCV_DIR -ErrorAction SilentlyContinue
 ```
 
+**Tests are insulated:** The test suite now clears `MARKET_APP_*` overrides automatically. If you need to reproduce a path override issue in a single test run, set the env var in that test (or temporarily set it in your shell) and re-run the target test.
+
 If you previously ran `setx MARKET_APP_NASDAQ_DAILY_DIR ...`, clear it with:
 
 ```powershell
