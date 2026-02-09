@@ -106,8 +106,40 @@ if row.empty:
 as_of = str(row["as_of_date"].iloc[0])
 history_days = int(row["history_days"].iloc[0])
 freshness = int(row["data_freshness_days"].iloc[0])
+status = str(row["data_status"].iloc[0]) if "data_status" in row else "UNKNOWN"
 
-print(row[["symbol", "as_of_date", "history_days", "data_freshness_days", "as_of_date_deep", "history_days_deep"]].to_string(index=False))
+preflight_path = run_dir / "preflight_report.csv"
+if preflight_path.exists():
+    preflight = pd.read_csv(preflight_path)
+    spy_preflight = preflight[(preflight["section"] == "symbol") & (preflight["name"] == "SPY")]
+    if not spy_preflight.empty:
+        diag = spy_preflight[
+            [
+                "name",
+                "file_path",
+                "min_date",
+                "max_date",
+                "freshness_days",
+                "stage3_as_of_date",
+                "stage3_history_days",
+                "stage3_status",
+            ]
+        ].rename(columns={"name": "symbol"})
+        print("\nPreflight snapshot:")
+        print(diag.to_string(index=False))
+
+print(
+    row[
+        [
+            "symbol",
+            "as_of_date",
+            "history_days",
+            "data_freshness_days",
+            "as_of_date_deep",
+            "history_days_deep",
+        ]
+    ].assign(status=status).to_string(index=False)
+)
 if as_of != expected_asof:
     raise SystemExit(f"Expected as_of_date {expected_asof}, got {as_of}.")
 if history_days != expected_history:

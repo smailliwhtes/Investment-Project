@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from market_monitor.hash_utils import hash_file, hash_text
+from market_monitor.providers.base import ProviderError
 
 
 REQUIRED_FEATURES = [
@@ -127,7 +128,10 @@ def compute_forward_outcome_summary(
     for horizon in horizons:
         samples = []
         for symbol in symbols:
-            history = provider.get_history(symbol, 0)
+            try:
+                history = provider.get_history(symbol, 0)
+            except ProviderError:
+                continue
             if history.empty:
                 continue
             history = history.copy()

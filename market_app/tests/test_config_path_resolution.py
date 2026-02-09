@@ -40,6 +40,31 @@ def test_data_roots_env_override(monkeypatch, tmp_path: Path) -> None:
     assert config["paths"]["outputs_dir"] == str(outputs_dir)
 
 
+def test_config_paths_ignore_env_override_when_config_sets_ohlcv(monkeypatch, tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    config_path = repo_root / "tests" / "fixtures" / "minimal_config.yaml"
+    config = load_config(config_path).config
+    base_dir = config_path.parent
+
+    monkeypatch.setenv("MARKET_APP_NASDAQ_DAILY_DIR", str(tmp_path / "external_ohlcv"))
+
+    resolved = resolve_data_paths(config, base_dir).nasdaq_daily_dir
+    assert resolved == (base_dir / "ohlcv").resolve()
+
+
+def test_env_override_applies_when_config_omits_ohlcv(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("{}", encoding="utf-8")
+    env_ohlcv = tmp_path / "env_ohlcv"
+    monkeypatch.setenv("MARKET_APP_NASDAQ_DAILY_DIR", str(env_ohlcv))
+
+    config = load_config(config_path).config
+    base_dir = config_path.parent
+    resolved = resolve_data_paths(config, base_dir).nasdaq_daily_dir
+
+    assert resolved == env_ohlcv.resolve()
+
+
 def test_check_watchlist_requires_ohlcv_dir(tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text("{}", encoding="utf-8")

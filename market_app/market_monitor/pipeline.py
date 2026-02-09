@@ -15,6 +15,7 @@ from market_monitor.logging_utils import JsonlLogger, get_console_logger
 from market_monitor.macro import load_silver_series
 from market_monitor.manifest import build_run_manifest, resolve_git_commit, run_id_from_inputs
 from market_monitor.offline import set_offline_mode
+from market_monitor.paths import resolve_path
 from market_monitor.preflight import run_preflight
 from market_monitor.provider_factory import build_provider
 from market_monitor.report import write_report
@@ -303,6 +304,26 @@ def run_pipeline(
     }
 
     paths = resolve_data_paths(config, base_dir)
+    effective_config = json.loads(json.dumps(config))
+    if paths.nasdaq_daily_dir:
+        effective_config.setdefault("data", {}).setdefault("paths", {})[
+            "nasdaq_daily_dir"
+        ] = str(paths.nasdaq_daily_dir)
+        effective_config.setdefault("data_roots", {})["ohlcv_dir"] = str(paths.nasdaq_daily_dir)
+    if paths.silver_prices_dir:
+        effective_config.setdefault("data", {}).setdefault("paths", {})[
+            "silver_prices_dir"
+        ] = str(paths.silver_prices_dir)
+    effective_config.setdefault("paths", {})["watchlist_file"] = (
+        str(resolve_path(base_dir, watchlist_path)) if watchlist_path else None
+    )
+    effective_config.setdefault("paths", {})["cache_dir"] = str(
+        resolve_path(base_dir, config["paths"]["cache_dir"])
+    )
+    effective_config.setdefault("paths", {})["logs_dir"] = str(
+        resolve_path(base_dir, config["paths"]["logs_dir"])
+    )
+    effective_config.setdefault("paths", {})["outputs_dir"] = str(output_dir)
     silver_macro = None
     if paths.silver_prices_dir:
         macro = load_silver_series(paths.silver_prices_dir)
@@ -443,6 +464,7 @@ def run_pipeline(
             scored=scored,
             preflight=preflight,
             git_commit=resolve_git_commit(base_dir),
+            effective_config=effective_config,
             corpus_manifest=corpus_run.manifest if corpus_run else None,
         )
         manifest_path = output_dir / "run_manifest.json"

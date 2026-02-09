@@ -404,6 +404,8 @@ def _frame_diff_examples(
 
     diff_rows = int(diff_mask.sum())
     max_abs_delta = _max_abs_delta(df_a, df_b, diff_keys)
+    if diff_rows == 0:
+        return diff_rows, max_abs_delta, [], None
     example_keys = df_a.loc[diff_mask, key_cols].head(5).astype(str).agg("|".join, axis=1).tolist()
 
     examples = []

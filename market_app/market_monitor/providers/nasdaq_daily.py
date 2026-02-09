@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -10,6 +11,8 @@ from market_monitor.cache import CacheResult
 from market_monitor.hash_utils import hash_file
 from market_monitor.providers.base import HistoryProvider, ProviderCapabilities, ProviderError
 from market_monitor.timebase import utcnow
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -35,7 +38,15 @@ class NasdaqDailyProvider(HistoryProvider):
         source_file = self._find_symbol_file(symbol)
         if source_file is None:
             raise ProviderError(f"NASDAQ_DAILY_MISSING:{symbol}")
-        cache_path = self._cache_path(symbol, source_file)
+        digest = hash_file(source_file)
+        cache_path = self._cache_path(symbol, source_file, digest=digest)
+        logger.debug(
+            "nasdaq_daily resolve symbol=%s path=%s digest=%s cache=%s",
+            symbol,
+            source_file,
+            digest[:12],
+            cache_path,
+        )
         if cache_path.exists():
             df = pd.read_parquet(cache_path)
             data_freshness_days = self._freshness_days(cache_path)
@@ -52,7 +63,15 @@ class NasdaqDailyProvider(HistoryProvider):
         source_file = self._find_symbol_file(symbol)
         if source_file is None:
             raise ProviderError(f"NASDAQ_DAILY_MISSING:{symbol}")
-        cache_path = self._cache_path(symbol, source_file)
+        digest = hash_file(source_file)
+        cache_path = self._cache_path(symbol, source_file, digest=digest)
+        logger.debug(
+            "nasdaq_daily resolve symbol=%s path=%s digest=%s cache=%s",
+            symbol,
+            source_file,
+            digest[:12],
+            cache_path,
+        )
         if cache_path.exists():
             df = pd.read_parquet(cache_path)
         else:
@@ -63,10 +82,16 @@ class NasdaqDailyProvider(HistoryProvider):
             return df.tail(days).copy()
         return df.copy()
 
-    def _cache_path(self, symbol: str, source_file: Path | None = None) -> Path:
+    def _cache_path(
+        self,
+        symbol: str,
+        source_file: Path | None = None,
+        *,
+        digest: str | None = None,
+    ) -> Path:
         safe_symbol = symbol.replace("/", "-").replace("\\", "-")
         if source_file and source_file.exists():
-            digest = hash_file(source_file)[:12]
+            digest = (digest or hash_file(source_file))[:12]
             return self.source.cache_dir / "nasdaq_daily" / f"{safe_symbol}_{digest}.parquet"
         return self.source.cache_dir / "nasdaq_daily" / f"{safe_symbol}.parquet"
 
@@ -102,7 +127,23 @@ class NasdaqDailyProvider(HistoryProvider):
 
     def _load_symbol_from_path(self, symbol: str, source_file: Path) -> pd.DataFrame:
         df = pd.read_csv(source_file)
-        return self._normalize_ohlc(df, symbol)
+        normalized = self._normalize_ohlc(df, symbol)
+        min_date = None
+        max_date = None
+        if not normalized.empty and "Date" in normalized.columns:
+            dates = pd.to_datetime(normalized["Date"], errors="coerce").dropna()
+            if not dates.empty:
+                min_date = dates.min().strftime("%Y-%m-%d")
+                max_date = dates.max().strftime("%Y-%m-%d")
+        logger.debug(
+            "nasdaq_daily loaded symbol=%s path=%s rows=%s min_date=%s max_date=%s",
+            symbol,
+            source_file,
+            len(normalized),
+            min_date,
+            max_date,
+        )
+        return normalized
 
     def _find_symbol_file(self, symbol: str) -> Path | None:
         candidates = []

@@ -64,6 +64,7 @@ class FallbackProvider(HistoryProvider):
         self.logger = logger
         self.name = primary.name
         self.capabilities = primary.capabilities
+        self.supports_history_cache = hasattr(primary, "get_history_with_cache")
 
     def get_history(self, symbol: str, days: int):
         try:
@@ -76,6 +77,19 @@ class FallbackProvider(HistoryProvider):
             except ProviderError:
                 continue
         raise ProviderError("All history providers failed")
+
+    def get_history_with_cache(
+        self,
+        symbol: str,
+        days: int,
+        *,
+        max_cache_age_days: float,
+    ):
+        if hasattr(self.primary, "get_history_with_cache"):
+            return self.primary.get_history_with_cache(
+                symbol, days, max_cache_age_days=max_cache_age_days
+            )
+        return self.get_history(symbol, days)
 
     def get_quote(self, symbol: str):
         return self.primary.get_quote(symbol)
