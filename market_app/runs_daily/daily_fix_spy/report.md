@@ -11,39 +11,41 @@ No macro indicators available.
 
 ## Risk Flag Distribution
 
-No flags recorded.
+| Flag | Count |
+| --- | --- |
+| LargeDrawdown | 1 |
 
 ## Top Monitor Priority
 
 | Symbol | Theme | Score | Flags |
 | --- | --- | --- | --- |
-| SLV | Unclassified | 0.0592 |  |
-| COPX | Unclassified | 0.0554 |  |
-| SIL | Unclassified | 0.0544 |  |
-| GDX | Unclassified | 0.0530 |  |
-| GDXJ | Unclassified | 0.0521 |  |
-| PHYS | Unclassified | 0.0519 |  |
-| GLD | Unclassified | 0.0515 |  |
-| REMX | Unclassified | 0.0514 |  |
-| URA | Unclassified | 0.0511 |  |
-| LIT | Unclassified | 0.0501 |  |
-| XME | Unclassified | 0.0484 |  |
-| ITA | Unclassified | 0.0478 |  |
-| XAR | Unclassified | 0.0464 |  |
-| PSLV | Unclassified | 0.0341 |  |
-| SPY | Unclassified | 0.0333 |  |
-| SHY | Unclassified | 0.0243 |  |
-| UUP | Unclassified | 0.0150 |  |
-| TLT | Unclassified | 0.0113 |  |
-| IEF | Unclassified | 0.0071 |  |
-| TIP | Unclassified | 0.0041 |  |
+| SLV | Unclassified | 2.4710 |  |
+| SPY | Unclassified | 2.2481 |  |
+| GDX | Unclassified | 2.2335 |  |
+| GLD | Unclassified | 2.2043 |  |
+| PSLV | Unclassified | 2.1961 |  |
+| GDXJ | Unclassified | 2.1628 |  |
+| SIL | Unclassified | 2.1261 |  |
+| COPX | Unclassified | 2.0176 |  |
+| XME | Unclassified | 1.9810 |  |
+| URA | Unclassified | 1.9594 | LargeDrawdown |
+| TLT | Unclassified | 1.9481 |  |
+| REMX | Unclassified | 1.9314 |  |
+| PHYS | Unclassified | 1.9068 |  |
+| ITA | Unclassified | 1.8417 |  |
+| IEF | Unclassified | 1.8241 |  |
+| XAR | Unclassified | 1.7823 |  |
+| SHY | Unclassified | 1.7557 |  |
+| TIP | Unclassified | 1.7396 |  |
+| LIT | Unclassified | 1.7170 |  |
+| UUP | Unclassified | 1.5218 |  |
 
 ## Forward Outcome Summary (Historical Bands)
 
 | Horizon (days) | Count | P05 | P25 | P50 | P75 | P95 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 21 | 85219 | -0.1244177307188939 | -0.03410349958676314 | -0.0012599485227431455 | 0.029943370027261454 | 0.12747165408887243 |
-| 63 | 84379 | -0.19845008751911372 | -0.05050532991175359 | 0.002711665328277643 | 0.06360466215203084 | 0.24527114877801384 |
+| 21 | 90181 | -0.12200919756919945 | -0.033081227251221465 | -0.0009335516040144196 | 0.030135814926135575 | 0.1237231731888549 |
+| 63 | 89341 | -0.1952361715774614 | -0.048253198293523654 | 0.00413042423048296 | 0.06328574998056981 | 0.23686979237403052 |
 
 ## Notes
 This report is monitoring-only and contains no trading recommendations.

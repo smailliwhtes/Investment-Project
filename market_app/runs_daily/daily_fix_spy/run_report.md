@@ -31,21 +31,21 @@ Run timestamp: 2026-02-08T21:00:00+00:00
 
 | Symbol | Name | Monitor Score | Risk | Confidence | Notes |
 | --- | --- | --- | --- | --- | --- |
-| COPX | COPX | 10 | AMBER | 0.48 | Data issue |
-| SLV | SLV | 10 | AMBER | 0.48 | Data issue |
-| GDX | GDX | 9 | AMBER | 0.48 | Data issue |
-| SIL | SIL | 9 | AMBER | 0.48 | Data issue |
-| PHYS | PHYS | 8 | AMBER | 0.48 | Data issue |
-| GDXJ | GDXJ | 8 | AMBER | 0.48 | Data issue |
-| GLD | GLD | 7 | AMBER | 0.48 | Data issue |
-| REMX | REMX | 7 | AMBER | 0.48 | Data issue |
-| URA | URA | 6 | AMBER | 0.48 | Data issue |
-| LIT | LIT | 6 | AMBER | 0.48 | Data issue |
-| ITA | ITA | 5 | AMBER | 0.48 | Data issue |
-| XME | XME | 5 | AMBER | 0.48 | Data issue |
-| PSLV | PSLV | 4 | AMBER | 0.48 | Data issue |
-| XAR | XAR | 4 | AMBER | 0.48 | Data issue |
-| SHY | SHY | 3 | AMBER | 0.48 | Data issue |
+| SPY | SPY | 10 | AMBER | 0.90 | Eligible for monitoring |
+| SLV | SLV | 10 | AMBER | 0.90 | Eligible for monitoring |
+| GLD | GLD | 9 | AMBER | 0.90 | Eligible for monitoring |
+| GDX | GDX | 9 | AMBER | 0.90 | Eligible for monitoring |
+| GDXJ | GDXJ | 8 | AMBER | 0.90 | Eligible for monitoring |
+| PSLV | PSLV | 8 | AMBER | 0.90 | Eligible for monitoring |
+| COPX | COPX | 7 | AMBER | 0.90 | Eligible for monitoring |
+| SIL | SIL | 7 | AMBER | 0.90 | Eligible for monitoring |
+| URA | URA | 6 | AMBER | 0.90 | Eligible for monitoring |
+| XME | XME | 6 | AMBER | 0.90 | Eligible for monitoring |
+| TLT | TLT | 5 | AMBER | 0.90 | Eligible for monitoring |
+| REMX | REMX | 5 | AMBER | 0.90 | Eligible for monitoring |
+| PHYS | PHYS | 4 | AMBER | 0.90 | Eligible for monitoring |
+| ITA | ITA | 4 | AMBER | 0.90 | Eligible for monitoring |
+| XAR | XAR | 3 | AMBER | 0.90 | Eligible for monitoring |
 
 ## Notes
 This report is monitoring-only and contains no trading recommendations.

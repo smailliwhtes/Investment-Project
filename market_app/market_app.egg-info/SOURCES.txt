@@ -102,6 +102,7 @@ market_monitor/cache.py
 market_monitor/cli.py
 market_monitor/config_schema.py
 market_monitor/data_paths.py
+market_monitor/determinism.py
 market_monitor/doctor.py
 market_monitor/env_doctor.py
 market_monitor/evaluate.py
@@ -128,6 +129,7 @@ market_monitor/scenarios.py
 market_monitor/staging.py
 market_monitor/themes.py
 market_monitor/time_utils.py
+market_monitor/timebase.py
 market_monitor/universe.py
 market_monitor/validation.py
 market_monitor/version.py
@@ -194,6 +196,7 @@ tests/test_bulk_planner.py
 tests/test_bulk_registry.py
 tests/test_bulk_standardize.py
 tests/test_cli_wiring.py
+tests/test_config_history_thresholds.py
 tests/test_config_path_resolution.py
 tests/test_corpus_pipeline.py
 tests/test_determinism_check.py
@@ -217,6 +220,7 @@ tests/test_gdelt_real_data_golden.py
 tests/test_inventory.py
 tests/test_join_exogenous.py
 tests/test_join_exogenous_with_doctor_cache.py
+tests/test_manifest_digest_determinism.py
 tests/test_market_app_cli.py
 tests/test_market_app_doctor.py
 tests/test_ml_pipeline.py
@@ -235,8 +239,10 @@ tests/test_scoring.py
 tests/test_security_master.py
 tests/test_security_master_minimal.py
 tests/test_smoke_run.py
+tests/test_staging_asof_date.py
 tests/test_stooq_txt.py
 tests/test_taxonomy.py
 tests/test_ui_import.py
+tests/test_verify_ready_for_gui_script.py
 tests/test_watchlist_smoke_pipeline.py
 tests/test_watchlist_validator.py

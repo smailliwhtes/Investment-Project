@@ -9,12 +9,12 @@
     }
   ],
   "dependency_versions": {
-    "numpy": "2.4.2",
-    "pandas": "2.3.3",
-    "pyyaml": "6.0.3"
+    "numpy": "2.1.3",
+    "pandas": "2.2.3",
+    "pyyaml": "6.0.2"
   },
-  "git_sha": "58cd0fea50c4f64fc3fb679756e25e249b74fe96",
-  "manifest_hash": "8a449419b028b59d4abf23a3f82a3218c3b5030d70a2256118985b4102ffd924",
+  "git_sha": "e13c1a2b631e056ed729b218f8c147e279baa8a3",
+  "manifest_hash": "eccbb1a86539e72c8ab1968768db2f753ee78b614974fdedc2b04feeaf8a7f71",
   "offline": true,
   "outputs": {
     "classified.csv": {
@@ -22,20 +22,20 @@
       "sha256": "a94d0a07c37ab2eb6addb51a4c6ed30e1f7608b81b56930952ab1ff882305c4f"
     },
     "eligible.csv": {
-      "bytes": 1048,
-      "sha256": "67f7737a8ed85060b5d44afbad6ede0a7531af52ba91783a21547df1e9cc93ac"
+      "bytes": 366,
+      "sha256": "f413d41a917c60e761b676ca056c27a9c01e67c624342a5502e5a559463e16ce"
     },
     "features.csv": {
-      "bytes": 19436,
-      "sha256": "e32b0f82694019fafcddf5fe82d761751978c8d071f8c919c6389f67fcbd158c"
+      "bytes": 31398,
+      "sha256": "d1336c1e83984b244ba4dc4db67a30bd4db2118c7abaab54e508def5cc8a1621"
     },
     "report.md": {
-      "bytes": 1441,
-      "sha256": "ca29033d7c7246436e206abac76e207feaa9f4bfcb55100c87508124601d1eeb"
+      "bytes": 1488,
+      "sha256": "b24a55fda0745e42a6f0ddf8f604e480644f5f1642f5f9b4c23bc88a670f6441"
     },
     "scored.csv": {
-      "bytes": 27870,
-      "sha256": "57b28c1c439ceb301f5f0a9ca120f2795be899146faec0eabd9efedec1529bc6"
+      "bytes": 39843,
+      "sha256": "fccff3e9f902e2e5c66dd333f62c94de5fc5170790d9c3e5d0c1d952b2212254"
     },
     "universe.csv": {
       "bytes": 969,

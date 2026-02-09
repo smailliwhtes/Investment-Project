@@ -1,7 +1,7 @@
 # Preflight Report
 
 - Run ID: daily_fix_spy
-- Generated: 2026-02-08T22:01:30.025316Z
+- Generated: 2026-02-09T22:43:29.418146Z
 - Run timestamp: 2026-02-08T21:00:00+00:00
 
 ## Coverage Summary

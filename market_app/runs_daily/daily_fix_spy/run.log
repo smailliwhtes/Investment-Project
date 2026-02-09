@@ -4,3 +4,121 @@
 2026-02-08 17:01:30,128 [INFO] market_app - Stage 3: deep history features + scoring
 2026-02-08 17:01:30,268 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_daily\daily_fix_spy
 2026-02-08 17:01:35,231 [INFO] market_app - Completed blueprint-compatible run
+2026-02-09 15:50:10,725 [INFO] market_app - Starting blueprint-compatible run
+2026-02-09 15:50:10,731 [WARNING] market_app - [preflight] SPY: NASDAQ_DAILY_MISSING:SPY
+2026-02-09 15:50:10,731 [WARNING] market_app - [preflight] TLT: NASDAQ_DAILY_MISSING:TLT
+2026-02-09 15:50:10,731 [WARNING] market_app - [preflight] IEF: NASDAQ_DAILY_MISSING:IEF
+2026-02-09 15:50:10,733 [WARNING] market_app - [preflight] SHY: NASDAQ_DAILY_MISSING:SHY
+2026-02-09 15:50:10,733 [WARNING] market_app - [preflight] TIP: NASDAQ_DAILY_MISSING:TIP
+2026-02-09 15:50:10,733 [WARNING] market_app - [preflight] UUP: NASDAQ_DAILY_MISSING:UUP
+2026-02-09 15:50:10,733 [WARNING] market_app - [preflight] GLD: NASDAQ_DAILY_MISSING:GLD
+2026-02-09 15:50:10,733 [WARNING] market_app - [preflight] SLV: NASDAQ_DAILY_MISSING:SLV
+2026-02-09 15:50:10,734 [WARNING] market_app - [preflight] PSLV: NASDAQ_DAILY_MISSING:PSLV
+2026-02-09 15:50:10,734 [WARNING] market_app - [preflight] PHYS: NASDAQ_DAILY_MISSING:PHYS
+2026-02-09 15:50:10,734 [WARNING] market_app - [preflight] GDX: NASDAQ_DAILY_MISSING:GDX
+2026-02-09 15:50:10,734 [WARNING] market_app - [preflight] GDXJ: NASDAQ_DAILY_MISSING:GDXJ
+2026-02-09 15:50:10,734 [WARNING] market_app - [preflight] SIL: NASDAQ_DAILY_MISSING:SIL
+2026-02-09 15:50:10,736 [WARNING] market_app - [preflight] XME: NASDAQ_DAILY_MISSING:XME
+2026-02-09 15:50:10,736 [WARNING] market_app - [preflight] COPX: NASDAQ_DAILY_MISSING:COPX
+2026-02-09 15:50:10,737 [WARNING] market_app - [preflight] LIT: NASDAQ_DAILY_MISSING:LIT
+2026-02-09 15:50:10,737 [WARNING] market_app - [preflight] REMX: NASDAQ_DAILY_MISSING:REMX
+2026-02-09 15:50:10,737 [WARNING] market_app - [preflight] URA: NASDAQ_DAILY_MISSING:URA
+2026-02-09 15:50:10,737 [WARNING] market_app - [preflight] ITA: NASDAQ_DAILY_MISSING:ITA
+2026-02-09 15:50:10,738 [WARNING] market_app - [preflight] XAR: NASDAQ_DAILY_MISSING:XAR
+2026-02-09 15:50:10,742 [INFO] market_app - Stage 1: micro-history gate
+2026-02-09 15:50:10,746 [INFO] market_app - Stage 2: short-history gates
+2026-02-09 15:50:10,750 [INFO] market_app - Stage 3: deep history features + scoring
+2026-02-09 15:50:10,804 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_daily\daily_fix_spy
+2026-02-09 15:50:10,904 [INFO] market_app - Completed blueprint-compatible run
+2026-02-09 17:18:01,909 [INFO] market_app - Starting blueprint-compatible run
+2026-02-09 17:18:01,915 [WARNING] market_app - [preflight] SPY: NASDAQ_DAILY_MISSING:SPY
+2026-02-09 17:18:01,916 [WARNING] market_app - [preflight] TLT: NASDAQ_DAILY_MISSING:TLT
+2026-02-09 17:18:01,916 [WARNING] market_app - [preflight] IEF: NASDAQ_DAILY_MISSING:IEF
+2026-02-09 17:18:01,916 [WARNING] market_app - [preflight] SHY: NASDAQ_DAILY_MISSING:SHY
+2026-02-09 17:18:01,916 [WARNING] market_app - [preflight] TIP: NASDAQ_DAILY_MISSING:TIP
+2026-02-09 17:18:01,917 [WARNING] market_app - [preflight] UUP: NASDAQ_DAILY_MISSING:UUP
+2026-02-09 17:18:01,918 [WARNING] market_app - [preflight] GLD: NASDAQ_DAILY_MISSING:GLD
+2026-02-09 17:18:01,918 [WARNING] market_app - [preflight] SLV: NASDAQ_DAILY_MISSING:SLV
+2026-02-09 17:18:01,918 [WARNING] market_app - [preflight] PSLV: NASDAQ_DAILY_MISSING:PSLV
+2026-02-09 17:18:01,918 [WARNING] market_app - [preflight] PHYS: NASDAQ_DAILY_MISSING:PHYS
+2026-02-09 17:18:01,918 [WARNING] market_app - [preflight] GDX: NASDAQ_DAILY_MISSING:GDX
+2026-02-09 17:18:01,918 [WARNING] market_app - [preflight] GDXJ: NASDAQ_DAILY_MISSING:GDXJ
+2026-02-09 17:18:01,920 [WARNING] market_app - [preflight] SIL: NASDAQ_DAILY_MISSING:SIL
+2026-02-09 17:18:01,920 [WARNING] market_app - [preflight] XME: NASDAQ_DAILY_MISSING:XME
+2026-02-09 17:18:01,920 [WARNING] market_app - [preflight] COPX: NASDAQ_DAILY_MISSING:COPX
+2026-02-09 17:18:01,921 [WARNING] market_app - [preflight] LIT: NASDAQ_DAILY_MISSING:LIT
+2026-02-09 17:18:01,921 [WARNING] market_app - [preflight] REMX: NASDAQ_DAILY_MISSING:REMX
+2026-02-09 17:18:01,921 [WARNING] market_app - [preflight] URA: NASDAQ_DAILY_MISSING:URA
+2026-02-09 17:18:01,922 [WARNING] market_app - [preflight] ITA: NASDAQ_DAILY_MISSING:ITA
+2026-02-09 17:18:01,923 [WARNING] market_app - [preflight] XAR: NASDAQ_DAILY_MISSING:XAR
+2026-02-09 17:18:01,928 [INFO] market_app - Stage 1: micro-history gate
+2026-02-09 17:18:01,932 [INFO] market_app - Stage 2: short-history gates
+2026-02-09 17:18:01,936 [INFO] market_app - Stage 3: deep history features + scoring
+2026-02-09 17:18:01,992 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_daily\daily_fix_spy
+2026-02-09 17:18:02,093 [INFO] market_app - Completed blueprint-compatible run
+2026-02-09 17:43:28,962 [INFO] market_app - Starting blueprint-compatible run
+2026-02-09 17:43:28,995 [INFO] market_app - [preflight] SPY path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\SPY.csv rows=5262 min_date=2005-02-25 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,018 [INFO] market_app - [preflight] TLT path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\tlt.csv rows=5262 min_date=2005-02-25 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,042 [INFO] market_app - [preflight] IEF path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\IEF.csv rows=5262 min_date=2005-02-25 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,066 [INFO] market_app - [preflight] SHY path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\SHY.csv rows=5262 min_date=2005-02-25 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,088 [INFO] market_app - [preflight] TIP path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\tip.csv rows=5262 min_date=2005-02-25 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,112 [INFO] market_app - [preflight] UUP path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\uup.csv rows=4763 min_date=2007-02-20 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,133 [INFO] market_app - [preflight] GLD path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\GLD.csv rows=5262 min_date=2005-02-25 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,156 [INFO] market_app - [preflight] SLV path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\slv.csv rows=4967 min_date=2006-04-28 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,176 [INFO] market_app - [preflight] PSLV path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\PSLV.csv rows=3826 min_date=2010-11-03 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,195 [INFO] market_app - [preflight] PHYS path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\PHYS.csv rows=4001 min_date=2010-02-25 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,219 [INFO] market_app - [preflight] GDX path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\GDX.csv rows=4951 min_date=2006-05-22 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,238 [INFO] market_app - [preflight] GDXJ path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\gdxj.csv rows=4075 min_date=2009-11-11 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,258 [INFO] market_app - [preflight] SIL path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\SIL.csv rows=3967 min_date=2010-04-20 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,280 [INFO] market_app - [preflight] XME path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\XME.csv rows=4928 min_date=2006-06-22 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,303 [INFO] market_app - [preflight] COPX path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\COPX.csv rows=3965 min_date=2010-04-20 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,322 [INFO] market_app - [preflight] LIT path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\lit.csv rows=3898 min_date=2010-07-23 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,341 [INFO] market_app - [preflight] REMX path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\REMX.csv rows=3828 min_date=2010-11-01 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,360 [INFO] market_app - [preflight] URA path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\ura.csv rows=3824 min_date=2010-11-10 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,383 [INFO] market_app - [preflight] ITA path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\ITA.csv rows=4962 min_date=2006-05-05 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,415 [INFO] market_app - [preflight] XAR path=C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm\XAR.csv rows=3474 min_date=2011-10-04 max_date=2026-01-27 freshness_days=12 chosen_as_of_date=2026-01-27 lookback=(7/60/600)
+2026-02-09 17:43:29,418 [INFO] market_app - Stage 1: micro-history gate
+2026-02-09 17:43:29,819 [INFO] market_app - Stage 2: short-history gates
+2026-02-09 17:43:29,841 [INFO] market_app - Stage 2: SPY lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,850 [INFO] market_app - Stage 2: TLT lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,858 [INFO] market_app - Stage 2: IEF lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,867 [INFO] market_app - Stage 2: SHY lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,876 [INFO] market_app - Stage 2: TIP lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,883 [INFO] market_app - Stage 2: UUP lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,892 [INFO] market_app - Stage 2: GLD lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,899 [INFO] market_app - Stage 2: SLV lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,907 [INFO] market_app - Stage 2: PSLV lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,914 [INFO] market_app - Stage 2: PHYS lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,922 [INFO] market_app - Stage 2: GDX lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,930 [INFO] market_app - Stage 2: GDXJ lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,937 [INFO] market_app - Stage 2: SIL lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,945 [INFO] market_app - Stage 2: XME lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,952 [INFO] market_app - Stage 2: COPX lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,959 [INFO] market_app - Stage 2: LIT lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,965 [INFO] market_app - Stage 2: REMX lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,972 [INFO] market_app - Stage 2: URA lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,980 [INFO] market_app - Stage 2: ITA lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,989 [INFO] market_app - Stage 2: XAR lookback=60 rows=60 history_days=60 min_history=252 status=INSUFFICIENT_HISTORY
+2026-02-09 17:43:29,989 [INFO] market_app - Stage 3: deep history features + scoring
+2026-02-09 17:43:30,002 [INFO] market_app - Stage 3: SPY lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,015 [INFO] market_app - Stage 3: TLT lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,030 [INFO] market_app - Stage 3: IEF lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,044 [INFO] market_app - Stage 3: SHY lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,059 [INFO] market_app - Stage 3: TIP lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,073 [INFO] market_app - Stage 3: UUP lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,086 [INFO] market_app - Stage 3: GLD lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,100 [INFO] market_app - Stage 3: SLV lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,113 [INFO] market_app - Stage 3: PSLV lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,125 [INFO] market_app - Stage 3: PHYS lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,139 [INFO] market_app - Stage 3: GDX lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,152 [INFO] market_app - Stage 3: GDXJ lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,165 [INFO] market_app - Stage 3: SIL lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,178 [INFO] market_app - Stage 3: XME lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,193 [INFO] market_app - Stage 3: COPX lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,205 [INFO] market_app - Stage 3: LIT lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,218 [INFO] market_app - Stage 3: REMX lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,230 [INFO] market_app - Stage 3: URA lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,243 [INFO] market_app - Stage 3: ITA lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,256 [INFO] market_app - Stage 3: XAR lookback=600 rows=600 history_days=600 min_history=252 status=OK
+2026-02-09 17:43:30,346 [INFO] market_app - Outputs written to C:\Users\micha\OneDrive\Desktop\Investment-Project\market_app\runs_daily\daily_fix_spy
+2026-02-09 17:43:36,309 [INFO] market_app - Completed blueprint-compatible run
