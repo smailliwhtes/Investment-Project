@@ -76,6 +76,16 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
+$ValidateCmd = @(
+  "-m", "market_app.cli", "validate", "--config", $Config, "--offline"
+)
+Write-Host "[stage] validating sample data"
+& $VenvPy @ValidateCmd
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "[error] Validation failed. Fix data issues and rerun."
+  exit $LASTEXITCODE
+}
+
 $Expected = @(
   "universe.csv",
   "classified.csv",
@@ -120,6 +130,13 @@ if ($ExternalOhlcv) {
   }
   $ExternalRunDir = Join-Path $OutRoot $ExternalRunId
   Test-RunOutputs -RunDirectory $ExternalRunDir
+
+  Write-Host "[stage] validating external data"
+  & $VenvPy -m market_app.cli validate --config $Config --offline
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "[error] External validation failed. Fix data issues and rerun."
+    exit $LASTEXITCODE
+  }
 }
 
 Write-Host "[done] Acceptance run completed -> $RunDir"

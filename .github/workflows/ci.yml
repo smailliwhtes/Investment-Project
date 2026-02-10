@@ -39,6 +39,14 @@ jobs:
         working-directory: market_app
         run: |
           market-monitor run --watchlist watchlists/watchlist_smoke.csv --asof 2025-01-31 --run-id smoke --ohlcv-daily-dir tests/fixtures/ohlcv_daily --exogenous-daily-dir tests/fixtures/exogenous/daily_features
+      - name: market_app offline run + validate
+        working-directory: market_app
+        env:
+          MARKET_APP_SYMBOLS_DIR: tests/data/symbols
+          MARKET_APP_OHLCV_DIR: tests/data/ohlcv
+        run: |
+          python -m market_app.cli --config config/config.yaml --offline --run-id ci_local --top-n 3
+          python -m market_app.cli validate --config config/config.yaml --offline
 
   determinism:
     runs-on: ${{ matrix.os }}

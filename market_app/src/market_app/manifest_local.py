@@ -26,6 +26,10 @@ def build_manifest(
     git_sha: str | None,
     symbol_files: list[Path],
     ohlcv_files: list[Path],
+    geopolitics_files: list[Path] | None = None,
+    geopolitics_hash: str | None = None,
+    model_id: str | None = None,
+    model_manifest_hash: str | None = None,
     output_dir: Path,
     schema_versions: dict[str, str],
 ) -> dict[str, Any]:
@@ -38,6 +42,12 @@ def build_manifest(
             "symbols": {str(path): hash_file(path) for path in symbol_files},
             "ohlcv_sample": {str(path): hash_file(path) for path in ohlcv_files},
             "ohlcv_hash_strategy": "first_5_sorted",
+            "geopolitics_inputs": {str(path): hash_file(path) for path in geopolitics_files or []},
+            "geopolitics_hash": geopolitics_hash,
+        },
+        "model": {
+            "model_id": model_id,
+            "model_manifest_hash": model_manifest_hash,
         },
         "schema_versions": schema_versions,
     }

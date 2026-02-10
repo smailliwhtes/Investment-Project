@@ -8,42 +8,24 @@ from typing import Any
 import pandas as pd
 
 from market_app.features_local import compute_features
+from market_app.geopolitics_local import build_geopolitics_features
 from market_app.local_config import ConfigResult
 from market_app.manifest_local import build_manifest, hash_file, hash_text, write_manifest
+from market_app.ml_local import predict_latest
 from market_app.ohlcv_local import load_ohlcv, resolve_ohlcv_dir
 from market_app.reporting_local import write_report
 from market_app.scoring_local import apply_gates, score_symbols
 from market_app.symbols_local import load_symbols
 from market_app.themes_local import classify_theme
+from market_app.schema_local import SCHEMA_VERSION, SCHEMAS, assert_output_schema
 
 
-OUTPUT_SCHEMAS = {
-    "universe.csv": "v1",
-    "classified.csv": "v1",
-    "features.csv": "v1",
-    "eligible.csv": "v1",
-    "scored.csv": "v1",
-}
+OUTPUT_SCHEMAS = {name: SCHEMA_VERSION for name in SCHEMAS.keys()}
 
-UNIVERSE_COLUMNS = ["symbol", "name", "exchange", "asset_type", "is_etf", "is_test_issue"]
-CLASSIFIED_COLUMNS = [
-    "symbol",
-    "name",
-    "themes",
-    "theme_confidence",
-    "theme_evidence",
-    "theme_uncertain",
-]
-ELIGIBLE_COLUMNS = ["symbol", "eligible", "gate_fail_reasons"]
-SCORED_COLUMNS = [
-    "symbol",
-    "monitor_score",
-    "total_score",
-    "risk_flags",
-    "risk_level",
-    "themes",
-    "theme_confidence",
-]
+UNIVERSE_COLUMNS = SCHEMAS["universe.csv"]
+CLASSIFIED_COLUMNS = SCHEMAS["classified.csv"]
+ELIGIBLE_COLUMNS = SCHEMAS["eligible.csv"]
+SCORED_COLUMNS = SCHEMAS["scored.csv"]
 
 
 def run_offline_pipeline(
@@ -60,6 +42,7 @@ def run_offline_pipeline(
     symbol_dir = Path(paths_cfg["symbols_dir"]) if paths_cfg.get("symbols_dir") else Path("")
     raw_ohlcv_dir = Path(paths_cfg["ohlcv_dir"]) if paths_cfg.get("ohlcv_dir") else Path("")
     ohlcv_dir = resolve_ohlcv_dir(raw_ohlcv_dir, logger)
+    geopolitics_dir = Path(paths_cfg.get("geopolitics_dir", "") or "")
 
     symbol_result = load_symbols(symbol_dir, config, logger)
     resolved_run_id = run_id or resolve_run_id(config_result, symbol_result.source_files)
@@ -102,6 +85,29 @@ def run_offline_pipeline(
     features = _add_feature_zscores(features)
     eligible_result = apply_gates(features, config)
     scored = score_symbols(features, classified, config)
+    scored = predict_latest(
+        config=config,
+        features=features,
+        scored=scored,
+        geopolitics_dir=geopolitics_dir,
+        output_dir=output_dir,
+        model_dir=Path(paths_cfg["model_dir"]).resolve(),
+    )
+    if "predicted_risk_signal" not in scored.columns:
+        scored["predicted_risk_signal"] = pd.NA
+    if "model_id" not in scored.columns:
+        scored["model_id"] = ""
+    if "model_schema_version" not in scored.columns:
+        scored["model_schema_version"] = pd.NA
+    model_id = ""
+    model_manifest_hash = None
+    if "model_id" in scored.columns:
+        non_empty = scored["model_id"].replace("", pd.NA).dropna().unique()
+        if len(non_empty):
+            model_id = str(non_empty[0])
+            model_manifest_path = Path(paths_cfg["model_dir"]).resolve() / model_id / "model_manifest.json"
+            if model_manifest_path.exists():
+                model_manifest_hash = hash_file(model_manifest_path)
 
 
     universe_path = output_dir / "universe.csv"
@@ -120,6 +126,15 @@ def run_offline_pipeline(
     _assert_required_columns(classified, CLASSIFIED_COLUMNS)
     _assert_required_columns(eligible_result.eligible, ELIGIBLE_COLUMNS)
     _assert_required_columns(scored, SCORED_COLUMNS)
+    assert_output_schema(
+        {
+            "universe.csv": universe,
+            "classified.csv": classified,
+            "features.csv": features,
+            "eligible.csv": eligible_result.eligible,
+            "scored.csv": scored,
+        }
+    )
 
     write_report(
         output_dir / "report.md",
@@ -133,6 +148,9 @@ def run_offline_pipeline(
     )
 
     sample_ohlcv = sorted(set(ohlcv_files))[:5]
+    geopolitics_result = build_geopolitics_features(
+        geopolitics_path=geopolitics_dir, output_dir=output_dir
+    )
     manifest = build_manifest(
         run_id=resolved_run_id,
         config=config,
@@ -140,6 +158,10 @@ def run_offline_pipeline(
         git_sha=_resolve_git_sha(output_dir),
         symbol_files=symbol_result.source_files,
         ohlcv_files=sample_ohlcv,
+        geopolitics_files=geopolitics_result.input_files,
+        geopolitics_hash=geopolitics_result.input_hash,
+        model_id=model_id or None,
+        model_manifest_hash=model_manifest_hash,
         output_dir=output_dir,
         schema_versions=OUTPUT_SCHEMAS,
     )
