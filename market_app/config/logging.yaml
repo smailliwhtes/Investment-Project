@@ -12,7 +12,7 @@ handlers:
     class: logging.FileHandler
     level: DEBUG
     formatter: simple
-    filename: "logs/market_app.log"
+    filename: "run.log"
 loggers:
   market_app:
     level: INFO

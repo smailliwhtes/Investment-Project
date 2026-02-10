@@ -1,0 +1,12 @@
+Symbol|Security Name|Exchange|ETF|Test Issue
+AAPL|Apple Inc.|NASDAQ|N|N
+MSFT|Microsoft Corporation|NASDAQ|N|N
+NVDA|NVIDIA Corporation|NASDAQ|N|N
+DEFN|Defense Tech Holdings|NYSE|N|N
+RADM|Radar Systems Co|NYSE|N|N
+LITH|Lithium Supply Co|NYSE|N|N
+COPP|Copper Core Materials|NYSE|N|N
+TECH|Strategic Tech Group|NASDAQ|N|N
+QTUM|Quantum Systems Ltd|NASDAQ|N|N
+UTIL|Utility Power Corp|NYSE|N|N
+File Creation Time: 20250101

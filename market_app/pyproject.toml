@@ -54,6 +54,9 @@ package-dir = {"" = ".", "market_app" = "src/market_app"}
 where = ["."]
 include = ["market_monitor*", "market_app*"]
 
+[tool.setuptools.package-data]
+market_app = ["sample_data/**"]
+
 [tool.black]
 line-length = 100
 target-version = ["py310"]
