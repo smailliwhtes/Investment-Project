@@ -8,22 +8,45 @@ Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. 
 - Scenario sensitivity (defense/tech/metals)
 - Offline corpus context + historical analog summaries
 
-## Run the monitor (canonical command)
+## Run the offline local monitor (canonical command)
 
 From the repo root:
 
 **Windows (PowerShell)**
 ```powershell
-python -m market_app.cli run --config .\config.yaml --offline
+python -m market_app.cli --config .\config\config.yaml --offline --top_n 50
 ```
 
 **macOS/Linux (bash)**
 ```bash
-python -m market_app.cli run --config ./config.yaml --offline
+python -m market_app.cli --config ./config/config.yaml --offline --top_n 50
 ```
 
-This runs the canonical wrapper (`python -m market_app.cli run`) and writes
-output artifacts to `outputs/runs/<run_id>/` (or `--runs-dir` if provided).
+This runs the offline-first pipeline and writes output artifacts to
+`outputs/runs/<run_id>/`. The run will fall back to bundled sample data if
+`MARKET_APP_SYMBOLS_DIR` or `MARKET_APP_OHLCV_DIR` are not set.
+
+Required outputs per run:
+
+- `universe.csv`
+- `classified.csv`
+- `features.csv`
+- `eligible.csv`
+- `scored.csv`
+- `report.md`
+- `manifest.json`
+
+Optional outputs include `regime.json` and `predictions.csv` when enabled.
+
+Environment overrides (CLI args take precedence):
+
+- `MARKET_APP_SYMBOLS_DIR`
+- `MARKET_APP_OHLCV_DIR`
+- `MARKET_APP_OUTPUT_DIR`
+
+To allow online data access (not required for offline runs), pass `--online`
+or set `online: true` in the config. In offline mode, any network access is
+blocked.
 
 ### Deterministic run (anchored time)
 

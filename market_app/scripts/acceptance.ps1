@@ -43,15 +43,19 @@ Write-Host "[stage] upgrading pip"
 Write-Host "[stage] installing requirements"
 & $VenvPy -m pip install -r ".\requirements.txt" | Out-Null
 
-$UseFixtures = $false
-if (-not $env:MARKET_APP_NASDAQ_DAILY_DIR) {
-  $UseFixtures = $true
+$ExternalOhlcv = $env:MARKET_APP_OHLCV_DIR
+$ExternalSymbols = $env:MARKET_APP_SYMBOLS_DIR
+if (-not (Test-Path $OutRoot)) {
+  New-Item -ItemType Directory -Path $OutRoot | Out-Null
 }
+$env:MARKET_APP_OUTPUT_DIR = (Resolve-Path $OutRoot)
 
-if ($UseFixtures) {
-  Write-Host "[stage] using fixture data paths"
-  $env:MARKET_APP_NASDAQ_DAILY_DIR = (Resolve-Path ".\tests\fixtures\ohlcv")
-  $WatchlistOverride = (Resolve-Path ".\tests\fixtures\watchlist.txt")
+Write-Host "[stage] using bundled sample data (unless external paths are provided)"
+if (-not $ExternalOhlcv) {
+  $env:MARKET_APP_OHLCV_DIR = (Resolve-Path ".\tests\data\ohlcv")
+}
+if (-not $ExternalSymbols) {
+  $env:MARKET_APP_SYMBOLS_DIR = (Resolve-Path ".\tests\data\symbols")
 }
 
 Write-Host "[stage] running tests"
@@ -65,11 +69,8 @@ $RunId = (Get-Date).ToUniversalTime().ToString("yyyyMMdd_HHmmss")
 $RunDir = Join-Path $OutRoot $RunId
 if (-not (Test-Path $RunDir)) { New-Item -ItemType Directory -Path $RunDir | Out-Null }
 
-Write-Host "[stage] running blueprint wrapper"
-if ($WatchlistOverride) {
-  $env:MARKET_APP_WATCHLIST_FILE = $WatchlistOverride
-}
-& $VenvPy -m market_app.cli run --config $Config --offline --run-id $RunId --top-n 5 --conservative
+Write-Host "[stage] running offline pipeline with sample data"
+& $VenvPy -m market_app.cli --config $Config --offline --run-id $RunId --top-n 5
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[error] Pipeline run failed. See logs in outputs\runs\$RunId"
   exit $LASTEXITCODE
@@ -81,21 +82,44 @@ $Expected = @(
   "features.csv",
   "eligible.csv",
   "scored.csv",
-  "regime.json",
   "report.md",
-  "manifest.json"
+  "manifest.json",
+  "run.log"
 )
-foreach ($pattern in $Expected) {
-  $path = Join-Path $RunDir $pattern
-  if (-not (Test-Path $path)) {
-    Write-Host "[error] Missing expected output ($pattern) in $RunDir"
-    exit 1
+function Test-RunOutputs {
+  param(
+    [string]$RunDirectory
+  )
+  foreach ($pattern in $Expected) {
+    $path = Join-Path $RunDirectory $pattern
+    if (-not (Test-Path $path)) {
+      Write-Host "[error] Missing expected output ($pattern) in $RunDirectory"
+      exit 1
+    }
+    $file = Get-Item $path
+    if ($file.Length -le 0) {
+      Write-Host "[error] Output file is empty ($path)"
+      exit 1
+    }
   }
-  $file = Get-Item $path
-  if ($file.Length -le 0) {
-    Write-Host "[error] Output file is empty ($path)"
-    exit 1
+}
+
+Test-RunOutputs -RunDirectory $RunDir
+
+if ($ExternalOhlcv) {
+  Write-Host "[stage] running offline pipeline with external OHLCV"
+  $env:MARKET_APP_OHLCV_DIR = $ExternalOhlcv
+  if ($ExternalSymbols) {
+    $env:MARKET_APP_SYMBOLS_DIR = $ExternalSymbols
   }
+  $ExternalRunId = "${RunId}_external"
+  & $VenvPy -m market_app.cli --config $Config --offline --run-id $ExternalRunId --top-n 5
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "[error] External pipeline run failed. See logs in outputs\runs\$ExternalRunId"
+    exit $LASTEXITCODE
+  }
+  $ExternalRunDir = Join-Path $OutRoot $ExternalRunId
+  Test-RunOutputs -RunDirectory $ExternalRunDir
 }
 
 Write-Host "[done] Acceptance run completed -> $RunDir"

@@ -14,6 +14,10 @@ import pandas as pd
 import numpy as np
 
 from market_app.config import ConfigResult, load_config, map_to_engine_config
+from market_app.local_config import ConfigResult as LocalConfigResult
+from market_app.local_config import load_config as load_local_config
+from market_app.offline_pipeline import resolve_run_id, run_offline_pipeline
+from market_app.symbols_local import load_symbols
 from market_app.outputs import (
     REQUIRED_FEATURES,
     apply_blueprint_gates,
@@ -45,11 +49,16 @@ from market_monitor.features import compute_features
 def _build_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--run-id", "--run_id", dest="run_id", default=None)
-    parser.add_argument("--offline", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--offline", action="store_true")
+    mode.add_argument("--online", action="store_true")
     parser.add_argument("--runs-dir", default=None)
     parser.add_argument("--top-n", "--top_n", dest="top_n", type=int, default=None)
     parser.add_argument("--as-of-date", dest="as_of_date", default=None)
     parser.add_argument("--now-utc", dest="now_utc", default=None)
+    parser.add_argument("--symbols-dir", dest="symbols_dir", default=None)
+    parser.add_argument("--ohlcv-dir", dest="ohlcv_dir", default=None)
+    parser.add_argument("--output-dir", dest="output_dir", default=None)
     variant = parser.add_mutually_exclusive_group()
     variant.add_argument("--conservative", action="store_true")
     variant.add_argument("--opportunistic", action="store_true")
@@ -58,7 +67,9 @@ def _build_run_parser(parser: argparse.ArgumentParser) -> None:
 
 def _build_doctor_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config", default="config.yaml")
-    parser.add_argument("--offline", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--offline", action="store_true")
+    mode.add_argument("--online", action="store_true")
     parser.add_argument("--as-of-date", dest="as_of_date", default=None)
     parser.add_argument("--now-utc", dest="now_utc", default=None)
     parser.set_defaults(command="doctor")
@@ -67,7 +78,9 @@ def _build_doctor_parser(parser: argparse.ArgumentParser) -> None:
 def _build_determinism_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--run-id", "--run_id", dest="run_id", default="det_check")
-    parser.add_argument("--offline", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--offline", action="store_true")
+    mode.add_argument("--online", action="store_true")
     parser.add_argument("--runs-dir", default=None)
     parser.add_argument("--as-of-date", dest="as_of_date", default=None)
     parser.add_argument("--now-utc", dest="now_utc", default=None)
@@ -160,6 +173,46 @@ def _configure_logging(logging_path: Path, run_dir: Path) -> logging.Logger:
             handler["filename"] = str(run_dir / "run.log")
     logging.config.dictConfig(config)
     return logging.getLogger("market_app")
+
+
+def _is_local_pipeline_config(raw: dict[str, Any]) -> bool:
+    if raw.get("schema_version") == "v2":
+        return True
+    paths = raw.get("paths", {})
+    return "symbols_dir" in paths or "ohlcv_dir" in paths
+
+
+def _execute_local_run(args: argparse.Namespace) -> Path:
+    config_path = Path(args.config).expanduser().resolve()
+    raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    cli_overrides = {
+        "offline": args.offline if args.offline else None,
+        "online": args.online if args.online else None,
+        "symbols_dir": args.symbols_dir,
+        "ohlcv_dir": args.ohlcv_dir,
+        "output_dir": args.output_dir,
+        "top_n": args.top_n,
+    }
+    local_result: LocalConfigResult = load_local_config(config_path, cli_overrides=cli_overrides)
+    config = local_result.config
+
+    temp_logger = logging.getLogger("market_app")
+    if not temp_logger.handlers:
+        logging.basicConfig(level=logging.INFO)
+    symbols_dir = Path(config["paths"]["symbols_dir"]) if config["paths"].get("symbols_dir") else Path("")
+    symbol_result = load_symbols(symbols_dir, config, temp_logger)
+    run_id = args.run_id or resolve_run_id(local_result, symbol_result.source_files)
+    run_dir = Path(config["paths"]["output_dir"]).resolve() / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    logger = _configure_logging(Path(config["paths"]["logging_config"]), run_dir)
+    logger.info("Starting local offline pipeline run")
+    run_dir = run_offline_pipeline(
+        local_result,
+        run_id=run_id,
+        logger=logger,
+    )
+    print(f"[done] Run artifacts: {run_dir}")
+    return run_dir
 
 
 def _dependency_versions() -> dict[str, str]:
@@ -711,6 +764,9 @@ def _execute_run(
     now_utc: str | None = None,
 ) -> Path:
     config_path = Path(args.config).expanduser().resolve()
+    raw_config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    if _is_local_pipeline_config(raw_config):
+        return _execute_local_run(args)
     config_dir = config_path.parent
     repo_root = find_repo_root(config_dir)
     base_dir = repo_root if repo_root.exists() else config_dir

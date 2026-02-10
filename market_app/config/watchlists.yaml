@@ -1,24 +1,13 @@
 themes:
-  Defense:
+  defense:
     seed_tickers: ["LMT", "GD", "NOC", "RTX"]
-    etfs: ["XAR", "ITA"]
-    sectors: ["Industrials", "Aerospace & Defense"]
-    keywords: ["missile", "defense contract", "military"]
-  StrategicTech:
+    keywords: ["defense", "aerospace", "missile", "munitions", "radar"]
+  strategic_tech:
     seed_tickers: ["NVDA", "AMD", "TSM", "ASML"]
-    etfs: ["SMH", "AIQ"]
-    sectors: ["Information Technology"]
-    keywords: ["AI", "semiconductor", "machine learning"]
-  CriticalMaterials:
+    keywords: ["ai", "semiconductor", "machine learning", "quantum"]
+  critical_materials:
     seed_tickers: ["ALB", "SQM", "LTHM"]
-    etfs: ["LIT", "REMX"]
-    sectors: ["Materials"]
-    keywords: ["lithium", "rare earth", "battery"]
-  Energy:
-    seed_tickers: ["XOM", "CVX", "COP", "BP"]
-    etfs: ["XLE", "VDE"]
-    sectors: ["Energy"]
-    keywords: ["oil", "gas", "renewable"]
+    keywords: ["lithium", "rare earth", "battery", "nickel", "graphite"]
 universe_constraints:
   max_universe_size: 3000
   include_etfs: false
