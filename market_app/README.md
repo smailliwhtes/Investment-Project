@@ -1,5 +1,28 @@
 # Market Monitor (Monitoring-Only)
 
+## Provisioning vs offline runtime
+
+- **Provisioning (may be online):** create virtualenv + install dependencies + optionally fetch data using provisioning scripts.
+- **Runtime (offline-only):** run the pipeline with `--offline`; outbound network is blocked and any attempt fails fast.
+
+### One-command offline run (Windows)
+
+```powershell
+./scripts/run.ps1 -Config ./config/config.yaml -Offline
+```
+
+### Run repository audit
+
+```bash
+python -m market_app.audit
+```
+
+### Run tests
+
+```bash
+pytest -q
+```
+
 Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. It **does not** place orders or provide investment recommendations. Outputs are focused on:
 
 - Eligibility status (with reason codes)
