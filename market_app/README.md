@@ -36,6 +36,8 @@ Required outputs per run:
 - `report.md`
 - `manifest.json`
 
+See `docs/SCHEMAS.md` for the authoritative column schemas and versioning.
+
 Optional outputs include `regime.json` and `predictions.csv` when enabled.
 
 Environment overrides (CLI args take precedence):
@@ -78,6 +80,38 @@ python -m market_app.cli doctor --config ./config.yaml
 
 The doctor command verifies required paths (config, watchlist, data dirs) and
 warns about optional assets like macro series files or missing theme watchlists.
+
+## Validate offline data (symbols + OHLCV)
+
+The `validate` command produces a human-readable summary plus a JSON payload that
+flags missing tickers, malformed symbol rows, duplicate dates, missing volume,
+staleness, and insufficient history.
+
+**Windows (PowerShell)**
+```powershell
+python -m market_app.cli validate --config .\config\config.yaml --offline
+```
+
+**macOS/Linux (bash)**
+```bash
+python -m market_app.cli validate --config ./config/config.yaml --offline
+```
+
+## Offline ML training (monitoring-only)
+
+To train the offline monitoring model (uses local OHLCV + GDELT Events features):
+
+**Windows (PowerShell)**
+```powershell
+python -m market_app.cli train --config .\config\config.yaml --asof-end 2023-12-29
+```
+
+**macOS/Linux (bash)**
+```bash
+python -m market_app.cli train --config ./config/config.yaml --asof-end 2023-12-29
+```
+
+See `docs/OFFLINE_ML.md` for label definition, leakage rules, and output artifacts.
 
 ### Troubleshooting
 

@@ -27,6 +27,7 @@ def test_symbol_loader_filters_and_headers(tmp_path: Path) -> None:
 
     assert "UNIT" not in result.symbols["symbol"].tolist()
     assert set(result.symbols["symbol"]) == {"GOOD", "ALT"}
+    assert result.symbols["source_file"].nunique() == 2
 
 
 def test_symbol_loader_accepts_csv_variants(tmp_path: Path) -> None:
@@ -39,3 +40,4 @@ def test_symbol_loader_accepts_csv_variants(tmp_path: Path) -> None:
     logger = logging.getLogger("test_symbols_csv")
     result = load_symbols(symbols_dir, config, logger)
     assert result.symbols.loc[0, "symbol"] == "XYZ"
+    assert "source_file" in result.symbols.columns

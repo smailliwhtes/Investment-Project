@@ -4,11 +4,15 @@ online: false
 run:
   top_n: 50
   max_symbols: null
+  as_of_date: null
 paths:
   symbols_dir: "" # override via MARKET_APP_SYMBOLS_DIR
   ohlcv_dir: "" # override via MARKET_APP_OHLCV_DIR
   macro_dir: ""
   output_dir: "../outputs/runs"
+  training_output_dir: "../outputs/training"
+  model_dir: "../models"
+  geopolitics_dir: "" # override via MARKET_APP_GDELT_DIR
   watchlists_file: "./config/watchlists.yaml"
   logging_config: "./config/logging.yaml"
   sources_config: "./config/sources.yaml"

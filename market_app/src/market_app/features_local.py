@@ -174,7 +174,14 @@ def _is_stale(dates: pd.Series, config: dict[str, Any]) -> bool:
     latest = dates.max()
     if pd.isna(latest):
         return True
-    now = pd.Timestamp.utcnow()
+    as_of_date = config.get("run", {}).get("as_of_date")
+    if as_of_date:
+        try:
+            now = pd.to_datetime(as_of_date, errors="coerce")
+        except ValueError:
+            now = pd.Timestamp.utcnow()
+    else:
+        now = pd.Timestamp.utcnow()
     if now.tzinfo is None:
         now = now.tz_localize("UTC")
     if latest.tzinfo is None:

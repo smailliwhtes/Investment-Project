@@ -16,12 +16,16 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "run": {
         "top_n": 50,
         "max_symbols": None,
+        "as_of_date": None,
     },
     "paths": {
         "symbols_dir": "",
         "ohlcv_dir": "",
         "macro_dir": "",
         "output_dir": "./outputs/runs",
+        "training_output_dir": "./outputs/training",
+        "model_dir": "./models",
+        "geopolitics_dir": "",
         "watchlists_file": "./config/watchlists.yaml",
         "logging_config": "./config/logging.yaml",
         "sources_config": "./config/sources.yaml",
@@ -78,6 +82,8 @@ ENV_OVERRIDES = {
     "MARKET_APP_OHLCV_DIR": ("paths", "ohlcv_dir"),
     "MARKET_APP_SYMBOLS_DIR": ("paths", "symbols_dir"),
     "MARKET_APP_OUTPUT_DIR": ("paths", "output_dir"),
+    "MARKET_APP_GDELT_DIR": ("paths", "geopolitics_dir"),
+    "MARKET_APP_MODEL_DIR": ("paths", "model_dir"),
 }
 
 
@@ -102,8 +108,12 @@ def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _clone_config(config: dict[str, Any]) -> dict[str, Any]:
+    return json.loads(json.dumps(config, default=str))
+
+
 def _apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
-    updated = json.loads(json.dumps(config))
+    updated = _clone_config(config)
     for env_key, path in ENV_OVERRIDES.items():
         value = os.getenv(env_key)
         if value:
@@ -125,7 +135,7 @@ def _apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def _apply_cli_overrides(config: dict[str, Any], cli_overrides: dict[str, Any]) -> dict[str, Any]:
-    updated = json.loads(json.dumps(config))
+    updated = _clone_config(config)
     for key, value in cli_overrides.items():
         if value is None:
             continue
@@ -135,17 +145,21 @@ def _apply_cli_overrides(config: dict[str, Any], cli_overrides: dict[str, Any]) 
         elif key == "online":
             updated["online"] = bool(value)
             updated["offline"] = not bool(value)
-        elif key in {"symbols_dir", "ohlcv_dir", "output_dir"}:
+        elif key in {"symbols_dir", "ohlcv_dir", "output_dir", "geopolitics_dir", "model_dir"}:
             updated["paths"][key] = value
+        elif key == "training_output_dir":
+            updated["paths"]["training_output_dir"] = value
         elif key == "top_n":
             updated.setdefault("run", {})["top_n"] = int(value)
+        elif key == "run" and isinstance(value, dict):
+            updated["run"] = _deep_merge(updated.get("run", {}), value)
         else:
             updated[key] = value
     return updated
 
 
 def _resolve_paths(config: dict[str, Any], base_dir: Path) -> dict[str, Any]:
-    resolved = json.loads(json.dumps(config))
+    resolved = _clone_config(config)
     for key, value in resolved.get("paths", {}).items():
         if not isinstance(value, str) or not value:
             continue

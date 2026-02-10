@@ -17,6 +17,9 @@ from market_app.config import ConfigResult, load_config, map_to_engine_config
 from market_app.local_config import ConfigResult as LocalConfigResult
 from market_app.local_config import load_config as load_local_config
 from market_app.offline_pipeline import resolve_run_id, run_offline_pipeline
+from market_app.offline_guard import enforce_offline
+from market_app.validation_local import run_validation
+from market_app.ml_local import run_training
 from market_app.symbols_local import load_symbols
 from market_app.outputs import (
     REQUIRED_FEATURES,
@@ -59,6 +62,8 @@ def _build_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--symbols-dir", dest="symbols_dir", default=None)
     parser.add_argument("--ohlcv-dir", dest="ohlcv_dir", default=None)
     parser.add_argument("--output-dir", dest="output_dir", default=None)
+    parser.add_argument("--geopolitics-dir", dest="geopolitics_dir", default=None)
+    parser.add_argument("--model-dir", dest="model_dir", default=None)
     variant = parser.add_mutually_exclusive_group()
     variant.add_argument("--conservative", action="store_true")
     variant.add_argument("--opportunistic", action="store_true")
@@ -87,6 +92,31 @@ def _build_determinism_parser(parser: argparse.ArgumentParser) -> None:
     parser.set_defaults(command="determinism-check")
 
 
+def _build_validate_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--config", default="config.yaml")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--offline", action="store_true")
+    mode.add_argument("--online", action="store_true")
+    parser.add_argument("--symbols-dir", dest="symbols_dir", default=None)
+    parser.add_argument("--ohlcv-dir", dest="ohlcv_dir", default=None)
+    parser.add_argument("--geopolitics-dir", dest="geopolitics_dir", default=None)
+    parser.add_argument("--as-of-date", dest="as_of_date", default=None)
+    parser.set_defaults(command="validate")
+
+
+def _build_train_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--config", default="config.yaml")
+    parser.add_argument("--asof-end", dest="asof_end", required=True)
+    parser.add_argument("--run-id", "--run_id", dest="run_id", default=None)
+    parser.add_argument("--symbols-dir", dest="symbols_dir", default=None)
+    parser.add_argument("--ohlcv-dir", dest="ohlcv_dir", default=None)
+    parser.add_argument("--geopolitics-dir", dest="geopolitics_dir", default=None)
+    parser.add_argument("--model-dir", dest="model_dir", default=None)
+    parser.add_argument("--training-output-dir", dest="training_output_dir", default=None)
+    parser.add_argument("--offline", action="store_true")
+    parser.set_defaults(command="train")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Offline-first market_app wrapper CLI")
     subparsers = parser.add_subparsers(dest="command")
@@ -98,6 +128,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "determinism-check", help="Run two deterministic passes and compare outputs"
     )
     _build_determinism_parser(determinism_parser)
+    validate_parser = subparsers.add_parser("validate", help="Validate symbols + OHLCV data offline")
+    _build_validate_parser(validate_parser)
+    train_parser = subparsers.add_parser("train", help="Train an offline ML model")
+    _build_train_parser(train_parser)
     return parser
 
 
@@ -192,6 +226,9 @@ def _execute_local_run(args: argparse.Namespace) -> Path:
         "ohlcv_dir": args.ohlcv_dir,
         "output_dir": args.output_dir,
         "top_n": args.top_n,
+        "geopolitics_dir": args.geopolitics_dir,
+        "model_dir": args.model_dir,
+        "run": {"as_of_date": args.as_of_date} if args.as_of_date else None,
     }
     local_result: LocalConfigResult = load_local_config(config_path, cli_overrides=cli_overrides)
     config = local_result.config
@@ -206,6 +243,7 @@ def _execute_local_run(args: argparse.Namespace) -> Path:
     run_dir.mkdir(parents=True, exist_ok=True)
     logger = _configure_logging(Path(config["paths"]["logging_config"]), run_dir)
     logger.info("Starting local offline pipeline run")
+    enforce_offline(bool(config.get("offline", True)))
     run_dir = run_offline_pipeline(
         local_result,
         run_id=run_id,
@@ -779,6 +817,7 @@ def _execute_run(
     now_anchor = parse_now_utc(now_utc) if now_utc else utcnow()
 
     offline = bool(blueprint.get("offline", True) or args.offline)
+    enforce_offline(offline)
     watchlists_path = config_dir / "watchlists.yaml"
     theme_rules = _load_watchlists(watchlists_path)
     opportunistic = bool(getattr(args, "opportunistic", False))
@@ -969,6 +1008,36 @@ def run_cli(argv: list[str] | None = None) -> int:
         return _run_doctor(args)
     if args.command == "determinism-check":
         return _run_determinism_check(args)
+    if args.command == "validate":
+        config_path = Path(args.config).expanduser().resolve()
+        cli_overrides = {
+            "offline": args.offline if args.offline else None,
+            "online": args.online if args.online else None,
+            "symbols_dir": args.symbols_dir,
+            "ohlcv_dir": args.ohlcv_dir,
+            "geopolitics_dir": args.geopolitics_dir,
+            "run": {"as_of_date": args.as_of_date} if args.as_of_date else None,
+        }
+        config_result = load_local_config(config_path, cli_overrides=cli_overrides)
+        enforce_offline(bool(config_result.config.get("offline", True)))
+        report = run_validation(config_result)
+        print(report.human_summary)
+        print(json.dumps(report.payload, indent=2, sort_keys=True))
+        return report.exit_code
+    if args.command == "train":
+        config_path = Path(args.config).expanduser().resolve()
+        cli_overrides = {
+            "offline": True,
+            "symbols_dir": args.symbols_dir,
+            "ohlcv_dir": args.ohlcv_dir,
+            "geopolitics_dir": args.geopolitics_dir,
+            "model_dir": args.model_dir,
+            "training_output_dir": args.training_output_dir,
+        }
+        config_result = load_local_config(config_path, cli_overrides=cli_overrides)
+        enforce_offline(bool(config_result.config.get("offline", True)))
+        run_training(config_result, asof_end=args.asof_end, run_id=args.run_id)
+        return 0
 
     _execute_run(args)
     return 0

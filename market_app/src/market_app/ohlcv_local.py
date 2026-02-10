@@ -15,6 +15,10 @@ class OhlcvResult:
     source_path: Path | None
     missing_volume: bool
     missing_data: bool
+    duplicate_dates: int
+    non_monotonic_dates: bool
+    missing_date_rows: int
+    missing_required_columns: list[str]
 
 
 REQUIRED_COLUMNS = {"date", "open", "high", "low", "close"}
@@ -30,15 +34,31 @@ def load_ohlcv(symbol: str, ohlcv_dir: Path) -> OhlcvResult:
             source_path=None,
             missing_volume=True,
             missing_data=True,
+            duplicate_dates=0,
+            non_monotonic_dates=False,
+            missing_date_rows=0,
+            missing_required_columns=list(REQUIRED_COLUMNS),
         )
     df = pd.read_csv(path)
-    normalized, missing_volume, missing_data = _normalize_ohlcv(df)
+    (
+        normalized,
+        missing_volume,
+        missing_data,
+        duplicates,
+        non_monotonic,
+        missing_dates,
+        missing_required,
+    ) = _normalize_ohlcv(df)
     return OhlcvResult(
         symbol=symbol,
         frame=normalized,
         source_path=path,
         missing_volume=missing_volume,
         missing_data=missing_data,
+        duplicate_dates=duplicates,
+        non_monotonic_dates=non_monotonic,
+        missing_date_rows=missing_dates,
+        missing_required_columns=missing_required,
     )
 
 
@@ -78,12 +98,14 @@ def _resolve_sample_ohlcv_dir() -> Path:
     return repo_root / "tests" / "data" / "ohlcv"
 
 
-def _normalize_ohlcv(df: pd.DataFrame) -> tuple[pd.DataFrame, bool, bool]:
+def _normalize_ohlcv(
+    df: pd.DataFrame,
+) -> tuple[pd.DataFrame, bool, bool, int, bool, int, list[str]]:
     columns = {col.lower().strip(): col for col in df.columns}
     missing = [col for col in REQUIRED_COLUMNS if col not in columns]
     if missing:
         normalized = pd.DataFrame(columns=list(REQUIRED_COLUMNS) + list(OPTIONAL_COLUMNS))
-        return normalized, True, True
+        return normalized, True, True, 0, False, 0, missing
 
     volume_col = columns.get("volume") or columns.get("vol")
     adj_close_col = (
@@ -109,8 +131,12 @@ def _normalize_ohlcv(df: pd.DataFrame) -> tuple[pd.DataFrame, bool, bool]:
     else:
         normalized["volume"] = pd.NA
 
-    normalized = normalized.dropna(subset=["date"]).drop_duplicates(subset=["date"])
+    missing_dates = int(normalized["date"].isna().sum())
+    normalized = normalized.dropna(subset=["date"])
+    duplicates = int(normalized.duplicated(subset=["date"]).sum())
+    normalized = normalized.drop_duplicates(subset=["date"])
+    non_monotonic = not normalized["date"].is_monotonic_increasing
     normalized = normalized.sort_values("date").reset_index(drop=True)
     missing_volume = volume_col is None or normalized["volume"].isna().all()
     missing_data = normalized.empty
-    return normalized, missing_volume, missing_data
+    return normalized, missing_volume, missing_data, duplicates, non_monotonic, missing_dates, []

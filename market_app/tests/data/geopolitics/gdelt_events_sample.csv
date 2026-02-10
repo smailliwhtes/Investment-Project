@@ -1,0 +1,4 @@
+SQLDATE,EventRootCode,QuadClass,AvgTone,GoldsteinScale,NumMentions,NumSources,NumArticles
+2024-01-01,1,1,-1.2,-5,10,2,3
+2024-01-01,4,2,0.5,2,5,1,1
+2024-01-02,3,3,-0.2,-1,8,1,2
