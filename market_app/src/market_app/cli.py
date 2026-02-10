@@ -16,6 +16,7 @@ import numpy as np
 from market_app.config import ConfigResult, load_config, map_to_engine_config
 from market_app.local_config import ConfigResult as LocalConfigResult
 from market_app.local_config import load_config as load_local_config
+from market_app.offline_guard import enforce_offline_network_block
 from market_app.offline_pipeline import resolve_run_id, run_offline_pipeline
 from market_app.symbols_local import load_symbols
 from market_app.outputs import (
@@ -206,11 +207,12 @@ def _execute_local_run(args: argparse.Namespace) -> Path:
     run_dir.mkdir(parents=True, exist_ok=True)
     logger = _configure_logging(Path(config["paths"]["logging_config"]), run_dir)
     logger.info("Starting local offline pipeline run")
-    run_dir = run_offline_pipeline(
-        local_result,
-        run_id=run_id,
-        logger=logger,
-    )
+    with enforce_offline_network_block(bool(config.get("offline", True))):
+        run_dir = run_offline_pipeline(
+            local_result,
+            run_id=run_id,
+            logger=logger,
+        )
     print(f"[done] Run artifacts: {run_dir}")
     return run_dir
 
@@ -811,85 +813,85 @@ def _execute_run(
     run_dir.mkdir(parents=True, exist_ok=True)
     logger = _configure_logging(_resolve_logging_path(config_dir, base_dir), run_dir)
     logger.info("Starting blueprint-compatible run")
+    with enforce_offline_network_block(offline):
+        pipeline_result: PipelineResult = run_pipeline(
+            engine_config,
+            base_dir=base_dir,
+            mode="watchlist",
+            watchlist_path=watchlist_path,
+            output_dir=run_dir,
+            run_id=run_id,
+            logger=logger,
+            write_legacy_outputs=True,
+            run_timestamp=run_timestamp,
+        )
+        universe = pipeline_result.universe_df.sort_values("symbol").reset_index(drop=True)
+        classified = _build_classified(universe, theme_rules)
+        features = _prepare_features(pipeline_result.scored_df)
+        features = normalize_features(features, REQUIRED_FEATURES)
+        eligible_df, eligible_mask = apply_blueprint_gates(
+            features, blueprint["scoring"]["gates"]
+        )
+        regime = _build_regime(blueprint, base_dir, run_timestamp)
+        forward_summary = compute_forward_outcome_summary(
+            symbols=universe["symbol"].tolist(),
+            provider=pipeline_result.provider,
+            horizons=[21, 63],
+        )
+        blueprint_dict = dict(blueprint)
+        blueprint_dict["forward_summary"] = forward_summary
+        scored = _build_scored(features, classified, blueprint_dict, regime, top_n, variant)
+        scored["forward_outcome_summary"] = build_forward_outcome_column(
+            scored, forward_summary, top_n
+        )
 
-    pipeline_result: PipelineResult = run_pipeline(
-        engine_config,
-        base_dir=base_dir,
-        mode="watchlist",
-        watchlist_path=watchlist_path,
-        output_dir=run_dir,
-        run_id=run_id,
-        logger=logger,
-        write_legacy_outputs=True,
-        run_timestamp=run_timestamp,
-    )
-    universe = pipeline_result.universe_df.sort_values("symbol").reset_index(drop=True)
-    classified = _build_classified(universe, theme_rules)
-    features = _prepare_features(pipeline_result.scored_df)
-    features = normalize_features(features, REQUIRED_FEATURES)
-    eligible_df, eligible_mask = apply_blueprint_gates(
-        features, blueprint["scoring"]["gates"]
-    )
-    regime = _build_regime(blueprint, base_dir, run_timestamp)
-    forward_summary = compute_forward_outcome_summary(
-        symbols=universe["symbol"].tolist(),
-        provider=pipeline_result.provider,
-        horizons=[21, 63],
-    )
-    blueprint_dict = dict(blueprint)
-    blueprint_dict["forward_summary"] = forward_summary
-    scored = _build_scored(features, classified, blueprint_dict, regime, top_n, variant)
-    scored["forward_outcome_summary"] = build_forward_outcome_column(
-        scored, forward_summary, top_n
-    )
+        write_csv(universe, run_dir / "universe.csv")
+        write_csv(classified, run_dir / "classified.csv")
+        write_csv(features, run_dir / "features.csv")
+        write_csv(eligible_df, run_dir / "eligible.csv")
+        write_csv(scored, run_dir / "scored.csv")
+        (run_dir / "regime.json").write_text(json.dumps(regime, indent=2, sort_keys=True))
 
-    write_csv(universe, run_dir / "universe.csv")
-    write_csv(classified, run_dir / "classified.csv")
-    write_csv(features, run_dir / "features.csv")
-    write_csv(eligible_df, run_dir / "eligible.csv")
-    write_csv(scored, run_dir / "scored.csv")
-    (run_dir / "regime.json").write_text(json.dumps(regime, indent=2, sort_keys=True))
-
-    build_report(
-        run_dir / "report.md",
-        run_id=run_id,
-        run_timestamp=run_timestamp,
-        scored=scored,
-        regime=regime,
-        forward_summary=forward_summary,
-        top_n=top_n,
-    )
-    dataset_paths = _collect_dataset_paths(blueprint, base_dir)
-    git_sha = resolve_git_commit(base_dir)
-    allowlist = _resolve_allowlist(blueprint)
-    stable_outputs = stable_output_digests(run_dir, allowlist)
-    manifest = build_manifest(
-        run_id=run_id,
-        run_timestamp=run_timestamp,
-        as_of_date=as_of_date,
-        config_hash=config_result.config_hash,
-        git_sha=git_sha,
-        offline=offline,
-        output_dir=run_dir,
-        config_path=config_path,
-        dataset_paths=dataset_paths,
-        dependency_versions=_dependency_versions(),
-        stable_outputs=list(STABLE_ARTIFACTS),
-        outputs_override=stable_outputs,
-    )
-    (run_dir / "manifest.json").write_text(manifest.to_json(), encoding="utf-8")
-    _write_digest(
-        run_dir=run_dir,
-        config_result=config_result,
-        git_sha=git_sha,
-        offline=offline,
-        variant=variant,
-        top_n=top_n,
-        watchlist_path=watchlist_path,
-        dataset_paths=dataset_paths,
-        as_of_date=as_of_date,
-        allowlist=allowlist,
-    )
+        build_report(
+            run_dir / "report.md",
+            run_id=run_id,
+            run_timestamp=run_timestamp,
+            scored=scored,
+            regime=regime,
+            forward_summary=forward_summary,
+            top_n=top_n,
+        )
+        dataset_paths = _collect_dataset_paths(blueprint, base_dir)
+        git_sha = resolve_git_commit(base_dir)
+        allowlist = _resolve_allowlist(blueprint)
+        stable_outputs = stable_output_digests(run_dir, allowlist)
+        manifest = build_manifest(
+            run_id=run_id,
+            run_timestamp=run_timestamp,
+            as_of_date=as_of_date,
+            config_hash=config_result.config_hash,
+            git_sha=git_sha,
+            offline=offline,
+            output_dir=run_dir,
+            config_path=config_path,
+            dataset_paths=dataset_paths,
+            dependency_versions=_dependency_versions(),
+            stable_outputs=list(STABLE_ARTIFACTS),
+            outputs_override=stable_outputs,
+        )
+        (run_dir / "manifest.json").write_text(manifest.to_json(), encoding="utf-8")
+        _write_digest(
+            run_dir=run_dir,
+            config_result=config_result,
+            git_sha=git_sha,
+            offline=offline,
+            variant=variant,
+            top_n=top_n,
+            watchlist_path=watchlist_path,
+            dataset_paths=dataset_paths,
+            as_of_date=as_of_date,
+            allowlist=allowlist,
+        )
     logger.info("Completed blueprint-compatible run")
     print(f"[done] Run artifacts: {run_dir}")
     return run_dir

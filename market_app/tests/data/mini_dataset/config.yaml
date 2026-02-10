@@ -2,31 +2,31 @@ schema_version: "v2"
 offline: true
 online: false
 run:
-  top_n: 50
+  top_n: 10
   max_symbols: null
 paths:
-  symbols_dir: "" # override via MARKET_APP_SYMBOLS_DIR
-  ohlcv_dir: "" # override via MARKET_APP_OHLCV_DIR
-  macro_dir: ""
-  output_dir: "../outputs/runs"
-  watchlists_file: "./watchlists.yaml"
-  logging_config: "./logging.yaml"
-  sources_config: "./sources.yaml"
+  symbols_dir: "./symbols"
+  ohlcv_dir: "./ohlcv"
+  macro_dir: "./macro"
+  output_dir: "./outputs/runs"
+  watchlists_file: "./watchlists/watchlists.yaml"
+  logging_config: "../../../../config/logging.yaml"
+  sources_config: "../../../../config/sources.yaml"
 filters:
   include_warrants: false
   include_rights: false
   include_units: false
   include_preferreds: false
 gates:
-  min_history_days: 252
-  min_adv20_usd: 1000000
+  min_history_days: 120
+  min_adv20_usd: 500000
   price_floor: 1.0
-  zero_volume_max_frac: 0.2
-  max_lag_days: 5
+  zero_volume_max_frac: 0.5
+  max_lag_days: 10000
 risk_thresholds:
-  extreme_volatility: 0.6
-  deep_drawdown: -0.4
-  tail_risk: -0.2
+  extreme_volatility: 0.8
+  deep_drawdown: -0.5
+  tail_risk: -0.3
 scoring:
   weights:
     trend: 0.35
@@ -38,12 +38,12 @@ scoring:
 themes:
   defense:
     keywords: ["defense", "aerospace", "missile", "munitions", "tactical", "radar"]
-    tickers: []
+    tickers: ["DEFN"]
   strategic_tech:
     keywords: ["semiconductor", "chip", "ai", "artificial intelligence", "quantum"]
-    tickers: []
+    tickers: ["AAPL", "MSFT"]
   critical_materials:
     keywords: ["lithium", "uranium", "copper", "rare earth", "nickel", "graphite"]
     tickers: []
 report:
-  top_n: 50
+  top_n: 10

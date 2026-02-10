@@ -1,0 +1,7 @@
+themes:
+  defense:
+    seed_tickers: ["DEFN"]
+    keywords: ["defense", "aerospace"]
+  strategic_tech:
+    seed_tickers: ["AAPL", "MSFT"]
+    keywords: ["ai", "chip", "cloud"]
