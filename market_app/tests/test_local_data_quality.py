@@ -52,6 +52,8 @@ def test_stale_data_uses_spy_as_of_and_lag_math(tmp_path: Path) -> None:
     dq = pd.read_csv(run_dir / "data_quality.csv")
     scored = pd.read_csv(run_dir / "scored.csv")
 
+    assert set(dq["symbol"]) == {"SPY", "AAA", "OLD"}
+
     aaa = dq.loc[dq["symbol"] == "AAA"].iloc[0]
     old = dq.loc[dq["symbol"] == "OLD"].iloc[0]
     assert aaa["as_of_date"] == "2026-02-10"
@@ -81,3 +83,39 @@ def test_scored_deterministic_across_runs(tmp_path: Path) -> None:
     a = (run_a / "scored.csv").read_bytes()
     b = (run_b / "scored.csv").read_bytes()
     assert a == b
+
+
+def test_pipeline_honors_explicit_config_paths_over_env(tmp_path: Path, monkeypatch) -> None:
+    symbols_dir = tmp_path / "symbols"
+    ohlcv_dir = tmp_path / "ohlcv"
+    bad_symbols_dir = tmp_path / "bad_symbols"
+    bad_ohlcv_dir = tmp_path / "bad_ohlcv"
+    symbols_dir.mkdir()
+    ohlcv_dir.mkdir()
+    bad_symbols_dir.mkdir()
+    bad_ohlcv_dir.mkdir()
+
+    (symbols_dir / "universe.csv").write_text("symbol,name\nSPY,Spy\nAAA,AAA\nOLD,OLD\n", encoding="utf-8")
+    (bad_symbols_dir / "universe.csv").write_text("symbol,name\nZZZ,ZZZ\n", encoding="utf-8")
+
+    (ohlcv_dir / "SPY.csv").write_text("date,open,high,low,close,volume\n2026-02-10,1,1,1,1,100\n", encoding="utf-8")
+    (ohlcv_dir / "AAA.csv").write_text("date,open,high,low,close,volume\n2026-02-10,1,1,1,1,100\n", encoding="utf-8")
+    (ohlcv_dir / "OLD.csv").write_text("date,open,high,low,close,volume\n2026-01-27,1,1,1,1,100\n", encoding="utf-8")
+    (bad_ohlcv_dir / "ZZZ.csv").write_text("date,open,high,low,close,volume\n2026-02-10,1,1,1,1,100\n", encoding="utf-8")
+
+    monkeypatch.setenv("MARKET_APP_SYMBOLS_DIR", str(bad_symbols_dir))
+    monkeypatch.setenv("MARKET_APP_OHLCV_DIR", str(bad_ohlcv_dir))
+
+    cfg_path = _write_config(tmp_path, symbols_dir, ohlcv_dir)
+    cfg_result = load_config(cfg_path)
+
+    logger = logging.getLogger("test_local_data_quality_paths")
+    logger.handlers.clear()
+    logger.addHandler(logging.NullHandler())
+
+    run_dir = run_offline_pipeline(cfg_result, run_id="dq_paths", logger=logger)
+    universe = pd.read_csv(run_dir / "universe.csv")
+    dq = pd.read_csv(run_dir / "data_quality.csv")
+
+    assert set(universe["symbol"]) == {"SPY", "AAA", "OLD"}
+    assert set(dq["symbol"]) == {"SPY", "AAA", "OLD"}

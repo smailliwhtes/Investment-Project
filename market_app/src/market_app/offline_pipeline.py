@@ -72,6 +72,12 @@ def run_offline_pipeline(
     symbol_dir = Path(paths_cfg["symbols_dir"]) if paths_cfg.get("symbols_dir") else Path("")
     raw_ohlcv_dir = Path(paths_cfg["ohlcv_dir"]) if paths_cfg.get("ohlcv_dir") else Path("")
     ohlcv_dir = resolve_ohlcv_dir(raw_ohlcv_dir, logger)
+    logger.debug(
+        "Offline pipeline paths resolved: symbols_dir=%s, ohlcv_dir=%s, output_root=%s",
+        symbol_dir,
+        ohlcv_dir,
+        runs_root,
+    )
 
     symbol_result = load_symbols(symbol_dir, config, logger)
     resolved_run_id = run_id or resolve_run_id(config_result, symbol_result.source_files)
