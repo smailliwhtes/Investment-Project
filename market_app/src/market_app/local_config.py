@@ -102,25 +102,40 @@ def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def _apply_env_overrides(config: dict[str, Any]) -> dict[str, Any]:
+def _has_explicit_value(raw: dict[str, Any], path: tuple[str, ...]) -> bool:
+    target: Any = raw
+    for key in path:
+        if not isinstance(target, dict) or key not in target:
+            return False
+        target = target[key]
+    if target is None:
+        return False
+    if isinstance(target, str):
+        return target.strip() != ""
+    return True
+
+
+def _apply_env_overrides(config: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
     updated = json.loads(json.dumps(config))
     for env_key, path in ENV_OVERRIDES.items():
         value = os.getenv(env_key)
-        if value:
+        if value and not _has_explicit_value(raw, path):
             target = updated
             for key in path[:-1]:
                 target = target.setdefault(key, {})
             target[path[-1]] = value
     offline_env = os.getenv("OFFLINE_MODE")
-    if offline_env is not None:
+    if offline_env is not None and not _has_explicit_value(raw, ("offline",)):
         offline = offline_env.strip().lower() in {"1", "true", "yes"}
         updated["offline"] = offline
-        updated["online"] = not offline
+        if not _has_explicit_value(raw, ("online",)):
+            updated["online"] = not offline
     online_env = os.getenv("MARKET_APP_ONLINE")
-    if online_env is not None:
+    if online_env is not None and not _has_explicit_value(raw, ("online",)):
         online = online_env.strip().lower() in {"1", "true", "yes"}
         updated["online"] = online
-        updated["offline"] = not online
+        if not _has_explicit_value(raw, ("offline",)):
+            updated["offline"] = not online
     return updated
 
 
@@ -169,7 +184,7 @@ def load_config(path: Path, *, cli_overrides: dict[str, Any] | None = None) -> C
         raise FileNotFoundError(f"Config file not found: {path}")
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     config = _deep_merge(DEFAULT_CONFIG, raw)
-    config = _apply_env_overrides(config)
+    config = _apply_env_overrides(config, raw)
     if cli_overrides:
         config = _apply_cli_overrides(config, cli_overrides)
     if config.get("online"):
