@@ -23,6 +23,7 @@ OUTPUT_SCHEMAS = {
     "features.csv": "v1",
     "eligible.csv": "v1",
     "scored.csv": "v1",
+    "data_quality.csv": "v1",
 }
 
 UNIVERSE_COLUMNS = ["symbol", "name", "exchange", "asset_type", "is_etf", "is_test_issue"]
@@ -43,6 +44,17 @@ SCORED_COLUMNS = [
     "risk_level",
     "themes",
     "theme_confidence",
+    "last_date",
+    "lag_days",
+]
+DATA_QUALITY_COLUMNS = [
+    "symbol",
+    "last_date",
+    "as_of_date",
+    "lag_days",
+    "stale_data",
+    "volume_missing",
+    "missing_data",
 ]
 
 
@@ -76,6 +88,7 @@ def run_offline_pipeline(
     classified_records = []
     feature_records = []
     ohlcv_files = []
+    symbol_last_dates: dict[str, str] = {}
     for _, row in universe.iterrows():
         symbol = row["symbol"]
         name = row.get("name", "")
@@ -96,30 +109,34 @@ def run_offline_pipeline(
             ohlcv_files.append(ohlcv.source_path)
         feature_result = compute_features(symbol, ohlcv.frame, config)
         feature_records.append(feature_result.features)
+        symbol_last_dates[symbol] = feature_result.features.get("last_date", "")
 
     classified = pd.DataFrame(classified_records)
     features = pd.DataFrame(feature_records)
+    features, data_quality = _apply_data_quality(features, config, symbol_last_dates)
     features = _add_feature_zscores(features)
     eligible_result = apply_gates(features, config)
     scored = score_symbols(features, classified, config)
-
 
     universe_path = output_dir / "universe.csv"
     classified_path = output_dir / "classified.csv"
     features_path = output_dir / "features.csv"
     eligible_path = output_dir / "eligible.csv"
     scored_path = output_dir / "scored.csv"
+    data_quality_path = output_dir / "data_quality.csv"
 
     universe.to_csv(universe_path, index=False)
     classified.to_csv(classified_path, index=False)
     features.to_csv(features_path, index=False)
     eligible_result.eligible.to_csv(eligible_path, index=False)
     scored.to_csv(scored_path, index=False)
+    data_quality.to_csv(data_quality_path, index=False)
 
     _assert_required_columns(universe, UNIVERSE_COLUMNS)
     _assert_required_columns(classified, CLASSIFIED_COLUMNS)
     _assert_required_columns(eligible_result.eligible, ELIGIBLE_COLUMNS)
     _assert_required_columns(scored, SCORED_COLUMNS)
+    _assert_required_columns(data_quality, DATA_QUALITY_COLUMNS)
 
     write_report(
         output_dir / "report.md",
@@ -129,7 +146,7 @@ def run_offline_pipeline(
         classified=classified,
         eligible=eligible_result.eligible,
         scored=scored,
-        data_quality=features,
+        data_quality=data_quality,
     )
 
     sample_ohlcv = sorted(set(ohlcv_files))[:5]
@@ -158,6 +175,52 @@ def resolve_run_id(config_result: ConfigResult, symbol_files: list[Path]) -> str
     )
     digest = hash_text(payload)[:10]
     return f"run_{digest}"
+
+
+def _apply_data_quality(
+    features: pd.DataFrame,
+    config: dict[str, Any],
+    symbol_last_dates: dict[str, str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    working = features.copy()
+    if working.empty:
+        empty = pd.DataFrame(columns=DATA_QUALITY_COLUMNS)
+        return working, empty
+
+    max_lag_days = int(config.get("gates", {}).get("max_lag_days", 5))
+    spy_last_date = symbol_last_dates.get("SPY", "")
+    spy_dt = pd.to_datetime(spy_last_date, errors="coerce") if spy_last_date else pd.NaT
+
+    all_last_dates = pd.to_datetime(working.get("last_date", pd.Series(index=working.index)), errors="coerce")
+    global_max_dt = all_last_dates.max() if not all_last_dates.isna().all() else pd.NaT
+    chosen_as_of_dt = spy_dt if not pd.isna(spy_dt) else global_max_dt
+    as_of_text = "" if pd.isna(chosen_as_of_dt) else chosen_as_of_dt.date().isoformat()
+
+    lag_values = []
+    stale_values = []
+    normalized_last_dates = []
+    for _, row in working.iterrows():
+        row_last = pd.to_datetime(row.get("last_date", ""), errors="coerce")
+        normalized_last = "" if pd.isna(row_last) else row_last.date().isoformat()
+        normalized_last_dates.append(normalized_last)
+        if pd.isna(row_last) or pd.isna(chosen_as_of_dt):
+            lag_values.append(pd.NA)
+            stale_values.append(True)
+            continue
+        lag = int((chosen_as_of_dt.normalize() - row_last.normalize()).days)
+        lag_values.append(lag)
+        stale_values.append(lag > max_lag_days)
+
+    working["last_date"] = normalized_last_dates
+    working["as_of_date"] = as_of_text
+    working["lag_days"] = pd.array(lag_values, dtype="Int64")
+    working["stale_data"] = stale_values
+
+    data_quality = working[
+        ["symbol", "last_date", "as_of_date", "lag_days", "stale_data", "volume_missing", "missing_data"]
+    ].copy()
+    data_quality = data_quality.sort_values("symbol", kind="mergesort").reset_index(drop=True)
+    return working, data_quality
 
 
 def _add_feature_zscores(features: pd.DataFrame) -> pd.DataFrame:

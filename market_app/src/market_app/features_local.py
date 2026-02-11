@@ -21,13 +21,15 @@ def compute_features(symbol: str, frame: pd.DataFrame, config: dict[str, Any]) -
     close = frame["close"].to_numpy(dtype=float)
     volume = frame.get("volume", pd.Series([np.nan] * len(frame))).to_numpy(dtype=float)
     dates = pd.to_datetime(frame["date"], errors="coerce")
-    as_of_date = dates.max().date().isoformat() if not dates.isna().all() else ""
+    last_date = dates.max().date().isoformat() if not dates.isna().all() else ""
     history_days = len(close)
     returns = np.diff(np.log(np.clip(close, 1e-12, None)))
 
     feature_values = {
         "symbol": symbol,
-        "as_of_date": as_of_date,
+        "as_of_date": "",
+        "last_date": last_date,
+        "lag_days": pd.NA,
         "history_days": history_days,
         "return_1m": _safe_return(close, 21),
         "return_3m": _safe_return(close, 63),
@@ -48,7 +50,7 @@ def compute_features(symbol: str, frame: pd.DataFrame, config: dict[str, Any]) -
         "adv20_usd": _adv20_usd(close, volume),
         "zero_volume_fraction_60d": _zero_volume_fraction(volume, window=60),
         "missing_data": frame.isna().any(axis=None),
-        "stale_data": _is_stale(dates, config),
+        "stale_data": False,
         "split_suspect": _split_suspect(returns),
         "volume_missing": np.isnan(volume).all(),
     }
@@ -59,6 +61,8 @@ def _empty_features(symbol: str) -> dict[str, Any]:
     return {
         "symbol": symbol,
         "as_of_date": "",
+        "last_date": "",
+        "lag_days": pd.NA,
         "history_days": 0,
         "return_1m": np.nan,
         "return_3m": np.nan,
@@ -165,24 +169,6 @@ def _zero_volume_fraction(volume: np.ndarray, window: int) -> float:
         return float("nan")
     subset = volume[-window:]
     return float(np.mean(subset == 0))
-
-
-def _is_stale(dates: pd.Series, config: dict[str, Any]) -> bool:
-    if dates.isna().all():
-        return True
-    max_lag = int(config.get("gates", {}).get("max_lag_days", 5))
-    latest = dates.max()
-    if pd.isna(latest):
-        return True
-    now = pd.Timestamp.utcnow()
-    if now.tzinfo is None:
-        now = now.tz_localize("UTC")
-    if latest.tzinfo is None:
-        latest = latest.tz_localize("UTC")
-    else:
-        latest = latest.tz_convert("UTC")
-    lag = (now - latest).days
-    return lag > max_lag
 
 
 def _split_suspect(returns: np.ndarray) -> bool:
