@@ -33,8 +33,9 @@ def write_report(
         .value_counts()
     )
     data_quality_summary = data_quality[
-        ["symbol", "missing_data", "stale_data", "volume_missing"]
+        ["symbol", "last_date", "as_of_date", "lag_days", "missing_data", "stale_data", "volume_missing"]
     ].copy()
+    as_of_source = "SPY benchmark date" if (data_quality["as_of_date"].astype(str).str.len() > 0).any() and (data_quality["symbol"] == "SPY").any() else "global max symbol date"
 
     lines = [
         "# Offline Monitor Report",
@@ -83,6 +84,8 @@ def write_report(
         [
             "",
             "## Data Quality",
+            "",
+            f"- as_of_date chosen from {as_of_source} (SPY if available, else global max).",
             "",
             _frame_to_markdown(data_quality_summary.head(20)),
         ]

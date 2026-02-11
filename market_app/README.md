@@ -559,3 +559,14 @@ Implement `HistoryProvider` in `market_monitor/providers/` with explicit capabil
 - `supports_history`, `supports_quote`, `supports_adjusted`, `rate_limit_model`
 
 Then register it in `market_monitor/cli.py` and add any required env vars to the doctor checks.
+
+
+## Update cache + run offline (single command, Windows)
+
+```powershell
+.\scripts\update_and_run.ps1 -StooqDumpDir "C:\path\to\stooq_dump" -OhlcvDir "C:\path\to\ohlcv_daily_csv"
+```
+
+This command runs incremental Stooq update, rebuilds `data/universe_available`, and runs the offline pipeline.
+
+Detailed workflow: `docs/data_workflow.md`.
