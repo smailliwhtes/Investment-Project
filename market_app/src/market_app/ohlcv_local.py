@@ -15,6 +15,7 @@ class OhlcvResult:
     source_path: Path | None
     missing_volume: bool
     missing_data: bool
+    quality: dict[str, object]
 
 
 REQUIRED_COLUMNS = {"date", "open", "high", "low", "close"}
@@ -30,6 +31,7 @@ def load_ohlcv(symbol: str, ohlcv_dir: Path) -> OhlcvResult:
             source_path=None,
             missing_volume=True,
             missing_data=True,
+            quality=_empty_quality(symbol),
         )
     df = pd.read_csv(path)
     normalized, missing_volume, missing_data = _normalize_ohlcv(df)
@@ -39,6 +41,7 @@ def load_ohlcv(symbol: str, ohlcv_dir: Path) -> OhlcvResult:
         source_path=path,
         missing_volume=missing_volume,
         missing_data=missing_data,
+        quality=_quality_metrics(symbol, normalized),
     )
 
 
@@ -114,3 +117,46 @@ def _normalize_ohlcv(df: pd.DataFrame) -> tuple[pd.DataFrame, bool, bool]:
     missing_volume = volume_col is None or normalized["volume"].isna().all()
     missing_data = normalized.empty
     return normalized, missing_volume, missing_data
+
+
+def _empty_quality(symbol: str) -> dict[str, object]:
+    return {
+        "symbol": symbol,
+        "last_date": "",
+        "n_rows": 0,
+        "missing_days": 0,
+        "zero_volume_fraction": pd.NA,
+        "bad_ohlc_count": 0,
+    }
+
+
+def _quality_metrics(symbol: str, frame: pd.DataFrame) -> dict[str, object]:
+    if frame.empty:
+        return _empty_quality(symbol)
+    dates = pd.to_datetime(frame["date"], errors="coerce").dropna().sort_values()
+    last_date = "" if dates.empty else dates.iloc[-1].date().isoformat()
+    missing_days = 0
+    if len(dates) >= 2:
+        full = pd.bdate_range(dates.iloc[0], dates.iloc[-1])
+        missing_days = max(0, len(full) - len(pd.Index(dates.dt.normalize().unique())))
+    volume = pd.to_numeric(frame.get("volume"), errors="coerce")
+    zero_volume_fraction = pd.NA
+    if volume is not None and not volume.isna().all():
+        lookback = int(min(60, len(volume)))
+        if lookback > 0:
+            tail = volume.tail(lookback)
+            zero_volume_fraction = float((tail == 0).mean())
+
+    o = pd.to_numeric(frame.get("open"), errors="coerce")
+    h = pd.to_numeric(frame.get("high"), errors="coerce")
+    l = pd.to_numeric(frame.get("low"), errors="coerce")
+    c = pd.to_numeric(frame.get("close"), errors="coerce")
+    bad = ((o <= 0) | (h <= 0) | (l <= 0) | (c <= 0) | (h < l)).fillna(True)
+    return {
+        "symbol": symbol,
+        "last_date": last_date,
+        "n_rows": int(len(frame)),
+        "missing_days": int(missing_days),
+        "zero_volume_fraction": zero_volume_fraction,
+        "bad_ohlc_count": int(bad.sum()),
+    }

@@ -18,6 +18,13 @@ cd market_app
 ./scripts/run.ps1 -Config ./config/config.yaml -Offline
 ```
 
+Deterministic direct CLI run:
+
+```bash
+cd market_app
+python -m market_app.cli --config ./config/config.yaml --offline --as-of 2025-01-31
+```
+
 ## Audit command
 
 ```bash
