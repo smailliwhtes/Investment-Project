@@ -12,6 +12,13 @@ from market_app.local_config import ConfigResult
 from market_app.manifest_local import build_manifest, hash_file, hash_text, write_manifest
 from market_app.ohlcv_local import load_ohlcv, resolve_ohlcv_dir
 from market_app.reporting_local import write_report
+from market_app.schemas_local import (
+    DATA_QUALITY_SCHEMA,
+    FEATURES_SCHEMA,
+    OHLCV_SCHEMA,
+    SCORE_SCHEMA,
+    UNIVERSE_SCHEMA,
+)
 from market_app.scoring_local import apply_gates, score_symbols
 from market_app.symbols_local import load_symbols
 from market_app.themes_local import classify_theme
@@ -22,6 +29,7 @@ OUTPUT_SCHEMAS = {
     "classified.csv": "v1",
     "features.csv": "v1",
     "eligible.csv": "v1",
+    "ineligible.csv": "v1",
     "scored.csv": "v1",
     "data_quality.csv": "v1",
 }
@@ -46,12 +54,18 @@ SCORED_COLUMNS = [
     "theme_confidence",
     "last_date",
     "lag_days",
+    "lag_bin",
 ]
 DATA_QUALITY_COLUMNS = [
     "symbol",
     "last_date",
     "as_of_date",
     "lag_days",
+    "lag_bin",
+    "n_rows",
+    "missing_days",
+    "zero_volume_fraction",
+    "bad_ohlc_count",
     "stale_data",
     "volume_missing",
     "missing_data",
@@ -95,6 +109,7 @@ def run_offline_pipeline(
     feature_records = []
     ohlcv_files = []
     symbol_last_dates: dict[str, str] = {}
+    quality_records: list[dict[str, object]] = []
     for _, row in universe.iterrows():
         symbol = row["symbol"]
         name = row.get("name", "")
@@ -113,13 +128,21 @@ def run_offline_pipeline(
         ohlcv = load_ohlcv(symbol, ohlcv_dir)
         if ohlcv.source_path:
             ohlcv_files.append(ohlcv.source_path)
+        if not ohlcv.frame.empty:
+            OHLCV_SCHEMA.validate(ohlcv.frame)
+        quality_records.append(ohlcv.quality)
         feature_result = compute_features(symbol, ohlcv.frame, config)
         feature_records.append(feature_result.features)
         symbol_last_dates[symbol] = feature_result.features.get("last_date", "")
 
     classified = pd.DataFrame(classified_records)
     features = pd.DataFrame(feature_records)
-    features, data_quality = _apply_data_quality(features, config, symbol_last_dates)
+    features, data_quality = _apply_data_quality(
+        features,
+        config,
+        symbol_last_dates,
+        quality_records=quality_records,
+    )
     features = _add_feature_zscores(features)
     eligible_result = apply_gates(features, config)
     scored = score_symbols(features, classified, config)
@@ -128,6 +151,7 @@ def run_offline_pipeline(
     classified_path = output_dir / "classified.csv"
     features_path = output_dir / "features.csv"
     eligible_path = output_dir / "eligible.csv"
+    ineligible_path = output_dir / "ineligible.csv"
     scored_path = output_dir / "scored.csv"
     data_quality_path = output_dir / "data_quality.csv"
 
@@ -135,8 +159,14 @@ def run_offline_pipeline(
     classified.to_csv(classified_path, index=False)
     features.to_csv(features_path, index=False)
     eligible_result.eligible.to_csv(eligible_path, index=False)
+    eligible_result.eligible.loc[~eligible_result.eligible["eligible"]].to_csv(ineligible_path, index=False)
     scored.to_csv(scored_path, index=False)
     data_quality.to_csv(data_quality_path, index=False)
+
+    UNIVERSE_SCHEMA.validate(universe)
+    FEATURES_SCHEMA.validate(features)
+    SCORE_SCHEMA.validate(scored)
+    DATA_QUALITY_SCHEMA.validate(data_quality)
 
     _assert_required_columns(universe, UNIVERSE_COLUMNS)
     _assert_required_columns(classified, CLASSIFIED_COLUMNS)
@@ -187,6 +217,7 @@ def _apply_data_quality(
     features: pd.DataFrame,
     config: dict[str, Any],
     symbol_last_dates: dict[str, str],
+    quality_records: list[dict[str, object]],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     working = features.copy()
     if working.empty:
@@ -199,7 +230,12 @@ def _apply_data_quality(
 
     all_last_dates = pd.to_datetime(working.get("last_date", pd.Series(index=working.index)), errors="coerce")
     global_max_dt = all_last_dates.max() if not all_last_dates.isna().all() else pd.NaT
-    chosen_as_of_dt = spy_dt if not pd.isna(spy_dt) else global_max_dt
+    configured_as_of = pd.to_datetime(config.get("as_of_date"), errors="coerce")
+    chosen_as_of_dt = (
+        configured_as_of
+        if not pd.isna(configured_as_of)
+        else (spy_dt if not pd.isna(spy_dt) else global_max_dt)
+    )
     as_of_text = "" if pd.isna(chosen_as_of_dt) else chosen_as_of_dt.date().isoformat()
 
     lag_values = []
@@ -222,11 +258,41 @@ def _apply_data_quality(
     working["lag_days"] = pd.array(lag_values, dtype="Int64")
     working["stale_data"] = stale_values
 
-    data_quality = working[
-        ["symbol", "last_date", "as_of_date", "lag_days", "stale_data", "volume_missing", "missing_data"]
-    ].copy()
+    quality_df = pd.DataFrame(quality_records)
+    if quality_df.empty:
+        quality_df = pd.DataFrame(columns=["symbol", "n_rows", "missing_days", "zero_volume_fraction", "bad_ohlc_count"])
+    else:
+        quality_df = quality_df.drop(columns=["last_date"], errors="ignore")
+    data_quality = working[["symbol", "last_date", "as_of_date", "lag_days", "stale_data", "volume_missing", "missing_data"]].merge(
+        quality_df,
+        on="symbol",
+        how="left",
+    )
+    data_quality["lag_bin"] = data_quality["lag_days"].apply(_lag_bin)
+    for col in ["n_rows", "missing_days", "bad_ohlc_count"]:
+        data_quality[col] = pd.to_numeric(data_quality[col], errors="coerce").fillna(0).astype(int)
+    data_quality["zero_volume_fraction"] = pd.to_numeric(data_quality["zero_volume_fraction"], errors="coerce")
+
+    working = working.merge(
+        data_quality[["symbol", "lag_bin", "n_rows", "missing_days", "zero_volume_fraction", "bad_ohlc_count"]],
+        on="symbol",
+        how="left",
+    )
     data_quality = data_quality.sort_values("symbol", kind="mergesort").reset_index(drop=True)
     return working, data_quality
+
+
+def _lag_bin(value: object) -> str:
+    if pd.isna(value):
+        return "unknown"
+    lag = int(value)
+    if lag <= 1:
+        return "0-1"
+    if lag <= 5:
+        return "2-5"
+    if lag <= 20:
+        return "6-20"
+    return ">20"
 
 
 def _add_feature_zscores(features: pd.DataFrame) -> pd.DataFrame:

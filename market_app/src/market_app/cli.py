@@ -55,7 +55,7 @@ def _build_run_parser(parser: argparse.ArgumentParser) -> None:
     mode.add_argument("--online", action="store_true")
     parser.add_argument("--runs-dir", default=None)
     parser.add_argument("--top-n", "--top_n", dest="top_n", type=int, default=None)
-    parser.add_argument("--as-of-date", dest="as_of_date", default=None)
+    parser.add_argument("--as-of-date", "--as-of", dest="as_of_date", default=None)
     parser.add_argument("--now-utc", dest="now_utc", default=None)
     parser.add_argument("--symbols-dir", dest="symbols_dir", default=None)
     parser.add_argument("--ohlcv-dir", dest="ohlcv_dir", default=None)
@@ -71,7 +71,7 @@ def _build_doctor_parser(parser: argparse.ArgumentParser) -> None:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--offline", action="store_true")
     mode.add_argument("--online", action="store_true")
-    parser.add_argument("--as-of-date", dest="as_of_date", default=None)
+    parser.add_argument("--as-of-date", "--as-of", dest="as_of_date", default=None)
     parser.add_argument("--now-utc", dest="now_utc", default=None)
     parser.set_defaults(command="doctor")
 
@@ -83,7 +83,7 @@ def _build_determinism_parser(parser: argparse.ArgumentParser) -> None:
     mode.add_argument("--offline", action="store_true")
     mode.add_argument("--online", action="store_true")
     parser.add_argument("--runs-dir", default=None)
-    parser.add_argument("--as-of-date", dest="as_of_date", default=None)
+    parser.add_argument("--as-of-date", "--as-of", dest="as_of_date", default=None)
     parser.add_argument("--now-utc", dest="now_utc", default=None)
     parser.set_defaults(command="determinism-check")
 
@@ -193,6 +193,7 @@ def _execute_local_run(args: argparse.Namespace) -> Path:
         "ohlcv_dir": args.ohlcv_dir,
         "output_dir": args.output_dir,
         "top_n": args.top_n,
+        "as_of_date": args.as_of_date,
     }
     local_result: LocalConfigResult = load_local_config(config_path, cli_overrides=cli_overrides)
     config = local_result.config

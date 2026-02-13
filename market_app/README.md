@@ -45,6 +45,12 @@ python -m market_app.cli --config .\config\config.yaml --offline --top_n 50
 python -m market_app.cli --config ./config/config.yaml --offline --top_n 50
 ```
 
+Deterministic/as-of anchored variant:
+
+```bash
+python -m market_app.cli --config ./config/config.yaml --offline --as-of 2025-01-31 --top_n 50
+```
+
 This runs the offline-first pipeline and writes output artifacts to
 `outputs/runs/<run_id>/`. The run will fall back to bundled sample data if
 `MARKET_APP_SYMBOLS_DIR` or `MARKET_APP_OHLCV_DIR` are not set.
@@ -54,10 +60,14 @@ Required outputs per run:
 - `universe.csv`
 - `classified.csv`
 - `features.csv`
+- `data_quality.csv`
 - `eligible.csv`
+- `ineligible.csv`
 - `scored.csv`
 - `report.md`
 - `manifest.json`
+
+`scored.csv` includes `last_date`, `lag_days`, and `lag_bin` so stale symbols can be surfaced quickly.
 
 Optional outputs include `regime.json` and `predictions.csv` when enabled.
 

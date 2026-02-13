@@ -105,6 +105,7 @@ def score_symbols(
             "theme_confidence": merged["theme_confidence"].fillna(0.0),
             "last_date": merged["last_date"].fillna(""),
             "lag_days": pd.array(merged["lag_days"], dtype="Int64"),
+            "lag_bin": merged.get("lag_bin", pd.Series(["unknown"] * len(merged))).fillna("unknown"),
         }
     )
     return scored.sort_values(["monitor_score", "symbol"], ascending=[False, True]).reset_index(
