@@ -1,0 +1,49 @@
+﻿schema_version: "v2"
+offline: true
+online: false
+run:
+  top_n: 50
+  max_symbols: null
+paths:
+  symbols_dir: "" # override via MARKET_APP_SYMBOLS_DIR
+  ohlcv_dir: "" # override via MARKET_APP_OHLCV_DIR
+  macro_dir: ""
+  output_dir: "../outputs/runs"
+  watchlists_file: "./watchlists.yaml"
+  logging_config: "./logging.yaml"
+  sources_config: "./sources.yaml"
+filters:
+  include_warrants: false
+  include_rights: false
+  include_units: false
+  include_preferreds: false
+gates:
+  min_history_days: 30
+  min_adv20_usd: 0
+  price_floor: 1.0
+  zero_volume_max_frac: 1.0
+  max_lag_days: 9999
+risk_thresholds:
+  extreme_volatility: 0.6
+  deep_drawdown: -0.4
+  tail_risk: -0.2
+scoring:
+  weights:
+    trend: 0.35
+    liquidity: 0.2
+    risk_penalty: 0.2
+    drawdown_penalty: 0.15
+    theme_purity: 0.1
+    volume_missing_penalty: 0.05
+themes:
+  defense:
+    keywords: ["defense", "aerospace", "missile", "munitions", "tactical", "radar"]
+    tickers: []
+  strategic_tech:
+    keywords: ["semiconductor", "chip", "ai", "artificial intelligence", "quantum"]
+    tickers: []
+  critical_materials:
+    keywords: ["lithium", "uranium", "copper", "rare earth", "nickel", "graphite"]
+    tickers: []
+report:
+  top_n: 50
