@@ -34,8 +34,22 @@ python -m market_app.audit
 
 ## How to run tests (offline-safe)
 
-**Do NOT paste Python code into PowerShell.**
-Always run tests through `pytest` so Python code is executed by the Python interpreter.
+**Do NOT paste Python test source into PowerShell.**
+Always execute tests through `python -m pytest` or helper scripts.
+
+Full suite:
+
+```bash
+python -m pytest -q
+```
+
+Offline E2E (repo-root test path):
+
+```powershell
+python -m pytest -q tests\test_offline_e2e_market_and_corpus.py -k offline_e2e --maxfail=1
+```
+
+Helpers:
 
 ```powershell
 .\scripts\run_e2e.ps1
@@ -45,8 +59,20 @@ Always run tests through `pytest` so Python code is executed by the Python inter
 ./scripts/run_e2e.sh
 ```
 
+Desktop shortcut installer (Windows):
+
+```powershell
+.\scripts\install_e2e_desktop_shortcut.ps1
+```
+
+Optional smoke helpers:
+
+```powershell
+.\scripts\run_smoke.ps1
+```
+
 ```bash
-python -m pytest -q tests/test_offline_e2e_market_and_corpus.py -k offline_e2e --maxfail=1
+./scripts/run_smoke.sh
 ```
 
 ## Tests
