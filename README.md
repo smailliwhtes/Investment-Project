@@ -32,6 +32,23 @@ cd market_app
 python -m market_app.audit
 ```
 
+## How to run tests (offline-safe)
+
+**Do NOT paste Python code into PowerShell.**
+Always run tests through `pytest` so Python code is executed by the Python interpreter.
+
+```powershell
+.\scripts\run_e2e.ps1
+```
+
+```bash
+./scripts/run_e2e.sh
+```
+
+```bash
+python -m pytest -q tests/test_offline_e2e_market_and_corpus.py -k offline_e2e --maxfail=1
+```
+
 ## Tests
 
 ```bash
