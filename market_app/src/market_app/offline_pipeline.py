@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 
 from market_app.features_local import compute_features
+from market_app.corpus import build_local_corpus_features
 from market_app.local_config import ConfigResult
 from market_app.manifest_local import build_manifest, hash_file, hash_text, write_manifest
 from market_app.ohlcv_local import load_ohlcv, resolve_ohlcv_dir
@@ -67,8 +68,11 @@ DATA_QUALITY_COLUMNS = [
     "zero_volume_fraction",
     "bad_ohlc_count",
     "stale_data",
+    "stale",
+    "has_volume",
     "volume_missing",
     "missing_data",
+    "dq_flags",
 ]
 
 
@@ -77,6 +81,7 @@ def run_offline_pipeline(
     *,
     run_id: str | None,
     logger: logging.Logger,
+    cli_args: list[str] | None = None,
 ) -> Path:
     config = config_result.config
     paths_cfg = config["paths"]
@@ -136,7 +141,7 @@ def run_offline_pipeline(
         symbol_last_dates[symbol] = feature_result.features.get("last_date", "")
 
     classified = pd.DataFrame(classified_records)
-    features = pd.DataFrame(feature_records)
+    features = pd.DataFrame(feature_records).sort_values("symbol", kind="mergesort").reset_index(drop=True)
     features, data_quality = _apply_data_quality(
         features,
         config,
@@ -145,7 +150,33 @@ def run_offline_pipeline(
     )
     features = _add_feature_zscores(features)
     eligible_result = apply_gates(features, config)
+    eligible_df = eligible_result.eligible.copy()
     scored = score_symbols(features, classified, config)
+    dq_merge_cols = ["symbol", "last_date", "lag_days", "lag_bin", "stale", "dq_flags"]
+    missing_dq = sorted(set(scored["symbol"]) - set(data_quality["symbol"]))
+    if missing_dq:
+        raise RuntimeError(f"Missing data_quality rows for scored symbols: {missing_dq[:10]}")
+    scored = scored.drop(columns=[c for c in dq_merge_cols if c != "symbol" and c in scored.columns], errors="ignore")
+    scored = scored.merge(data_quality[dq_merge_cols], on="symbol", how="left")
+    eligible_df = eligible_df.merge(
+        data_quality[["symbol", "last_date", "lag_days", "lag_bin", "stale", "dq_flags"]],
+        on="symbol",
+        how="left",
+    )
+    if eligible_df["dq_flags"].isna().any():
+        eligible_df["dq_flags"] = eligible_df["dq_flags"].fillna("MISSING_DQ")
+
+    corpus_features = pd.DataFrame()
+    corpus_dir = Path(paths_cfg.get("corpus_dir", "")) if paths_cfg.get("corpus_dir") else None
+    if config.get("corpus", {}).get("enabled", True):
+        if corpus_dir and corpus_dir.exists():
+            corpus_features = build_local_corpus_features(corpus_dir)
+            if not corpus_features.empty:
+                corpus_features.to_csv(output_dir / "corpus_features.csv", index=False)
+        elif config.get("corpus", {}).get("required", False):
+            raise RuntimeError(f"Corpus required but missing path: {corpus_dir}")
+        else:
+            logger.warning("Corpus lane skipped: no local corpus files found.")
 
     universe_path = output_dir / "universe.csv"
     classified_path = output_dir / "classified.csv"
@@ -158,8 +189,10 @@ def run_offline_pipeline(
     universe.to_csv(universe_path, index=False)
     classified.to_csv(classified_path, index=False)
     features.to_csv(features_path, index=False)
-    eligible_result.eligible.to_csv(eligible_path, index=False)
-    eligible_result.eligible.loc[~eligible_result.eligible["eligible"]].to_csv(ineligible_path, index=False)
+    eligible_df = eligible_df.sort_values("symbol", kind="mergesort").reset_index(drop=True)
+    scored = scored.sort_values(["monitor_score", "symbol"], ascending=[False, True], kind="mergesort").reset_index(drop=True)
+    eligible_df.to_csv(eligible_path, index=False)
+    eligible_df.loc[~eligible_df["eligible"]].to_csv(ineligible_path, index=False)
     scored.to_csv(scored_path, index=False)
     data_quality.to_csv(data_quality_path, index=False)
 
@@ -170,7 +203,7 @@ def run_offline_pipeline(
 
     _assert_required_columns(universe, UNIVERSE_COLUMNS)
     _assert_required_columns(classified, CLASSIFIED_COLUMNS)
-    _assert_required_columns(eligible_result.eligible, ELIGIBLE_COLUMNS)
+    _assert_required_columns(eligible_df, ELIGIBLE_COLUMNS)
     _assert_required_columns(scored, SCORED_COLUMNS)
     _assert_required_columns(data_quality, DATA_QUALITY_COLUMNS)
 
@@ -180,12 +213,13 @@ def run_offline_pipeline(
         config=config,
         universe=universe,
         classified=classified,
-        eligible=eligible_result.eligible,
+        eligible=eligible_df,
         scored=scored,
         data_quality=data_quality,
+        corpus_features=corpus_features,
     )
 
-    sample_ohlcv = sorted(set(ohlcv_files))[:5]
+    sample_ohlcv = sorted(set(ohlcv_files))
     manifest = build_manifest(
         run_id=resolved_run_id,
         config=config,
@@ -195,6 +229,14 @@ def run_offline_pipeline(
         ohlcv_files=sample_ohlcv,
         output_dir=output_dir,
         schema_versions=OUTPUT_SCHEMAS,
+        as_of_date=str(data_quality["as_of_date"].iloc[0]) if not data_quality.empty else "",
+        cli_args=cli_args or [],
+        counts={
+            "n_universe": int(len(universe)),
+            "n_loaded_ohlcv": int(sum(1 for q in quality_records if int(q.get("n_rows", 0)) > 0)),
+            "n_eligible": int(eligible_df["eligible"].sum()),
+            "n_scored": int(len(scored)),
+        },
     )
     write_manifest(output_dir / "manifest.json", manifest)
     logger.info("Offline pipeline complete at %s", output_dir)
@@ -263,18 +305,21 @@ def _apply_data_quality(
         quality_df = pd.DataFrame(columns=["symbol", "n_rows", "missing_days", "zero_volume_fraction", "bad_ohlc_count"])
     else:
         quality_df = quality_df.drop(columns=["last_date"], errors="ignore")
-    data_quality = working[["symbol", "last_date", "as_of_date", "lag_days", "stale_data", "volume_missing", "missing_data"]].merge(
+    data_quality = working[["symbol", "last_date", "as_of_date", "lag_days", "stale_data", "volume_missing", "missing_data", "history_days"]].merge(
         quality_df,
         on="symbol",
         how="left",
     )
     data_quality["lag_bin"] = data_quality["lag_days"].apply(_lag_bin)
+    data_quality["has_volume"] = ~data_quality["volume_missing"].fillna(True)
+    data_quality["stale"] = data_quality["stale_data"].fillna(True)
     for col in ["n_rows", "missing_days", "bad_ohlc_count"]:
         data_quality[col] = pd.to_numeric(data_quality[col], errors="coerce").fillna(0).astype(int)
     data_quality["zero_volume_fraction"] = pd.to_numeric(data_quality["zero_volume_fraction"], errors="coerce")
+    data_quality["dq_flags"] = data_quality.apply(_build_dq_flags, axis=1)
 
     working = working.merge(
-        data_quality[["symbol", "lag_bin", "n_rows", "missing_days", "zero_volume_fraction", "bad_ohlc_count"]],
+        data_quality[["symbol", "lag_bin", "n_rows", "missing_days", "zero_volume_fraction", "bad_ohlc_count", "dq_flags", "stale"]],
         on="symbol",
         how="left",
     )
@@ -286,13 +331,32 @@ def _lag_bin(value: object) -> str:
     if pd.isna(value):
         return "unknown"
     lag = int(value)
-    if lag <= 1:
-        return "0-1"
-    if lag <= 5:
-        return "2-5"
-    if lag <= 20:
-        return "6-20"
-    return ">20"
+    if lag <= 0:
+        return "0"
+    if lag <= 3:
+        return "1-3"
+    if lag <= 7:
+        return "4-7"
+    if lag <= 14:
+        return "8-14"
+    return "15+"
+
+
+def _build_dq_flags(row: pd.Series) -> str:
+    flags: list[str] = []
+    if int(row.get("n_rows", 0)) <= 0:
+        flags.append("NO_ROWS")
+    if bool(row.get("volume_missing", False)):
+        flags.append("MISSING_VOLUME")
+    if int(row.get("history_days", 0)) < 30:
+        flags.append("SHORT_HISTORY")
+    if int(row.get("bad_ohlc_count", 0)) > 0:
+        flags.append("BAD_OHLC")
+    if bool(row.get("missing_data", False)):
+        flags.append("MISSING_DATA")
+    if bool(row.get("stale", False)):
+        flags.append("STALE")
+    return "|".join(flags)
 
 
 def _add_feature_zscores(features: pd.DataFrame) -> pd.DataFrame:

@@ -37,18 +37,18 @@ From the repo root:
 
 **Windows (PowerShell)**
 ```powershell
-python -m market_app.cli --config .\config\config.yaml --offline --top_n 50
+python -m market_app.cli --config .\config\config.yaml --offline --as-of 2025-01-31 --top-n 200
 ```
 
 **macOS/Linux (bash)**
 ```bash
-python -m market_app.cli --config ./config/config.yaml --offline --top_n 50
+python -m market_app.cli --config ./config/config.yaml --offline --as-of 2025-01-31 --top-n 200
 ```
 
 Deterministic/as-of anchored variant:
 
 ```bash
-python -m market_app.cli --config ./config/config.yaml --offline --as-of 2025-01-31 --top_n 50
+python -m market_app.cli --config ./config/config.yaml --offline --as-of 2025-01-31 --top-n 200
 ```
 
 This runs the offline-first pipeline and writes output artifacts to
@@ -66,6 +66,7 @@ Required outputs per run:
 - `scored.csv`
 - `report.md`
 - `manifest.json`
+- `corpus_features.csv` (optional when local corpus files are provided)
 
 `scored.csv` includes `last_date`, `lag_days`, and `lag_bin` so stale symbols can be surfaced quickly.
 

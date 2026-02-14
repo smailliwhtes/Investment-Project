@@ -3,6 +3,7 @@ from __future__ import annotations
 import socket
 from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import wraps
 from typing import Callable, Iterator
 
 
@@ -69,3 +70,20 @@ def enforce_offline_network_block(enabled: bool) -> Iterator[None]:
         socket.socket.connect = original.connect
         socket.create_connection = original.create_connection
         socket.getaddrinfo = original.getaddrinfo
+
+
+def offline_guard(is_offline: bool, action: str) -> Callable:
+    """Decorator that blocks wrapped call when offline mode is enabled."""
+
+    def _decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def _wrapped(*args, **kwargs):
+            if is_offline:
+                raise OfflineNetworkError(
+                    f"Offline mode enabled; blocked network call path: {action}"
+                )
+            return func(*args, **kwargs)
+
+        return _wrapped
+
+    return _decorator

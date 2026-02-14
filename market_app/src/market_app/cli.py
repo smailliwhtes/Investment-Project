@@ -213,6 +213,7 @@ def _execute_local_run(args: argparse.Namespace) -> Path:
             local_result,
             run_id=run_id,
             logger=logger,
+            cli_args=sys.argv[1:],
         )
     print(f"[done] Run artifacts: {run_dir}")
     return run_dir
