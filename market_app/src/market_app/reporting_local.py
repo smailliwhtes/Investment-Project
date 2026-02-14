@@ -17,6 +17,7 @@ def write_report(
     eligible: pd.DataFrame,
     scored: pd.DataFrame,
     data_quality: pd.DataFrame,
+    corpus_features: pd.DataFrame | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc).isoformat()
@@ -90,6 +91,12 @@ def write_report(
             _frame_to_markdown(data_quality_summary.head(20)),
         ]
     )
+
+    lines.extend(["", "## Context Summary", ""])
+    if corpus_features is None or corpus_features.empty:
+        lines.append("- No local corpus features available for this run.")
+    else:
+        lines.append(_frame_to_markdown(corpus_features.tail(10)))
 
     path.write_text("\n".join(lines), encoding="utf-8")
 

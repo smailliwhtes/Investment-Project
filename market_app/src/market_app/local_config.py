@@ -25,6 +25,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "watchlists_file": "./config/watchlists.yaml",
         "logging_config": "./config/logging.yaml",
         "sources_config": "./config/sources.yaml",
+        "corpus_dir": "",
     },
     "filters": {
         "include_warrants": False,
@@ -70,6 +71,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "report": {
         "top_n": 50,
+    },
+    "corpus": {
+        "enabled": True,
+        "required": False,
     },
 }
 
@@ -152,6 +157,8 @@ def _apply_cli_overrides(config: dict[str, Any], cli_overrides: dict[str, Any]) 
             updated["offline"] = not bool(value)
         elif key in {"symbols_dir", "ohlcv_dir", "output_dir"}:
             updated["paths"][key] = value
+        elif key == "as_of_date":
+            updated["as_of_date"] = str(value)
         elif key == "top_n":
             updated.setdefault("run", {})["top_n"] = int(value)
         else:

@@ -31,14 +31,21 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -e "./market_app[test]" --no-build-isolation
       - name: CLI help
-        run: market-monitor --help
+        working-directory: market_app
+        run: |
+          python -m market_app.cli --help
       - name: Pytest
         working-directory: market_app
         run: python -m pytest -q
+      - name: CLI help breadcrumb (run)
+        working-directory: market_app
+        run: |
+          python -m market_app.cli --help
+          python -m market_app.cli run --help
       - name: Offline smoke run
         working-directory: market_app
         run: |
-          market-monitor run --watchlist watchlists/watchlist_smoke.csv --asof 2025-01-31 --run-id smoke --ohlcv-daily-dir tests/fixtures/ohlcv_daily --exogenous-daily-dir tests/fixtures/exogenous/daily_features
+          python -m market_app.cli run --config tests/data/mini_dataset/config.yaml --offline --as-of-date 2025-01-31 --run-id smoke
 
   determinism:
     runs-on: ${{ matrix.os }}

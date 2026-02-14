@@ -28,16 +28,27 @@ def build_manifest(
     ohlcv_files: list[Path],
     output_dir: Path,
     schema_versions: dict[str, str],
+    as_of_date: str,
+    cli_args: list[str],
+    counts: dict[str, int],
 ) -> dict[str, Any]:
+    from datetime import datetime, timezone
+
+    ohlcv_manifest = {}
+    for path in sorted(ohlcv_files):
+        ohlcv_manifest[str(path)] = hash_file(path)
     manifest = {
         "run_id": run_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "as_of_date": as_of_date,
         "git_sha": git_sha,
         "config_hash": config_hash,
+        "cli_args": cli_args,
+        "counts": counts,
         "config": config,
         "inputs": {
             "symbols": {str(path): hash_file(path) for path in symbol_files},
-            "ohlcv_sample": {str(path): hash_file(path) for path in ohlcv_files},
-            "ohlcv_hash_strategy": "first_5_sorted",
+            "ohlcv": ohlcv_manifest,
         },
         "schema_versions": schema_versions,
     }

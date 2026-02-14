@@ -58,15 +58,45 @@ def test_stale_data_uses_spy_as_of_and_lag_math(tmp_path: Path) -> None:
     old = dq.loc[dq["symbol"] == "OLD"].iloc[0]
     assert aaa["as_of_date"] == "2026-02-10"
     assert int(aaa["lag_days"]) == 0
+    assert aaa["lag_bin"] == "0"
     assert bool(aaa["stale_data"]) is False
     assert int(old["lag_days"]) == 14
+    assert old["lag_bin"] == "8-14"
     assert bool(old["stale_data"]) is True
+    assert "STALE" in str(old["dq_flags"])
 
     assert "last_date" in scored.columns
     assert "lag_days" in scored.columns
     old_scored = scored.loc[scored["symbol"] == "OLD"].iloc[0]
     assert old_scored["last_date"] == "2026-01-27"
     assert int(old_scored["lag_days"]) == 14
+    assert old_scored["lag_bin"] == "8-14"
+    assert "dq_flags" in scored.columns
+
+
+def test_missing_dq_row_fails_loudly(tmp_path: Path, monkeypatch) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    cfg_path = _write_config(tmp_path, repo_root / "tests" / "data" / "mini_dataset" / "symbols", repo_root / "tests" / "data" / "mini_dataset" / "ohlcv")
+    cfg_result = load_config(cfg_path)
+
+    logger = logging.getLogger("test_missing_dq")
+    logger.handlers.clear()
+    logger.addHandler(logging.NullHandler())
+
+    from market_app import offline_pipeline as op
+
+    original_apply = op._apply_data_quality
+
+    def _drop_one(*args, **kwargs):
+        features, dq = original_apply(*args, **kwargs)
+        return features, dq[dq["symbol"] != dq["symbol"].iloc[0]].reset_index(drop=True)
+
+    monkeypatch.setattr(op, "_apply_data_quality", _drop_one)
+    try:
+        run_offline_pipeline(cfg_result, run_id="dq_missing", logger=logger)
+        assert False, "expected RuntimeError"
+    except RuntimeError as exc:
+        assert "Missing data_quality rows" in str(exc)
 
 
 def test_scored_deterministic_across_runs(tmp_path: Path) -> None:

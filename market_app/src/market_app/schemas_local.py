@@ -39,6 +39,9 @@ DATA_QUALITY_SCHEMA = DataSchema(
         "zero_volume_fraction",
         "bad_ohlc_count",
         "stale_data",
+        "stale",
+        "has_volume",
+        "dq_flags",
     ),
 )
 
