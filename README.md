@@ -70,6 +70,7 @@ GUI desktop shortcut (Windows):
 ```powershell
 .\scripts\install_gui_desktop_shortcut.ps1
 ```
+This creates/overwrites **MarketApp GUI.lnk** on your Desktop. The shortcut launches `scripts/run_gui.ps1` (prefers `pwsh`, falls back to `powershell`) with the working directory set to the repo root so build/test output remains visible in the console.
 
 Optional smoke helpers:
 

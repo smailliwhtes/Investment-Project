@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
 
 function Write-Info($msg) { Write-Host "[info] $msg" -ForegroundColor Cyan }
 function Write-Err($msg)  { Write-Host "[error] $msg" -ForegroundColor Red }
@@ -41,7 +42,7 @@ $wsh = New-Object -ComObject WScript.Shell
 $sc  = $wsh.CreateShortcut($lnkPath)
 $sc.TargetPath = $targetExe
 $sc.Arguments  = $arg
-$sc.WorkingDirectory = $repoRoot.Path
+$sc.WorkingDirectory = $repoRoot.ProviderPath
 # Optional: PowerShell icon
 $sc.IconLocation = "$targetExe,0"
 $sc.Save()
