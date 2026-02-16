@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MarketApp.Gui.Pages.UniversePage"
+             Title="Universe">
+  <VerticalStackLayout Padding="16" Spacing="12">
+    <Label Text="Universe and scored symbols" FontSize="22" FontAttributes="Bold" />
+    <Entry Placeholder="Filter by symbol or theme" Text="{Binding FilterText}" />
+    <CollectionView ItemsSource="{Binding FilteredScores}"
+                    SelectionMode="Single"
+                    SelectedItem="{Binding SelectedScore}"
+                    HeightRequest="320">
+      <CollectionView.Header>
+        <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
+          <Label Text="Symbol" />
+          <Label Text="Score" />
+          <Label Text="Lag days" />
+          <Label Text="Themes" />
+          <Label Text="Flags" />
+        </Grid>
+      </CollectionView.Header>
+      <CollectionView.ItemTemplate>
+        <DataTemplate>
+          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2">
+            <Label Text="{Binding Symbol}" />
+            <Label Text="{Binding Score, StringFormat='{}{0:F2}'}" />
+            <Label Text="{Binding LagDays}" />
+            <Label Text="{Binding ThemeLabels}" LineBreakMode="TailTruncation" />
+            <Label Text="{Binding FlagsCount}" />
+          </Grid>
+        </DataTemplate>
+      </CollectionView.ItemTemplate>
+    </CollectionView>
+
+    <Frame>
+      <VerticalStackLayout>
+        <Label Text="Selected symbol details" FontAttributes="Bold" />
+        <Label Text="{Binding SelectedScore.Symbol}" />
+        <Label Text="{Binding SelectedScore.LastDate, StringFormat='Last date: {0}'}" />
+        <Label Text="{Binding SelectedScore.GatesPassed, StringFormat='Gates: {0}'}" />
+      </VerticalStackLayout>
+    </Frame>
+  </VerticalStackLayout>
+</ContentPage>

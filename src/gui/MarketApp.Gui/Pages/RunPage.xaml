@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MarketApp.Gui.Pages.RunPage"
+             Title="Run">
+  <VerticalStackLayout Padding="16" Spacing="12">
+    <Label Text="Run orchestration" FontSize="22" FontAttributes="Bold" />
+
+    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+      <Label Text="Config path" Grid.Row="0" Grid.Column="0" />
+      <Entry Text="{Binding ConfigPath}" Grid.Row="0" Grid.Column="1" />
+      <Label Text="Output directory" Grid.Row="1" Grid.Column="0" />
+      <Entry Text="{Binding OutputDirectory}" Grid.Row="1" Grid.Column="1" />
+      <HorizontalStackLayout Grid.Row="2" Grid.ColumnSpan="2" Spacing="8">
+        <Button Text="Start" Command="{Binding StartCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+        <Button Text="Cancel" Command="{Binding CancelCommand}" IsEnabled="{Binding IsRunning}" />
+      </HorizontalStackLayout>
+    </Grid>
+
+    <ProgressBar Progress="{Binding Progress}" />
+    <Label Text="{Binding Status}" />
+
+    <Frame>
+      <VerticalStackLayout>
+        <Label Text="Progress events" FontAttributes="Bold" />
+        <CollectionView ItemsSource="{Binding ProgressEvents}" HeightRequest="250">
+          <CollectionView.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="Auto,*,Auto" Padding="0,2">
+                <Label Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" />
+                <Label Text="{Binding Message}" />
+                <Label Text="{Binding Pct, StringFormat='{}{0:P0}'}" />
+              </Grid>
+            </DataTemplate>
+          </CollectionView.ItemTemplate>
+        </CollectionView>
+      </VerticalStackLayout>
+    </Frame>
+  </VerticalStackLayout>
+</ContentPage>

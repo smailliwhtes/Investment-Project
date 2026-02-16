@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MarketApp.Gui.Pages.DashboardPage"
+             Title="Dashboard">
+  <ScrollView>
+    <VerticalStackLayout Padding="16" Spacing="12">
+      <Label Text="Market Monitor Dashboard"
+             FontSize="24"
+             FontAttributes="Bold" />
+
+      <Frame>
+        <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+          <Label Text="Last run" Grid.ColumnSpan="3" FontAttributes="Bold" />
+          <Label Text="{Binding LastRun.RunId}" Grid.Row="1" />
+          <Label Text="{Binding LastRun.UniverseCount, StringFormat='Universe: {0}'}" Grid.Row="1" Grid.Column="1" />
+          <Label Text="{Binding LastRun.EligibleCount, StringFormat='Eligible: {0}'}" Grid.Row="1" Grid.Column="2" />
+        </Grid>
+      </Frame>
+
+      <Frame>
+        <VerticalStackLayout>
+          <Label Text="Top symbols" FontAttributes="Bold" />
+          <CollectionView ItemsSource="{Binding TopSymbols}" HeightRequest="200">
+            <CollectionView.Header>
+              <Grid ColumnDefinitions="2*,*,*,*" Padding="0,0,0,4">
+                <Label Text="Symbol" />
+                <Label Text="Score" />
+                <Label Text="Lag (d)" />
+                <Label Text="Themes" />
+              </Grid>
+            </CollectionView.Header>
+            <CollectionView.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="2*,*,*,*" Padding="0,2">
+                  <Label Text="{Binding Symbol}" />
+                  <Label Text="{Binding Score, StringFormat='{}{0:F2}'}" />
+                  <Label Text="{Binding LagDays}" />
+                  <Label Text="{Binding ThemeLabels}" LineBreakMode="TailTruncation" />
+                </Grid>
+              </DataTemplate>
+            </CollectionView.ItemTemplate>
+          </CollectionView>
+        </VerticalStackLayout>
+      </Frame>
+
+      <Frame>
+        <VerticalStackLayout>
+          <Label Text="Recent logs" FontAttributes="Bold" />
+          <CollectionView ItemsSource="{Binding RecentLogs}" HeightRequest="150">
+            <CollectionView.ItemTemplate>
+              <DataTemplate>
+                <HorizontalStackLayout Spacing="8">
+                  <Label Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" />
+                  <Label Text="{Binding Level}" FontAttributes="Bold" />
+                  <Label Text="{Binding Message}" LineBreakMode="TailTruncation" />
+                </HorizontalStackLayout>
+              </DataTemplate>
+            </CollectionView.ItemTemplate>
+          </CollectionView>
+        </VerticalStackLayout>
+      </Frame>
+    </VerticalStackLayout>
+  </ScrollView>
+</ContentPage>
