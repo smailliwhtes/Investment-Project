@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MarketApp.Gui.Pages.RunsPage"
+             Title="Runs">
+  <VerticalStackLayout Padding="16" Spacing="12">
+    <Label Text="Run history" FontSize="22" FontAttributes="Bold" />
+    <CollectionView ItemsSource="{Binding Runs}" HeightRequest="320" SelectionMode="Single" SelectedItem="{Binding SelectedRun}">
+      <CollectionView.Header>
+        <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
+          <Label Text="Run id" />
+          <Label Text="Started" />
+          <Label Text="Finished" />
+          <Label Text="Universe" />
+          <Label Text="Eligible" />
+        </Grid>
+      </CollectionView.Header>
+      <CollectionView.ItemTemplate>
+        <DataTemplate>
+          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2">
+            <Label Text="{Binding RunId}" />
+            <Label Text="{Binding StartedAt, StringFormat='{}{0:MM-dd HH:mm}'}" />
+            <Label Text="{Binding FinishedAt, StringFormat='{}{0:MM-dd HH:mm}'}" />
+            <Label Text="{Binding UniverseCount}" />
+            <Label Text="{Binding EligibleCount}" />
+          </Grid>
+        </DataTemplate>
+      </CollectionView.ItemTemplate>
+    </CollectionView>
+
+    <Frame>
+      <VerticalStackLayout Spacing="4">
+        <Label Text="Selected run details" FontAttributes="Bold" />
+        <Label Text="{Binding SelectedRun.RunId}" />
+        <Label Text="{Binding SelectedRun.Status, StringFormat='Status: {0}'}" />
+        <Label Text="{Binding SelectedRun.LastDateMax, StringFormat='Last date: {0}'}" />
+        <Label Text="{Binding SelectedRun.WorstLagDays, StringFormat='Worst lag (days): {0}'}" />
+      </VerticalStackLayout>
+    </Frame>
+  </VerticalStackLayout>
+</ContentPage>
