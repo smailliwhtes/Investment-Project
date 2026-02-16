@@ -33,13 +33,7 @@ def validate_config_path(config_path: str) -> Path:
     if not config_path or not config_path.strip():
         raise ValidationError("Config path cannot be empty.")
 
-    path = Path(config_path.strip()).expanduser()
-    
-    # Resolve to absolute path
-    if not path.is_absolute():
-        path = path.resolve()
-    else:
-        path = path.resolve()
+    path = Path(config_path.strip()).expanduser().resolve()
 
     if not path.exists():
         raise ValidationError(f"Config file does not exist: {path}")
@@ -66,13 +60,7 @@ def validate_runs_directory(runs_dir: str) -> Path:
     if not runs_dir or not runs_dir.strip():
         raise ValidationError("Runs directory path cannot be empty.")
 
-    path = Path(runs_dir.strip()).expanduser()
-    
-    # Resolve to absolute path
-    if not path.is_absolute():
-        path = path.resolve()
-    else:
-        path = path.resolve()
+    path = Path(runs_dir.strip()).expanduser().resolve()
 
     # Create directory if it doesn't exist
     if not path.exists():
