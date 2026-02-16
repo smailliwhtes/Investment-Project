@@ -215,6 +215,6 @@ class TestValidateRunId:
         assert result == "run123abc"
 
     def test_unicode_characters_allowed(self) -> None:
-        # Unicode characters should be allowed as long as no path separators
+        # Unicode characters should be allowed as long as there are no path separators
         result = validate_run_id("run_α_β")
         assert result == "run_α_β"

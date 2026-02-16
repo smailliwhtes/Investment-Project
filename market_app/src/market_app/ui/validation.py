@@ -14,8 +14,6 @@ from pathlib import Path
 class ValidationError(Exception):
     """Raised when validation fails with a user-friendly message."""
 
-    pass
-
 
 def validate_config_path(config_path: str) -> Path:
     """
