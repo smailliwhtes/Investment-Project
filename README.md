@@ -65,6 +65,12 @@ Desktop shortcut installer (Windows):
 .\scripts\install_e2e_desktop_shortcut.ps1
 ```
 
+GUI desktop shortcut (Windows):
+
+```powershell
+.\scripts\install_gui_desktop_shortcut.ps1
+```
+
 Optional smoke helpers:
 
 ```powershell
