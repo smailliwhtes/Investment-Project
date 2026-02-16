@@ -77,3 +77,4 @@
   - either implement the AGENTS-specified `src/gui` + CLI/output contracts,
   - or update AGENTS.md to match the current, actual repository architecture and entrypoints.
 - If you want, next I can do a follow-up pass to tighten parity even further (e.g., richer progress-jsonl stage granularity and stricter manifest field population) while keeping backward compatibility intact.
+- If you want, I can also place this same follow-up note in README.md or docs/codex/40_commands.md for more visibility.
