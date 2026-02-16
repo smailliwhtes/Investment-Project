@@ -36,3 +36,45 @@
 - **Tiny sample data:** required under `tests/data` (symbols + ohlcv) and used for offline demo mode.
 - **Config templates:** a config with new `paths` and `gates` defaults aligned to the required CLI behavior.
 - **Manifest strategy:** explicit input hashing policy for OHLCV sampling.
+
+## AGENTS.md operational check (2026-02-16)
+
+### Scope checked
+- `AGENTS.md` contract at repo root.
+- No nested `AGENTS.md` overrides were found.
+- Compared AGENTS contract paths/commands with the current repository layout and CLI surfaces.
+
+### Verification commands run
+- `cd market_app && python -m pytest -q`  
+  Result: failed in this environment (`No module named pytest`).
+- `dotnet restore src/gui/MarketApp.Gui.sln`  
+  Result: failed (`src/gui/MarketApp.Gui.sln` does not exist in this repo layout).
+- `cd market_app && python -m market_monitor.cli run --config config/config.yaml --out-dir outputs/runs/_smoke --offline --progress-jsonl`  
+  Result: failed in this environment (`No module named pandas`), and contract flags differ from current CLI.
+
+### AGENTS contract vs repository reality
+1. **GUI layout mismatch (P0 for AGENTS contract conformance):**
+   - AGENTS requires `src/gui/MarketApp.Gui*` projects and `src/gui/MarketApp.Gui.sln`.
+   - Current repo does not have `/src/gui`; it has a root `MarketApp.Gui.csproj` and Python/Tkinter UI flow under `market_app`.
+2. **GUI workflow mismatch:**
+   - `.github/workflows/gui-windows-build.yml` triggers/builds `src/gui/**` and references `scripts/build_gui.ps1`.
+   - Those paths are absent in the current repository.
+3. **Engine CLI contract mismatch:**
+   - AGENTS requires `market_monitor.cli run --config --out-dir --offline --progress-jsonl`.
+   - `market_monitor/cli.py` `run` currently requires `--watchlist` and `--run-id`; no `--out-dir` or `--progress-jsonl` flag is defined there.
+   - AGENTS requires `validate-config --format json`; current `market_monitor/cli.py` exposes `validate`, not `validate-config`.
+4. **Artifact naming mismatch:**
+   - AGENTS requires `run_manifest.json` + `config_snapshot.yaml` for successful runs.
+   - `market_app/src/market_app/cli.py` writes `manifest.json`; naming contract diverges depending on entrypoint.
+5. **What appears aligned:**
+   - Python CI runs on `ubuntu-latest` and `windows-latest` in `.github/workflows/ci.yml`.
+   - `last_date` and `lag_days` are present in the offline pipeline code paths (`market_app/src/market_app/offline_pipeline.py` and related schemas).
+
+### Operational verdict
+- **Application status: Partially operational.**
+- The Python engine appears actively maintained and test-backed, but the repository does **not** currently conform to the AGENTS.md MAUI/CLI path and command contracts as written.
+- To call the app “fully operational” against AGENTS.md, the project needs a contract reconciliation:
+  - either implement the AGENTS-specified `src/gui` + CLI/output contracts,
+  - or update AGENTS.md to match the current, actual repository architecture and entrypoints.
+- If you want, next I can do a follow-up pass to tighten parity even further (e.g., richer progress-jsonl stage granularity and stricter manifest field population) while keeping backward compatibility intact.
+- If you want, I can also place this same follow-up note in README.md or docs/codex/40_commands.md for more visibility.

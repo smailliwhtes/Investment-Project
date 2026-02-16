@@ -36,6 +36,9 @@ bash scripts/bootstrap.sh
 ### Install / run (offline)
 bash scripts/run.sh --watchlist watchlists/watchlist_smoke.csv
 
+### AGENTS contract run (offline + JSONL progress)
+python -m market_monitor.cli run --config config/config.yaml --out-dir outputs/runs/_smoke --offline --progress-jsonl
+
 ### Offline data correctness check (must fail nonzero if missing)
 bash scripts/check_watchlist_ohlcv.sh --watchlist watchlists/watchlist_smoke.csv --data-dir outputs/ohlcv_smoke
 
@@ -49,6 +52,12 @@ python -m pytest -q
 
 ### Environment doctor
 python -m market_monitor.env_doctor --self-test
+
+### Config validation (machine-readable)
+python -m market_monitor.cli validate-config --config config/config.yaml --format json
+
+### Run comparison
+python -m market_monitor.cli diff-runs --run-a outputs/runs/run_a --run-b outputs/runs/run_b --format json --out outputs/runs/diff.json
 
 ### Minimal smoke subset (if you keep explicit smoke tests)
 python -m pytest -q tests/test_watchlist_validator.py tests/test_watchlist_smoke_pipeline.py

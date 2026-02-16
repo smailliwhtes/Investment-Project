@@ -1,6 +1,8 @@
 import argparse
 import json
 import os
+import platform
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +36,7 @@ from market_monitor.io import (
 )
 from market_monitor.features.io import read_ohlcv
 from market_monitor.gdelt.doctor import normalize_corpus
+from market_monitor.hash_utils import hash_file
 from market_monitor.logging_utils import get_console_logger
 from market_monitor.paths import find_repo_root, resolve_path
 from market_monitor.providers.base import ProviderError
@@ -66,6 +69,248 @@ def _resolve_config_paths(config_arg: str) -> tuple[Path, Path, Path]:
     base_dir = config_path.parent
     repo_root = find_repo_root(base_dir)
     return config_path, base_dir, repo_root
+
+
+def _emit_progress_event(
+    enabled: bool,
+    *,
+    event_type: str,
+    stage: str,
+    message: str,
+    pct: float | None = None,
+    counters: dict[str, Any] | None = None,
+    artifact: dict[str, Any] | None = None,
+    error: dict[str, Any] | None = None,
+) -> None:
+    if not enabled:
+        return
+    payload: dict[str, Any] = {
+        "ts": utcnow().isoformat(),
+        "type": event_type,
+        "stage": stage,
+        "message": message,
+    }
+    if pct is not None:
+        payload["pct"] = pct
+    if counters:
+        payload["counters"] = counters
+    if artifact:
+        payload["artifact"] = artifact
+    if error:
+        payload["error"] = error
+    print(json.dumps(payload, ensure_ascii=False))
+
+
+def _ensure_scored_freshness_columns(run_dir: Path) -> None:
+    scored_path = run_dir / "scored.csv"
+    if not scored_path.exists():
+        raise RuntimeError("Missing required artifact: scored.csv")
+    scored_df = pd.read_csv(scored_path)
+    if {"last_date", "lag_days"}.issubset(scored_df.columns):
+        return
+
+    data_quality_path = run_dir / "data_quality.csv"
+    if not data_quality_path.exists():
+        fallback_last_date = ""
+        results_path = run_dir / "results.csv"
+        if results_path.exists():
+            results_df = pd.read_csv(results_path)
+            if "asof_date" in results_df.columns and not results_df.empty:
+                fallback_last_date = str(results_df["asof_date"].iloc[0])
+        if not fallback_last_date:
+            manifest_path = run_dir / "run_manifest.json"
+            if manifest_path.exists():
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                fallback_last_date = str(manifest.get("asof_date", ""))
+        if not fallback_last_date:
+            raise RuntimeError("Unable to derive last_date/lag_days for scored.csv.")
+        if "last_date" not in scored_df.columns:
+            scored_df["last_date"] = fallback_last_date
+        if "lag_days" not in scored_df.columns:
+            scored_df["lag_days"] = 0
+        scored_df.to_csv(scored_path, index=False, lineterminator="\n")
+        return
+
+    quality_df = pd.read_csv(data_quality_path)
+    required_quality_cols = {"symbol", "last_date", "lag_days"}
+    if not required_quality_cols.issubset(quality_df.columns):
+        raise RuntimeError("data_quality.csv is missing symbol/last_date/lag_days for deterministic merge.")
+
+    merged = scored_df.merge(
+        quality_df[["symbol", "last_date", "lag_days"]],
+        on="symbol",
+        how="left",
+        suffixes=("", "_dq"),
+    )
+    if "last_date" not in scored_df.columns:
+        merged["last_date"] = merged["last_date_dq"]
+    if "lag_days" not in scored_df.columns:
+        merged["lag_days"] = merged["lag_days_dq"]
+    merged = merged.drop(columns=["last_date_dq", "lag_days_dq"], errors="ignore")
+    if merged["last_date"].isna().any() or merged["lag_days"].isna().any():
+        raise RuntimeError("Deterministic merge failed: scored.csv still has missing last_date/lag_days.")
+    merged.to_csv(scored_path, index=False, lineterminator="\n")
+
+
+def _augment_run_manifest(manifest_path: Path, *, config_path: Path, run_dir: Path) -> None:
+    if not manifest_path.exists():
+        raise RuntimeError("Missing required artifact: run_manifest.json")
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    started_at = payload.get("started_at") or payload.get("started_utc") or utcnow().isoformat()
+    finished_at = payload.get("finished_at") or utcnow().isoformat()
+    scored_rows = 0
+    eligible_rows = 0
+    artifacts = []
+    for name in ("scored.csv", "eligible.csv", "report.md", "run_manifest.json", "config_snapshot.yaml"):
+        file_path = run_dir / name
+        if not file_path.exists():
+            continue
+        artifact_entry: dict[str, Any] = {"name": name, "path": name}
+        try:
+            if name.endswith(".csv"):
+                rows = len(pd.read_csv(file_path))
+                artifact_entry["rows"] = rows
+                if name == "scored.csv":
+                    scored_rows = rows
+                if name == "eligible.csv":
+                    eligible_rows = rows
+        except Exception:
+            pass
+        artifacts.append(artifact_entry)
+    payload.setdefault("run_id", run_dir.name)
+    payload.setdefault("started_at", started_at)
+    payload.setdefault("finished_at", finished_at)
+    payload.setdefault("duration_s", 0)
+    payload.setdefault("app", {"name": "market_monitor", "version": resolve_git_commit(run_dir)})
+    payload.setdefault(
+        "environment",
+        {
+            "python_version": platform.python_version(),
+            "platform": platform.platform(),
+            "timezone": "UTC",
+        },
+    )
+    payload.setdefault("config", {"path": str(config_path), "hash_sha256": hash_file(config_path)})
+    payload.setdefault("counts", {"universe_count": scored_rows, "eligible_count": eligible_rows})
+    payload.setdefault("artifacts", artifacts)
+    manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def run_contract_watchlist(args: argparse.Namespace) -> int:
+    config_path, base_dir, _ = _resolve_config_paths(args.config)
+    progress_enabled = bool(getattr(args, "progress_jsonl", False))
+    try:
+        config = load_config(config_path).config
+        watchlist_value = args.watchlist or config.get("paths", {}).get("watchlist_file")
+        if not watchlist_value:
+            raise RuntimeError("Missing required watchlist path in args/config.")
+        watchlist_path = Path(watchlist_value).expanduser()
+        if not watchlist_path.is_absolute():
+            if watchlist_path.exists():
+                watchlist_path = watchlist_path.resolve()
+            else:
+                watchlist_path = resolve_path(base_dir, watchlist_value)
+        out_dir = Path(args.out_dir).expanduser()
+        out_dir = out_dir if out_dir.is_absolute() else (base_dir / out_dir).resolve()
+        out_dir.parent.mkdir(parents=True, exist_ok=True)
+        run_args = argparse.Namespace(
+            config=str(config_path),
+            watchlist=str(watchlist_path),
+            asof=getattr(args, "asof", None),
+            run_id=out_dir.name,
+            ohlcv_raw_dir=getattr(args, "ohlcv_raw_dir", None),
+            ohlcv_daily_dir=getattr(args, "ohlcv_daily_dir", None),
+            exogenous_daily_dir=getattr(args, "exogenous_daily_dir", None),
+            outputs_dir=str(out_dir.parent),
+            include_raw_gdelt=getattr(args, "include_raw_gdelt", False),
+            log_level=getattr(args, "log_level", "INFO"),
+            workers=getattr(args, "workers", 1),
+            profile=getattr(args, "profile", False),
+        )
+        _emit_progress_event(
+            progress_enabled,
+            event_type="stage_start",
+            stage="run",
+            message=f"Starting run {out_dir.name}",
+            pct=0.0,
+        )
+        run_watchlist_pipeline(run_args)
+        run_dir = out_dir
+        config_snapshot_path = run_dir / "config_snapshot.yaml"
+        shutil.copy2(config_path, config_snapshot_path)
+        log_dir = run_dir / "logs"
+        run_log = log_dir / "run.log"
+        engine_log = log_dir / "engine.log"
+        if run_log.exists() and not engine_log.exists():
+            shutil.copy2(run_log, engine_log)
+        ui_engine_log = run_dir / "ui_engine.log"
+        if not ui_engine_log.exists():
+            ui_engine_log.write_text("", encoding="utf-8")
+        _ensure_scored_freshness_columns(run_dir)
+        _augment_run_manifest(run_dir / "run_manifest.json", config_path=config_path, run_dir=run_dir)
+        for artifact_name in (
+            "scored.csv",
+            "eligible.csv",
+            "report.md",
+            "run_manifest.json",
+            "config_snapshot.yaml",
+        ):
+            artifact_path = run_dir / artifact_name
+            if artifact_path.exists():
+                _emit_progress_event(
+                    progress_enabled,
+                    event_type="artifact_emitted",
+                    stage="outputs",
+                    message=f"Artifact ready: {artifact_name}",
+                    artifact={"name": artifact_name, "path": artifact_name},
+                )
+        _emit_progress_event(
+            progress_enabled,
+            event_type="stage_end",
+            stage="run",
+            message=f"Completed run {out_dir.name}",
+            pct=1.0,
+        )
+        return 0
+    except KeyboardInterrupt:
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="run",
+            message="Run canceled by user.",
+            error={"code": "INTERRUPTED", "detail": "Run interrupted by user"},
+        )
+        return 130
+    except ConfigError as exc:
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="run",
+            message=str(exc),
+            error={"code": "INVALID_CONFIG", "detail": str(exc)},
+        )
+        print(f"[error] {exc}")
+        return 2
+    except RuntimeError as exc:
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="run",
+            message=str(exc),
+            error={"code": "RUNTIME_FAILURE", "detail": str(exc)},
+        )
+        print(f"[error] {exc}")
+        return 4
+    except Exception as exc:
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="run",
+            message=str(exc),
+            error={"code": "RUNTIME_FAILURE", "detail": str(exc)},
+        )
+        print(f"[error] {exc}")
+        return 4
 
 
 def run_pipeline(args: argparse.Namespace) -> int:
@@ -205,6 +450,157 @@ def run_validate_data(args: argparse.Namespace) -> int:
         for warning in result.warnings:
             print(f"  - {warning}")
     return 2
+
+
+def run_validate_config_json(args: argparse.Namespace) -> int:
+    try:
+        load_config(Path(args.config))
+        payload = {"valid": True, "errors": []}
+        if args.format == "json":
+            print(json.dumps(payload))
+        else:
+            print("Config valid.")
+        return 0
+    except ConfigError as exc:
+        payload = {
+            "valid": False,
+            "errors": [
+                {
+                    "path": "",
+                    "message": str(exc),
+                    "severity": "error",
+                }
+            ],
+        }
+        if args.format == "json":
+            print(json.dumps(payload))
+        else:
+            print(f"Config invalid: {exc}")
+        return 2
+
+
+def _resolve_rank(df: pd.DataFrame) -> pd.Series:
+    if "rank" in df.columns:
+        return pd.to_numeric(df["rank"], errors="coerce")
+    if "score" in df.columns:
+        score_col = "score"
+    elif "score_1to10" in df.columns:
+        score_col = "score_1to10"
+    elif "monitor_score_1_10" in df.columns:
+        score_col = "monitor_score_1_10"
+    else:
+        return pd.Series([pd.NA] * len(df), index=df.index, dtype="Int64")
+    ordered = df.assign(
+        _score=pd.to_numeric(df[score_col], errors="coerce").fillna(float("-inf")),
+        _symbol=df["symbol"].astype(str),
+    ).sort_values(["_score", "_symbol"], ascending=[False, True])
+    rank_map = {symbol: idx + 1 for idx, symbol in enumerate(ordered["_symbol"].tolist())}
+    return df["symbol"].map(rank_map).astype("Int64")
+
+
+def _resolve_score(df: pd.DataFrame) -> pd.Series:
+    for col in ("score", "score_1to10", "monitor_score_1_10", "priority_score"):
+        if col in df.columns:
+            return pd.to_numeric(df[col], errors="coerce")
+    return pd.Series([pd.NA] * len(df), index=df.index, dtype="Float64")
+
+
+def _resolve_flags_count(df: pd.DataFrame) -> pd.Series:
+    if "flags_count" in df.columns:
+        return pd.to_numeric(df["flags_count"], errors="coerce").fillna(0).astype("Int64")
+    if "risk_flags" in df.columns:
+        return (
+            df["risk_flags"]
+            .fillna("")
+            .astype(str)
+            .apply(lambda v: 0 if not v else len([item for item in v.split("|") if item]))
+            .astype("Int64")
+        )
+    return pd.Series([0] * len(df), index=df.index, dtype="Int64")
+
+
+def run_diff_runs(args: argparse.Namespace) -> int:
+    run_a = Path(args.run_a).expanduser().resolve()
+    run_b = Path(args.run_b).expanduser().resolve()
+    scored_a_path = run_a / "scored.csv"
+    scored_b_path = run_b / "scored.csv"
+    if not scored_a_path.exists() or not scored_b_path.exists():
+        print("[error] diff-runs requires scored.csv in both run directories.")
+        return 3
+    df_a = pd.read_csv(scored_a_path)
+    df_b = pd.read_csv(scored_b_path)
+    if "symbol" not in df_a.columns or "symbol" not in df_b.columns:
+        print("[error] diff-runs requires symbol column in both scored.csv files.")
+        return 3
+
+    a = pd.DataFrame(
+        {
+            "symbol": df_a["symbol"].astype(str),
+            "rank_a": _resolve_rank(df_a),
+            "score_a": _resolve_score(df_a),
+            "flags_a": _resolve_flags_count(df_a),
+        }
+    )
+    b = pd.DataFrame(
+        {
+            "symbol": df_b["symbol"].astype(str),
+            "rank_b": _resolve_rank(df_b),
+            "score_b": _resolve_score(df_b),
+            "flags_b": _resolve_flags_count(df_b),
+        }
+    )
+    merged = a.merge(b, on="symbol", how="outer")
+    merged["delta_score"] = merged["score_b"] - merged["score_a"]
+    merged["delta_rank"] = merged["rank_b"] - merged["rank_a"]
+
+    summary = {
+        "n_symbols": int(len(merged)),
+        "n_new": int(((merged["rank_a"].isna()) & (~merged["rank_b"].isna())).sum()),
+        "n_removed": int(((~merged["rank_a"].isna()) & (merged["rank_b"].isna())).sum()),
+        "n_rank_changed": int(
+            (
+                (~merged["rank_a"].isna())
+                & (~merged["rank_b"].isna())
+                & (merged["rank_a"] != merged["rank_b"])
+            ).sum()
+        ),
+    }
+
+    def _to_int_or_none(value: Any) -> int | None:
+        if pd.isna(value):
+            return None
+        return int(value)
+
+    def _to_float_or_none(value: Any) -> float | None:
+        if pd.isna(value):
+            return None
+        return float(value)
+
+    rows = []
+    for row in merged.sort_values("symbol").to_dict("records"):
+        rows.append(
+            {
+                "symbol": row["symbol"],
+                "rank_a": _to_int_or_none(row["rank_a"]),
+                "rank_b": _to_int_or_none(row["rank_b"]),
+                "score_a": _to_float_or_none(row["score_a"]),
+                "score_b": _to_float_or_none(row["score_b"]),
+                "delta_score": _to_float_or_none(row["delta_score"]),
+                "delta_rank": _to_int_or_none(row["delta_rank"]),
+                "flags_a": _to_int_or_none(row["flags_a"]),
+                "flags_b": _to_int_or_none(row["flags_b"]),
+                "drivers": [],
+            }
+        )
+
+    payload = {"run_a": run_a.name, "run_b": run_b.name, "summary": summary, "rows": rows}
+    if args.out:
+        out_path = Path(args.out).expanduser().resolve()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    if args.format == "json":
+        print(json.dumps(payload))
+    return 0
 
 
 def run_provision_init(args: argparse.Namespace) -> int:
@@ -653,15 +1049,35 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate_parser = sub.add_parser("validate", help="Validate config")
     validate_parser.add_argument("--config", required=True)
+    validate_parser.add_argument("--format", choices=["text", "json"], default="text")
+
+    validate_config_parser = sub.add_parser("validate-config", help="Validate config")
+    validate_config_parser.add_argument("--config", required=True)
+    validate_config_parser.add_argument("--format", choices=["text", "json"], default="json")
 
     init_parser = sub.add_parser("init-config", help="Write default config")
     init_parser.add_argument("--out", required=True)
 
     run_parser = sub.add_parser("run", help="Run the offline watchlist monitor")
     run_parser.add_argument("--config", default="config.yaml", help="Config path (default: config.yaml)")
-    run_parser.add_argument("--watchlist", required=True, help="Watchlist CSV path")
+    run_parser.add_argument(
+        "--watchlist",
+        required=False,
+        help="Watchlist CSV path (required unless --out-dir contract mode is used)",
+    )
     run_parser.add_argument("--asof", default=None)
-    run_parser.add_argument("--run-id", required=True, help="Run identifier (outputs/<run_id>)")
+    run_parser.add_argument(
+        "--run-id",
+        required=False,
+        help="Run identifier (required unless --out-dir contract mode is used)",
+    )
+    run_parser.add_argument("--out-dir", default=None, help="Contract output run directory")
+    run_parser.add_argument("--offline", action="store_true", help="Run in offline mode")
+    run_parser.add_argument(
+        "--progress-jsonl",
+        action="store_true",
+        help="Emit JSONL progress events to stdout",
+    )
     run_parser.add_argument("--ohlcv-raw-dir", default=None, help="Raw OHLCV dir (default: data/ohlcv_raw)")
     run_parser.add_argument(
         "--ohlcv-daily-dir", default=None, help="Normalized OHLCV dir (default: data/ohlcv_daily)"
@@ -761,6 +1177,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     evaluate_parser.add_argument("--log-level", default="INFO")
 
+    diff_runs_parser = sub.add_parser("diff-runs", help="Compare two run directories")
+    diff_runs_parser.add_argument("--run-a", required=True)
+    diff_runs_parser.add_argument("--run-b", required=True)
+    diff_runs_parser.add_argument("--format", choices=["json"], default="json")
+    diff_runs_parser.add_argument("--out")
+
     validate_data_parser = sub.add_parser("validate-data", help="Validate offline data inputs")
     validate_data_parser.add_argument("--config", default="config.yaml")
     validate_data_parser.add_argument("--watchlist", help="Default: config paths.watchlist_file")
@@ -830,18 +1252,23 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "validate":
-        try:
-            load_config(Path(args.config))
-            print("Config valid.")
-            return 0
-        except ConfigError as exc:
-            print(f"Config invalid: {exc}")
-            return 2
+        return run_validate_config_json(args)
+
+    if args.command == "validate-config":
+        return run_validate_config_json(args)
 
     if args.command == "doctor":
         return run_doctor(Path(args.config), offline=args.offline, strict=args.strict)
 
     if args.command == "run":
+        if getattr(args, "out_dir", None):
+            if not getattr(args, "offline", False):
+                print("[error] --offline is required for AGENTS contract run mode.")
+                return 3
+            return run_contract_watchlist(args)
+        if not args.watchlist or not args.run_id:
+            print("[error] --watchlist and --run-id are required unless --out-dir contract mode is used.")
+            return 2
         return run_watchlist_command(args)
 
     if args.command == "run-legacy":
@@ -868,6 +1295,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "evaluate":
         return run_evaluate_command(args)
+
+    if args.command == "diff-runs":
+        return run_diff_runs(args)
 
     if args.command == "validate-data":
         return run_validate_data(args)
