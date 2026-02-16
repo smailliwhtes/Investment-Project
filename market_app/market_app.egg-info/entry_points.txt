@@ -1,2 +1,2 @@
 [console_scripts]
-market-monitor = market_monitor.cli:main
+market-monitor = market_app.cli:main
