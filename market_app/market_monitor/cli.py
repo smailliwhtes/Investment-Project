@@ -1060,9 +1060,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_parser = sub.add_parser("run", help="Run the offline watchlist monitor")
     run_parser.add_argument("--config", default="config.yaml", help="Config path (default: config.yaml)")
-    run_parser.add_argument("--watchlist", required=False, help="Watchlist CSV path")
+    run_parser.add_argument(
+        "--watchlist",
+        required=False,
+        help="Watchlist CSV path (required unless --out-dir contract mode is used)",
+    )
     run_parser.add_argument("--asof", default=None)
-    run_parser.add_argument("--run-id", required=False, help="Run identifier (outputs/<run_id>)")
+    run_parser.add_argument(
+        "--run-id",
+        required=False,
+        help="Run identifier (required unless --out-dir contract mode is used)",
+    )
     run_parser.add_argument("--out-dir", default=None, help="Contract output run directory")
     run_parser.add_argument("--offline", action="store_true", help="Run in offline mode")
     run_parser.add_argument(
@@ -1258,6 +1266,9 @@ def main(argv: list[str] | None = None) -> int:
                 print("[error] --offline is required for AGENTS contract run mode.")
                 return 3
             return run_contract_watchlist(args)
+        if not args.watchlist or not args.run_id:
+            print("[error] --watchlist and --run-id are required unless --out-dir contract mode is used.")
+            return 2
         return run_watchlist_command(args)
 
     if args.command == "run-legacy":
