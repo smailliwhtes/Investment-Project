@@ -187,22 +187,49 @@ def _write_diagnostics(path: Path, payload: dict) -> None:
         handle.write(json.dumps(payload, indent=2))
 
 
-def _log_stage(logger: logging.Logger, stage: str, status: str, details: str | None = None) -> None:
+class ProgressEmitter:
+    def __init__(self, enabled: bool):
+        self.enabled = enabled
+        self._last_emit = 0.0
+        self._pct = {
+            "run": 0,
+            "validation": 10,
+            "ohlcv_normalize": 20,
+            "features": 40,
+            "regime": 55,
+            "exogenous": 65,
+            "scoring": 85,
+            "outputs": 95,
+        }
+
+    def emit(self, stage: str, status: str, details: str | None = None) -> None:
+        if not self.enabled:
+            return
+        now = time.monotonic()
+        if status == "start" and now - self._last_emit < 0.2:
+            return
+        self._last_emit = now
+        payload = {
+            "ts": utcnow().isoformat(),
+            "stage": stage,
+            "pct": 100 if (stage == "run" and status == "end") else self._pct.get(stage, 0),
+            "message": f"{status}: {details}" if details else status,
+        }
+        print(json.dumps(payload), flush=True)
+
+
+def _log_stage(
+    logger: logging.Logger,
+    emitter: ProgressEmitter,
+    stage: str,
+    status: str,
+    details: str | None = None,
+) -> None:
     message = f"[stage:{stage}] {status}"
     if details:
         message = f"{message} | {details}"
     logger.info(message)
-
-def _write_diagnostics(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-
-
-def _log_stage(logger: logging.Logger, stage: str, status: str, details: str | None = None) -> None:
-    message = f"[stage:{stage}] {status}"
-    if details:
-        message = f"{message} | {details}"
-    logger.info(message)
+    emitter.emit(stage, status, details)
 
 
 def run_watchlist(args: argparse.Namespace) -> dict:
@@ -230,7 +257,10 @@ def run_watchlist(args: argparse.Namespace) -> dict:
         },
     )
 
-    watchlist_path = Path(args.watchlist).expanduser()
+    configured_watchlist = config.get("paths", {}).get("watchlist_file", "watchlists/watchlist_core.csv")
+    watchlist_path = Path(args.watchlist or configured_watchlist).expanduser()
+    if not watchlist_path.is_absolute():
+        watchlist_path = (base_dir / watchlist_path).resolve()
     watchlist_df = _load_watchlist(watchlist_path)
     symbols = watchlist_df["symbol"].tolist()
     asof_date = args.asof or config.get("pipeline", {}).get("asof_default")
@@ -239,11 +269,12 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     output_dir = paths.outputs_dir / args.run_id
     log_path = output_dir / "logs" / "run.log"
     logger = configure_logging(LogPaths(console_level=args.log_level, file_path=log_path))
+    progress_emitter = ProgressEmitter(getattr(args, "progress_jsonl", False))
     timings: dict[str, float] = {}
     warnings: list[str] = []
-    _log_stage(logger, "run", "start", f"run_id={args.run_id}")
+    _log_stage(logger, progress_emitter, "run", "start", f"run_id={args.run_id}")
 
-    _log_stage(logger, "validation", "start")
+    _log_stage(logger, progress_emitter, "validation", "start")
     validation = validate_data(
         watchlist_path=watchlist_path,
         ohlcv_daily_dir=paths.ohlcv_daily_dir,
@@ -269,6 +300,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
         raise RuntimeError(error_message)
     _log_stage(
         logger,
+        progress_emitter,
         "validation",
         "end",
         f"errors=0 warnings={len(validation.warnings)} symbols={len(watchlist_df)}",
@@ -276,7 +308,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
 
     if config.get("pipeline", {}).get("auto_normalize_ohlcv", True):
         if not paths.ohlcv_daily_dir.exists() or not list(paths.ohlcv_daily_dir.glob("*.csv")):
-            _log_stage(logger, "ohlcv_normalize", "start", f"raw_dir={paths.ohlcv_raw_dir}")
+            _log_stage(logger, progress_emitter, "ohlcv_normalize", "start", f"raw_dir={paths.ohlcv_raw_dir}")
             if not paths.ohlcv_raw_dir.exists():
                 raise FileNotFoundError(f"Raw OHLCV dir not found: {paths.ohlcv_raw_dir}")
             normalize_directory(
@@ -290,7 +322,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
                 streaming=True,
                 chunk_rows=200_000,
             )
-            _log_stage(logger, "ohlcv_normalize", "end", f"out_dir={paths.ohlcv_daily_dir}")
+            _log_stage(logger, progress_emitter, "ohlcv_normalize", "end", f"out_dir={paths.ohlcv_daily_dir}")
 
     if not asof_date:
         asof_date = _latest_common_date(symbols, paths.ohlcv_daily_dir)
@@ -298,7 +330,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     ohlcv_manifest_path = paths.ohlcv_daily_dir / "ohlcv_manifest.json"
     ohlcv_manifest_hash = hash_file(ohlcv_manifest_path) if ohlcv_manifest_path.exists() else None
 
-    _log_stage(logger, "features", "start", f"symbols={len(symbols)} workers={args.workers}")
+    _log_stage(logger, progress_emitter, "features", "start", f"symbols={len(symbols)} workers={args.workers}")
     start = time.perf_counter()
     feature_result = compute_daily_features(
         ohlcv_dir=paths.ohlcv_daily_dir,
@@ -311,6 +343,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     features_df = features_df[features_df["symbol"].isin(symbols)]
     _log_stage(
         logger,
+        progress_emitter,
         "features",
         "end",
         f"rows={len(features_df)} asof={asof_date}",
@@ -318,7 +351,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
 
     regime_config = config.get("pipeline", {})
     benchmarks = regime_config.get("benchmarks") or ["SPY", "QQQ", "IWM", "TLT", "GLD"]
-    _log_stage(logger, "regime", "start", f"benchmarks={benchmarks}")
+    _log_stage(logger, progress_emitter, "regime", "start", f"benchmarks={benchmarks}")
     start = time.perf_counter()
     regime_result = compute_regime(
         ohlcv_dir=paths.ohlcv_daily_dir,
@@ -328,9 +361,9 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     timings["regime"] = time.perf_counter() - start
     if regime_result.issues:
         warnings.extend(regime_result.issues)
-    _log_stage(logger, "regime", "end", f"label={regime_result.regime_label}")
+    _log_stage(logger, progress_emitter, "regime", "end", f"label={regime_result.regime_label}")
 
-    _log_stage(logger, "exogenous", "start", f"asof={asof_date}")
+    _log_stage(logger, progress_emitter, "exogenous", "start", f"asof={asof_date}")
     start = time.perf_counter()
     exogenous_row, exogenous_meta = _load_exogenous_features(
         paths.exogenous_daily_dir,
@@ -342,6 +375,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
         warnings.append(f"Exogenous coverage missing: {exogenous_meta['missing_dates']}")
     _log_stage(
         logger,
+        progress_emitter,
         "exogenous",
         "end",
         f"coverage={exogenous_meta.get('coverage', 0)} fields={len(exogenous_row)}",
@@ -371,7 +405,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
 
     features_by_symbol = {row["symbol"]: row for row in features_df.to_dict(orient="records")}
 
-    _log_stage(logger, "scoring", "start", f"symbols={len(watchlist_df)}")
+    _log_stage(logger, progress_emitter, "scoring", "start", f"symbols={len(watchlist_df)}")
     start = time.perf_counter()
     for _, watch_row in watchlist_df.iterrows():
         symbol = watch_row["symbol"]
@@ -468,6 +502,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     eligible_count = int(results_df["gates_passed"].sum()) if not results_df.empty else 0
     _log_stage(
         logger,
+        progress_emitter,
         "scoring",
         "end",
         f"rows={len(results_df)} eligible={eligible_count} ineligible={len(results_df) - eligible_count}",
@@ -551,13 +586,14 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     _write_report(output_dir / "report.md", run_manifest, results_df)
     _log_stage(
         logger,
+        progress_emitter,
         "outputs",
         "end",
         f"results={results_csv_path.name} eligible={len(eligible_df)} scored={len(scored_df)}",
     )
     if warnings:
         logger.warning(f"[warnings] count={len(warnings)}")
-    _log_stage(logger, "run", "end", f"run_id={args.run_id}")
+    _log_stage(logger, progress_emitter, "run", "end", f"run_id={args.run_id}")
 
     if args.profile and timings:
         timing_lines = ["Stage timings (s):"]
@@ -582,6 +618,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--log-level", default="INFO")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--profile", action="store_true", default=False)
+    parser.add_argument("--progress-jsonl", action="store_true", default=False)
     return parser
 
 

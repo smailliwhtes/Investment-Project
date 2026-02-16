@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:MarketApp.Gui.Views"
+       x:Class="MarketApp.Gui.AppShell">
+    <TabBar>
+        <ShellContent Title="Dashboard" ContentTemplate="{DataTemplate views:DashboardPage}" />
+        <ShellContent Title="Runs" ContentTemplate="{DataTemplate views:RunsPage}" />
+        <ShellContent Title="Settings" ContentTemplate="{DataTemplate views:SettingsPage}" />
+        <ShellContent Title="Logs" ContentTemplate="{DataTemplate views:LogsPage}" />
+    </TabBar>
+</Shell>

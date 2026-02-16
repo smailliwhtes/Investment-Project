@@ -1,0 +1,27 @@
+name: gui-windows-build
+
+on:
+  push:
+    paths:
+      - 'src/gui/**'
+      - 'scripts/build_gui.ps1'
+      - '.github/workflows/gui-windows-build.yml'
+  pull_request:
+    paths:
+      - 'src/gui/**'
+      - 'scripts/build_gui.ps1'
+      - '.github/workflows/gui-windows-build.yml'
+
+jobs:
+  build-gui:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install MAUI workload
+        run: dotnet workload install maui
+      - name: Restore + build
+        shell: pwsh
+        run: ./scripts/build_gui.ps1

@@ -132,6 +132,12 @@ def run_pipeline(args: argparse.Namespace) -> int:
 
 
 def run_watchlist_command(args: argparse.Namespace) -> int:
+    if getattr(args, "out_dir", None):
+        out_dir = Path(args.out_dir).expanduser().resolve()
+        args.outputs_dir = str(out_dir.parent)
+        args.run_id = out_dir.name
+    if not getattr(args, "run_id", None):
+        args.run_id = utcnow().strftime("%Y%m%dT%H%M%SZ")
     try:
         run_watchlist_pipeline(args)
     except RuntimeError as exc:
@@ -629,6 +635,25 @@ def _load_bulk_symbols(config: dict[str, Any], base_dir: Path, args: argparse.Na
     return universe_df["symbol"]
 
 
+
+
+def run_validate_config(args: argparse.Namespace) -> int:
+    try:
+        load_config(Path(args.config))
+        payload = {"valid": True, "errors": []}
+        if getattr(args, "format", "text") == "json":
+            print(json.dumps(payload))
+        else:
+            print("Config valid.")
+        return 0
+    except ConfigError as exc:
+        payload = {"valid": False, "errors": [{"path": "config", "message": str(exc)}]}
+        if getattr(args, "format", "text") == "json":
+            print(json.dumps(payload))
+        else:
+            print(f"Config invalid: {exc}")
+        return 2
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser("market-monitor")
     parser.add_argument(
@@ -654,14 +679,18 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser = sub.add_parser("validate", help="Validate config")
     validate_parser.add_argument("--config", required=True)
 
+    validate_config_parser = sub.add_parser("validate-config", help="Validate config for GUI integration")
+    validate_config_parser.add_argument("--config", required=True)
+    validate_config_parser.add_argument("--format", choices=["text", "json"], default="text")
+
     init_parser = sub.add_parser("init-config", help="Write default config")
     init_parser.add_argument("--out", required=True)
 
     run_parser = sub.add_parser("run", help="Run the offline watchlist monitor")
     run_parser.add_argument("--config", default="config.yaml", help="Config path (default: config.yaml)")
-    run_parser.add_argument("--watchlist", required=True, help="Watchlist CSV path")
+    run_parser.add_argument("--watchlist", required=False, help="Watchlist CSV path (defaults to config)")
     run_parser.add_argument("--asof", default=None)
-    run_parser.add_argument("--run-id", required=True, help="Run identifier (outputs/<run_id>)")
+    run_parser.add_argument("--run-id", required=False, help="Run identifier (outputs/<run_id>)")
     run_parser.add_argument("--ohlcv-raw-dir", default=None, help="Raw OHLCV dir (default: data/ohlcv_raw)")
     run_parser.add_argument(
         "--ohlcv-daily-dir", default=None, help="Normalized OHLCV dir (default: data/ohlcv_daily)"
@@ -676,6 +705,9 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--log-level", default="INFO")
     run_parser.add_argument("--workers", type=int, default=1)
     run_parser.add_argument("--profile", action="store_true", default=False)
+    run_parser.add_argument("--out-dir", default=None, help="Explicit output run directory; overrides --outputs-dir/--run-id")
+    run_parser.add_argument("--offline", action="store_true", default=False, help="Force offline mode for run")
+    run_parser.add_argument("--progress-jsonl", action="store_true", default=False, help="Emit JSONL progress updates to stdout")
 
     legacy_run_parser = sub.add_parser("run-legacy", help="Run the legacy monitor pipeline")
     legacy_run_parser.add_argument("--config", default="config.yaml")
@@ -830,13 +862,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "validate":
-        try:
-            load_config(Path(args.config))
-            print("Config valid.")
-            return 0
-        except ConfigError as exc:
-            print(f"Config invalid: {exc}")
-            return 2
+        return run_validate_config(args)
+
+    if args.command == "validate-config":
+        return run_validate_config(args)
 
     if args.command == "doctor":
         return run_doctor(Path(args.config), offline=args.offline, strict=args.strict)

@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketApp.Gui", "MarketApp.Gui.csproj", "{F0B1B7AF-4EDB-4B5D-8C09-BDE4E6F6D111}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketApp.Gui.Core", "..\MarketApp.Gui.Core\MarketApp.Gui.Core.csproj", "{9A4D6AF2-3589-46B2-BB2A-BD37CDE40482}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketApp.Gui.Tests", "..\MarketApp.Gui.Tests\MarketApp.Gui.Tests.csproj", "{7E8754E5-A2B4-4C3E-86AA-E004BFF34C6E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F0B1B7AF-4EDB-4B5D-8C09-BDE4E6F6D111}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F0B1B7AF-4EDB-4B5D-8C09-BDE4E6F6D111}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F0B1B7AF-4EDB-4B5D-8C09-BDE4E6F6D111}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F0B1B7AF-4EDB-4B5D-8C09-BDE4E6F6D111}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A4D6AF2-3589-46B2-BB2A-BD37CDE40482}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A4D6AF2-3589-46B2-BB2A-BD37CDE40482}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A4D6AF2-3589-46B2-BB2A-BD37CDE40482}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A4D6AF2-3589-46B2-BB2A-BD37CDE40482}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E8754E5-A2B4-4C3E-86AA-E004BFF34C6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E8754E5-A2B4-4C3E-86AA-E004BFF34C6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E8754E5-A2B4-4C3E-86AA-E004BFF34C6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E8754E5-A2B4-4C3E-86AA-E004BFF34C6E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

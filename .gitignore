@@ -17,3 +17,7 @@
 **/data/raw/
 **/data/processed/
 **/_backup*/
+
+# .NET artifacts
+**/bin/
+**/obj/
