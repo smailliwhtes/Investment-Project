@@ -2,6 +2,14 @@ param(
   [switch]$PauseOnFail
 )
 
+
+# --- auto-activate repo .venv (PowerShell 5.1-safe) ---
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$activate = Join-Path $repoRoot ".venv\Scripts\Activate.ps1"
+if (-not $env:VIRTUAL_ENV -and (Test-Path $activate)) {
+  . $activate
+}
+# --- end auto-activate repo .venv ---
 $ErrorActionPreference = "Stop"
 
 function Write-Warn($msg) { Write-Host "[warn] $msg" -ForegroundColor Yellow }
