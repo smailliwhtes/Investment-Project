@@ -45,11 +45,11 @@
 - Compared AGENTS contract paths/commands with the current repository layout and CLI surfaces.
 
 ### Verification commands run
-- `cd /home/runner/work/Investment-Project/Investment-Project/market_app && python -m pytest -q`  
+- `cd market_app && python -m pytest -q`  
   Result: failed in this environment (`No module named pytest`).
-- `cd /home/runner/work/Investment-Project/Investment-Project && dotnet restore src/gui/MarketApp.Gui.sln`  
+- `dotnet restore src/gui/MarketApp.Gui.sln`  
   Result: failed (`src/gui/MarketApp.Gui.sln` does not exist in this repo layout).
-- `cd /home/runner/work/Investment-Project/Investment-Project/market_app && python -m market_monitor.cli run --config config/config.yaml --out-dir outputs/runs/_smoke --offline --progress-jsonl`  
+- `cd market_app && python -m market_monitor.cli run --config config/config.yaml --out-dir outputs/runs/_smoke --offline --progress-jsonl`  
   Result: failed in this environment (`No module named pandas`), and contract flags differ from current CLI.
 
 ### AGENTS contract vs repository reality
