@@ -1,80 +1,45 @@
-# Repo Audit — Offline Monitor Upgrade
+# Repo Audit — GUI launch readiness (2026-02-16)
 
-## Inventory
-- **Repo root:** `/workspace/Investment-Project`
-- **App root:** `market_app/`
-- **Python package (src layout):** `market_app/src/market_app/`
-- **Legacy pipeline package:** `market_app/market_monitor/`
-- **Primary CLI:** `market_app/src/market_app/cli.py`
-- **Scripts:** `market_app/scripts/` (includes `run.ps1`, `acceptance.ps1`, `provision_data.ps1`)
-- **Configs/templates:** `market_app/config/` (`config.yaml`, `watchlists.yaml`, `logging.yaml`, `sources.yaml`)
-- **Docs/contracts:** `docs/codex/10_data_contracts.md`, `docs/codex/20_output_contract.md`, `docs/codex/40_commands.md`
-- **Nested AGENTS.md overrides:** none found under the repo tree.
+**Reference materials consulted:** `AGENTS.md`, `README.md`, `docs/codex/20_output_contract.md`, `GUI design guidelines.pdf`, `Market monitor blueprint.pdf`, `Market screening plan.pdf`, `Research AI blueprint.pdf`, `FIX_PLAN.md`, and existing test projects.
 
-## What is working today
-- The legacy CLI (`market_app/src/market_app/cli.py`) runs a blueprint pipeline and writes outputs in
-  `outputs/runs/<run_id>/` with `eligible.csv`, `scored.csv`, and `report.md`.
-- The repo already contains extensive tests and fixtures under `market_app/tests/`.
+## Repository inventory (high-signal map)
+- **Root coordination docs:** `AGENTS.md` (contract), `FIX_PLAN.md`, `AUDIT.md` (this file), blueprint PDFs.
+- **Python engine (source of truth):** `market_app/`
+  - `src/market_app/` main offline-first pipeline and CLI (`cli.py`, `offline_pipeline.py`, `outputs.py`).
+  - `market_monitor/` legacy helpers still referenced (determinism, hashing, universe).
+  - `config/` templates (`config.yaml`, `watchlists.yaml`, `logging.yaml`, `sources.yaml`).
+  - `scripts/` PowerShell helpers (`run.ps1`, `provision_data.ps1`, `acceptance.ps1`, smoke/e2e runners).
+  - `tests/` offline fixtures and unit tests; `pytest.ini` for defaults.
+- **GUI stack (MAUI skeleton, Windows-first):** `src/gui/`
+  - `MarketApp.Gui/` MAUI shell (App.xaml, MainPage.xaml, MauiProgram.cs).
+  - `MarketApp.Gui.Core/` contracts (chart + secrets abstractions).
+  - `MarketApp.Gui.Tests/` xUnit tests (contracts only) and `GlobalUsings.cs`.
+  - Solution: `src/gui/MarketApp.Gui.sln`; helper build scripts live under `scripts/` in repo root.
+- **Auxiliary artifacts:** `tests` (repo-root offline e2e runner), `docs/codex/*` for data/output/command contracts, PDF reference guides in root.
+- **No nested AGENTS.md overrides** were found.
 
-## Gaps vs requirements (broken or missing)
-- **Offline-first + config schema mismatch:** The local config template
-  `market_app/config/config.yaml` previously used a legacy schema (watchlist, provider, and macro settings)
-  and did not provide `paths.symbols_dir`, `paths.ohlcv_dir`, or new gating/scoring fields. This blocks the
-  required `python -m market_app.cli --config config/config.yaml --offline --top_n 50` UX.
-- **Symbols ingestion:** `market_app/market_monitor/universe.py` uses live Nasdaq endpoints and `requests`,
-  which violates offline-first requirements when used without explicit `--online`.
-- **Sample data fallback:** There was no tiny bundled dataset for missing external data paths; the system
-  could crash when `MARKET_APP_*` directories were not configured.
-- **Acceptance gate:** `market_app/scripts/acceptance.ps1` relied on legacy env vars
-  (`MARKET_APP_NASDAQ_DAILY_DIR`) and did not run the offline pipeline required by the new config.
-- **Schema contracts for new outputs:** No explicit schema list was enforced for the new output set
-  (`universe.csv`, `classified.csv`, `features.csv`, etc.).
-- **Tests for new requirements:** There were no unit/integration tests for the new offline symbol/ohlcv
-  loaders, gates, and CLI smoke run.
+## Verification runs on this host (Linux CI runner)
+- `cd market_app && python -m pytest -q` → **fails**: `No module named pytest` (dependency not preinstalled).
+- `dotnet restore src/gui/MarketApp.Gui.sln` → **ok**.
+- `dotnet build src/gui/MarketApp.Gui.sln -c Release` → **fails**: MAUI base types (`Application`, `ContentPage`, `MauiApp`) missing because MAUI workload is not supported on this platform (`dotnet workload install maui` is unsupported here). Expect success on Windows with MAUI workload installed.
 
-## Missing artifacts
-- **Tiny sample data:** required under `tests/data` (symbols + ohlcv) and used for offline demo mode.
-- **Config templates:** a config with new `paths` and `gates` defaults aligned to the required CLI behavior.
-- **Manifest strategy:** explicit input hashing policy for OHLCV sampling.
+## Readiness for GUI/UI launch
+- **Strengths / assets**
+  - MAUI solution exists with Windows target (`net8.0-windows10.0.19041.0`) and contract abstractions (`IChartProvider`, `ISecretsStore`, forecast/series models) aligned with `AGENTS.md` §10–11.
+  - Output/data contracts are documented (`docs/codex/20_output_contract.md`) and the engine writes required columns including `last_date` / `lag_days`.
+  - PowerShell and bash runners exist for offline runs; determinism utilities are present.
+- **Gaps preventing a user-friendly GUI launch**
+  - GUI is only a placeholder page; no run orchestration, progress parsing, run discovery, or CSV/manifest loaders are wired up (requirements in `AGENTS.md` §§4, 6, 9 are unmet).
+  - No DI or services registered in `MauiProgram` (Engine bridge, Run discovery, CSV loader, Secrets store, Chart provider are absent).
+  - Secrets storage and chart provider abstractions have no concrete implementations.
+  - Progress JSONL throttling/parsing, cancellation wiring, and log tailing are not implemented.
+  - Build/test on non-Windows hosts currently fails due to unsupported MAUI workload; CI must target `windows-latest` as documented.
+  - Python test runner missing dependency on this host (`pytest` not installed), so engine test status is unknown without installing dev requirements.
 
-## AGENTS.md operational check (2026-02-16)
+## Recommendations (minimal next steps to be launch-ready)
+1. Implement GUI services + DI registrations per `AGENTS.md` (engine process bridge honoring `--offline --progress-jsonl`, run discovery/manifest parsing, CSV loaders with `last_date/lag_days` enforcement, secrets store using SecureStorage, chart provider behind `IChartProvider`).
+2. Expand GUI UI to required screens (dashboard, run orchestration, runs history/diff, scored table with virtualization, settings/logs) guided by `GUI design guidelines.pdf`.
+3. Add GUI contract tests (progress parsing, run discovery, CSV merge) and platform build to `windows-latest` CI; keep Linux build optional or gated.
+4. Ensure Python dev dependencies (`pytest`, pandas, numpy, etc.) are installed when running engine tests; optionally add a helper to bootstrap a local venv.
 
-### Scope checked
-- `AGENTS.md` contract at repo root.
-- No nested `AGENTS.md` overrides were found.
-- Compared AGENTS contract paths/commands with the current repository layout and CLI surfaces.
-
-### Verification commands run
-- `cd market_app && python -m pytest -q`  
-  Result: failed in this environment (`No module named pytest`).
-- `dotnet restore src/gui/MarketApp.Gui.sln`  
-  Result: failed (`src/gui/MarketApp.Gui.sln` does not exist in this repo layout).
-- `cd market_app && python -m market_monitor.cli run --config config/config.yaml --out-dir outputs/runs/_smoke --offline --progress-jsonl`  
-  Result: failed in this environment (`No module named pandas`), and contract flags differ from current CLI.
-
-### AGENTS contract vs repository reality
-1. **GUI layout mismatch (P0 for AGENTS contract conformance):**
-   - AGENTS requires `src/gui/MarketApp.Gui*` projects and `src/gui/MarketApp.Gui.sln`.
-   - Current repo does not have `/src/gui`; it has a root `MarketApp.Gui.csproj` and Python/Tkinter UI flow under `market_app`.
-2. **GUI workflow mismatch:**
-   - `.github/workflows/gui-windows-build.yml` triggers/builds `src/gui/**` and references `scripts/build_gui.ps1`.
-   - Those paths are absent in the current repository.
-3. **Engine CLI contract mismatch:**
-   - AGENTS requires `market_monitor.cli run --config --out-dir --offline --progress-jsonl`.
-   - `market_monitor/cli.py` `run` currently requires `--watchlist` and `--run-id`; no `--out-dir` or `--progress-jsonl` flag is defined there.
-   - AGENTS requires `validate-config --format json`; current `market_monitor/cli.py` exposes `validate`, not `validate-config`.
-4. **Artifact naming mismatch:**
-   - AGENTS requires `run_manifest.json` + `config_snapshot.yaml` for successful runs.
-   - `market_app/src/market_app/cli.py` writes `manifest.json`; naming contract diverges depending on entrypoint.
-5. **What appears aligned:**
-   - Python CI runs on `ubuntu-latest` and `windows-latest` in `.github/workflows/ci.yml`.
-   - `last_date` and `lag_days` are present in the offline pipeline code paths (`market_app/src/market_app/offline_pipeline.py` and related schemas).
-
-### Operational verdict
-- **Application status: Partially operational.**
-- The Python engine appears actively maintained and test-backed, but the repository does **not** currently conform to the AGENTS.md MAUI/CLI path and command contracts as written.
-- To call the app “fully operational” against AGENTS.md, the project needs a contract reconciliation:
-  - either implement the AGENTS-specified `src/gui` + CLI/output contracts,
-  - or update AGENTS.md to match the current, actual repository architecture and entrypoints.
-- If you want, next I can do a follow-up pass to tighten parity even further (e.g., richer progress-jsonl stage granularity and stricter manifest field population) while keeping backward compatibility intact.
-- If you want, I can also place this same follow-up note in README.md or docs/codex/40_commands.md for more visibility.
+**Verdict:** The repository contains the core engine and a MAUI skeleton, but the GUI is not yet feature-complete nor wired to the engine. Additional GUI services, integration, and Windows-hosted builds/tests are required before a user-friendly interface can be shipped.
