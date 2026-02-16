@@ -8,6 +8,8 @@
 **/htmlcov/
 **/dist/
 **/build/
+**/bin/
+**/obj/
 **/*.exe
 **/*.zip
 **/*.parquet
