@@ -11,6 +11,13 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from market_app.ui.validation import (
+    ValidationError,
+    validate_config_path,
+    validate_run_id,
+    validate_runs_directory,
+)
+
 
 @dataclass(frozen=True)
 class RunTargets:
@@ -155,10 +162,30 @@ class MarketAppUI(tk.Tk):
         if self._busy:
             messagebox.showinfo("Market App", "A command is already running.")
             return
-        config_path = self._config_var.get().strip()
-        if not config_path:
-            messagebox.showerror("Market App", "Please select a config file.")
+
+        # Validate config path
+        config_path_str = self._config_var.get().strip()
+        try:
+            config_path = validate_config_path(config_path_str)
+        except ValidationError as exc:
+            messagebox.showerror("Market App", str(exc))
             return
+
+        # For the run command, also validate runs directory and run ID
+        if label == "Run":
+            runs_dir_str = self._runs_dir_var.get().strip()
+            try:
+                runs_dir = validate_runs_directory(runs_dir_str)
+            except ValidationError as exc:
+                messagebox.showerror("Market App", str(exc))
+                return
+
+            run_id_str = self._run_id_var.get().strip()
+            try:
+                run_id = validate_run_id(run_id_str)
+            except ValidationError as exc:
+                messagebox.showerror("Market App", str(exc))
+                return
 
         self._set_busy(True)
         self._append_log(f"\n[{label}] Running: {' '.join(command)}\n")

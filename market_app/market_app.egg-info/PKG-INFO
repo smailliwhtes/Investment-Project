@@ -35,6 +35,29 @@ Requires-Dist: pyarrow==17.0.0; extra == "dev"
 
 # Market Monitor (Monitoring-Only)
 
+## Provisioning vs offline runtime
+
+- **Provisioning (may be online):** create virtualenv + install dependencies + optionally fetch data using provisioning scripts.
+- **Runtime (offline-only):** run the pipeline with `--offline`; outbound network is blocked and any attempt fails fast.
+
+### One-command offline run (Windows)
+
+```powershell
+./scripts/run.ps1 -Config ./config/config.yaml -Offline
+```
+
+### Run repository audit
+
+```bash
+python -m market_app.audit
+```
+
+### Run tests
+
+```bash
+pytest -q
+```
+
 Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. It **does not** place orders or provide investment recommendations. Outputs are focused on:
 
 - Eligibility status (with reason codes)
@@ -43,22 +66,56 @@ Market Monitor is a **monitoring-only** system for U.S.-listed stocks and ETFs. 
 - Scenario sensitivity (defense/tech/metals)
 - Offline corpus context + historical analog summaries
 
-## Run the monitor (canonical command)
+## Run the offline local monitor (canonical command)
 
 From the repo root:
 
 **Windows (PowerShell)**
 ```powershell
-python -m market_app.cli run --config .\config.yaml --offline
+python -m market_app.cli --config .\config\config.yaml --offline --as-of 2025-01-31 --top-n 200
 ```
 
 **macOS/Linux (bash)**
 ```bash
-python -m market_app.cli run --config ./config.yaml --offline
+python -m market_app.cli --config ./config/config.yaml --offline --as-of 2025-01-31 --top-n 200
 ```
 
-This runs the canonical wrapper (`python -m market_app.cli run`) and writes
-output artifacts to `outputs/runs/<run_id>/` (or `--runs-dir` if provided).
+Deterministic/as-of anchored variant:
+
+```bash
+python -m market_app.cli --config ./config/config.yaml --offline --as-of 2025-01-31 --top-n 200
+```
+
+This runs the offline-first pipeline and writes output artifacts to
+`outputs/runs/<run_id>/`. The run will fall back to bundled sample data if
+`MARKET_APP_SYMBOLS_DIR` or `MARKET_APP_OHLCV_DIR` are not set.
+
+Required outputs per run:
+
+- `universe.csv`
+- `classified.csv`
+- `features.csv`
+- `data_quality.csv`
+- `eligible.csv`
+- `ineligible.csv`
+- `scored.csv`
+- `report.md`
+- `manifest.json`
+- `corpus_features.csv` (optional when local corpus files are provided)
+
+`scored.csv` includes `last_date`, `lag_days`, and `lag_bin` so stale symbols can be surfaced quickly.
+
+Optional outputs include `regime.json` and `predictions.csv` when enabled.
+
+Environment overrides (CLI args take precedence):
+
+- `MARKET_APP_SYMBOLS_DIR`
+- `MARKET_APP_OHLCV_DIR`
+- `MARKET_APP_OUTPUT_DIR`
+
+To allow online data access (not required for offline runs), pass `--online`
+or set `online: true` in the config. In offline mode, any network access is
+blocked.
 
 ### Deterministic run (anchored time)
 
@@ -114,6 +171,18 @@ run tests, run doctor, run the pipeline twice, and check determinism via
 ```bash
 bash scripts/acceptance_gate.sh
 ```
+
+## Local verification (one command, Windows)
+
+Run a full local check (venv, requirements, pytest, offline acceptance) from the repo root:
+
+```powershell
+.\scripts\verify_local.ps1 -DailyDir "C:\Users\micha\OneDrive\Desktop\Market_Files\_nasdaq_daily_flat_norm"
+```
+
+Notes:
+- `MARKET_APP_CONFIG` overrides the config path if set in your environment.
+- The daily CSV directory must contain at least `SPY.csv` (case-insensitive).
 
 ## Verify ready for GUI
 
@@ -536,3 +605,14 @@ Implement `HistoryProvider` in `market_monitor/providers/` with explicit capabil
 - `supports_history`, `supports_quote`, `supports_adjusted`, `rate_limit_model`
 
 Then register it in `market_monitor/cli.py` and add any required env vars to the doctor checks.
+
+
+## Update cache + run offline (single command, Windows)
+
+```powershell
+.\scripts\update_and_run.ps1 -StooqDumpDir "C:\path\to\stooq_dump" -OhlcvDir "C:\path\to\ohlcv_daily_csv"
+```
+
+This command runs incremental Stooq update, rebuilds `data/universe_available`, and runs the offline pipeline.
+
+Detailed workflow: `docs/data_workflow.md`.
