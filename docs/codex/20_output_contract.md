@@ -25,6 +25,8 @@ Required columns:
 - explanation (string; one-line, short)
 - theme_bucket (string)
 - asset_type (string)
+- last_date (YYYY-MM-DD)
+- lag_days (int)
 - ml_signal (float; nullable; model output only when available)
 - ml_model_id (string; nullable; training identifier)
 - ml_featureset_id (string; nullable; dataset schema/config hash)
@@ -41,7 +43,16 @@ Must include:
 - Top N by score
 - Compact per-symbol lines: symbol | score | flags | one-line explanation
 
+## 4) run_manifest.json (required)
+Required for successful runs.
+
+## 5) config_snapshot.yaml (required)
+Exact run config snapshot used for the run.
+
+## 6) logs
+- logs/engine.log (required)
+- ui_engine.log (required; may be empty for direct CLI runs)
+
 ## Optional artifacts (allowed)
-- run_manifest.json (metadata)
 - features_*.csv / intermediate debug files
-Optional artifacts must NOT replace the three required outputs.
+Optional artifacts must NOT replace the required outputs.
