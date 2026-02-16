@@ -76,3 +76,4 @@
 - To call the app “fully operational” against AGENTS.md, the project needs a contract reconciliation:
   - either implement the AGENTS-specified `src/gui` + CLI/output contracts,
   - or update AGENTS.md to match the current, actual repository architecture and entrypoints.
+- If you want, next I can do a follow-up pass to tighten parity even further (e.g., richer progress-jsonl stage granularity and stricter manifest field population) while keeping backward compatibility intact.
