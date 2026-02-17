@@ -212,7 +212,8 @@ def run_contract_watchlist(args: argparse.Namespace) -> int:
                 watchlist_path = resolve_path(base_dir, watchlist_value)
         out_dir = Path(args.out_dir).expanduser()
         out_dir = out_dir if out_dir.is_absolute() else (base_dir / out_dir).resolve()
-        out_dir.parent.mkdir(parents=True, exist_ok=True)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "logs").mkdir(parents=True, exist_ok=True)
         run_args = argparse.Namespace(
             config=str(config_path),
             watchlist=str(watchlist_path),
@@ -1121,6 +1122,7 @@ def build_parser() -> argparse.ArgumentParser:
     preflight_parser.add_argument("--config", default="config.yaml")
     preflight_parser.add_argument("--watchlist")
     preflight_parser.add_argument("--outdir")
+    preflight_parser.add_argument("--offline", action="store_true", help="Accepted for compatibility (ignored; preflight is always offline)")
     preflight_parser.add_argument("--log-level", default="INFO")
 
     bulk_plan_parser = sub.add_parser("bulk-plan", help="Plan bulk CSV downloads")
