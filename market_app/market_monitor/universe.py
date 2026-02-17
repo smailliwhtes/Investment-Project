@@ -123,8 +123,12 @@ def _read_watchlist_csv(path: Path) -> pd.DataFrame:
                 symbol = (row.get(header_map["symbol"]) or "").strip().upper()
                 if not symbol:
                     continue
-                theme_bucket = (row.get(header_map.get("theme_bucket", ""), "") or "").strip() if "theme_bucket" in lower_headers else ""
-                asset_raw = (row.get(header_map.get("asset_type", ""), "") or "").strip() if "asset_type" in lower_headers else ""
+                theme_bucket = ""
+                if "theme_bucket" in lower_headers:
+                    theme_bucket = (row.get(header_map["theme_bucket"]) or "").strip()
+                asset_raw = ""
+                if "asset_type" in lower_headers:
+                    asset_raw = (row.get(header_map["asset_type"]) or "").strip()
                 asset_type = asset_raw if asset_raw else "equity"
                 rows.append(
                     {
