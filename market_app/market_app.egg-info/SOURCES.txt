@@ -241,12 +241,14 @@ tests/test_local_cli_smoke.py
 tests/test_local_corpus_lane.py
 tests/test_local_data_quality.py
 tests/test_local_features.py
+tests/test_local_first_run_hardening.py
 tests/test_local_gates.py
 tests/test_local_ohlcv.py
 tests/test_local_symbols.py
 tests/test_manifest_digest_determinism.py
 tests/test_market_app_cli.py
 tests/test_market_app_doctor.py
+tests/test_market_monitor_cli_contracts.py
 tests/test_mini_dataset_offline_integration.py
 tests/test_ml_pipeline.py
 tests/test_nasdaq_daily_provider.py
