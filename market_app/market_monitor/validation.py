@@ -36,29 +36,33 @@ def validate_watchlist(watchlist_path: Path) -> tuple[pd.DataFrame, list[str]]:
     errors: list[str] = []
     if not watchlist_path.exists():
         return pd.DataFrame(), [f"Watchlist is empty or missing at {watchlist_path}."]
-    if watchlist_path.suffix.lower() != ".csv":
+
+    # Use the same read_watchlist() used by preflight and run so that both
+    # headered and headerless watchlist formats are accepted consistently.
+    try:
         watchlist = read_watchlist(watchlist_path)
-        if watchlist.empty:
-            errors.append(f"Watchlist is empty or missing at {watchlist_path}.")
+    except ValueError as exc:
+        return pd.DataFrame(), [str(exc)]
+
+    if watchlist.empty:
+        errors.append(f"Watchlist is empty or missing at {watchlist_path}.")
         return watchlist, errors
 
-    df = pd.read_csv(watchlist_path)
-    headers = {col.lower(): col for col in df.columns}
-    missing = REQUIRED_WATCHLIST_COLUMNS - set(headers.keys())
-    if missing:
-        errors.append(f"Watchlist missing required columns: {sorted(missing)}.")
+    if "symbol" not in watchlist.columns:
+        errors.append(f"Watchlist missing required columns: ['symbol'].")
         return pd.DataFrame(), errors
-    df = df.rename(columns={headers["symbol"]: "symbol"})
-    df["symbol"] = df["symbol"].astype(str).str.upper().str.strip()
-    df = df[df["symbol"] != ""]
-    if df.empty:
+
+    watchlist["symbol"] = watchlist["symbol"].astype(str).str.upper().str.strip()
+    watchlist = watchlist[watchlist["symbol"] != ""]
+    if watchlist.empty:
         errors.append(f"Watchlist is empty or missing at {watchlist_path}.")
-        return df, errors
-    duplicates = df["symbol"].duplicated()
+        return watchlist, errors
+
+    duplicates = watchlist["symbol"].duplicated()
     if duplicates.any():
-        dupes = df.loc[duplicates, "symbol"].tolist()
+        dupes = watchlist.loc[duplicates, "symbol"].tolist()
         errors.append(f"Watchlist has duplicate symbols: {', '.join(sorted(set(dupes)))}.")
-    return df, errors
+    return watchlist, errors
 
 
 def _validate_ohlcv_symbol(

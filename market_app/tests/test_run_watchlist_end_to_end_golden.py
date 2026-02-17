@@ -75,5 +75,5 @@ def test_run_watchlist_end_to_end_golden(tmp_path: Path) -> None:
     assert manifest_data["run_id"] == "golden"
     assert manifest_data["determinism_fingerprint"] == manifest["determinism_fingerprint"]
 
-    expected_hash = "ded05fdc744dfbc9c40966fa78c449829d7a137cda40966cc2cc4f8d33b2ee89"
+    expected_hash = "e0cf55b27282ef63df14b466dbb36c97fd749138948b5acc2443fc6e2e982087"
     assert manifest_data["determinism_fingerprint"] == expected_hash

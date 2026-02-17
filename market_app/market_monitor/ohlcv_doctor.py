@@ -199,7 +199,11 @@ def normalize_directory(
     results = []
     raw_dir = raw_dir.resolve()
     out_dir = out_dir.resolve()
+    # Skip non-OHLCV files (e.g. conversion_errors.csv, ohlcv_manifest.csv)
+    _SKIP_STEMS = {"conversion_errors", "ohlcv_manifest"}
     for file_path in sorted(raw_dir.glob("*.csv")):
+        if file_path.stem.lower() in _SKIP_STEMS:
+            continue
         symbol = file_path.stem.upper() if symbol_from_filename else file_path.stem
         result_payload = normalize_file(
             path=file_path,
