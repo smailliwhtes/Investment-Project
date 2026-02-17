@@ -4,6 +4,25 @@ Set-StrictMode -Version Latest
 function Write-Info($msg) { Write-Host "[info] $msg" -ForegroundColor Cyan }
 function Write-Err($msg)  { Write-Host "[error] $msg" -ForegroundColor Red }
 
+function Resolve-DesktopPath {
+  $desktop = [Environment]::GetFolderPath("Desktop")
+  if ($desktop -and (Test-Path $desktop)) { return $desktop }
+
+  $fallbacks = @(
+    (Join-Path $env:USERPROFILE "Desktop"),
+    (Join-Path $env:OneDrive "Desktop")
+  )
+  foreach ($candidate in $fallbacks) {
+    if ($candidate -and (Test-Path $candidate)) { return $candidate }
+  }
+
+  if ($fallbacks[0]) {
+    New-Item -ItemType Directory -Path $fallbacks[0] -Force | Out-Null
+    return $fallbacks[0]
+  }
+  throw "Could not resolve a Desktop folder path for the current user."
+}
+
 # Resolve repo root from this installer script location
 $scriptDir = $PSScriptRoot
 if (-not $scriptDir) {
@@ -32,7 +51,7 @@ if (-not $targetExe) {
   exit 127
 }
 
-$desktop = [Environment]::GetFolderPath("Desktop")
+$desktop = Resolve-DesktopPath
 $lnkPath = Join-Path $desktop "MarketApp GUI.lnk"
 
 # Use the helper run script so builds/restores happen automatically.
@@ -46,6 +65,11 @@ $sc.WorkingDirectory = $repoRoot.ProviderPath
 # Optional: PowerShell icon
 $sc.IconLocation = "$targetExe,0"
 $sc.Save()
+
+if (-not (Test-Path $lnkPath)) {
+  Write-Err "Shortcut creation failed. Expected file not found: $lnkPath"
+  exit 4
+}
 
 Write-Info "Created Desktop shortcut:"
 Write-Host "  $lnkPath"
