@@ -134,6 +134,9 @@ def compute_daily_features(
     workers: int = 1,
 ) -> dict:
     paths = sorted(ohlcv_dir.glob("*.csv"))
+    # Skip non-OHLCV files (e.g. conversion_errors.csv, ohlcv_manifest.csv)
+    _SKIP_STEMS = {"conversion_errors", "ohlcv_manifest"}
+    paths = [p for p in paths if p.stem.lower() not in _SKIP_STEMS]
 
     def _compute(path: Path) -> dict:
         symbol = path.stem.upper()

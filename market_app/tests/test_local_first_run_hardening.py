@@ -124,6 +124,57 @@ class TestConversionErrorsSkipped:
         # Should not fail because of conversion_errors.csv
         assert result.ok
 
+    def test_compute_daily_features_skips_conversion_errors(self, tmp_path: Path) -> None:
+        """compute_daily_features must skip conversion_errors.csv."""
+        from market_monitor.features.compute_daily_features import compute_daily_features
+
+        ohlcv_dir = tmp_path / "ohlcv"
+        _write_ohlcv(ohlcv_dir, "AAPL")
+
+        # Write a non-OHLCV file that would crash read_ohlcv()
+        (ohlcv_dir / "conversion_errors.csv").write_text(
+            "file,error\nfoo.csv,bad date\n", encoding="utf-8"
+        )
+
+        out_dir = tmp_path / "features_out"
+        out_dir.mkdir()
+
+        # Should not raise even though conversion_errors.csv exists
+        result = compute_daily_features(
+            ohlcv_dir=ohlcv_dir,
+            out_dir=out_dir,
+            asof_date="2025-01-15",
+        )
+        assert (out_dir / "features_by_symbol.csv").exists()
+
+    def test_normalize_directory_skips_conversion_errors(self, tmp_path: Path) -> None:
+        """ohlcv_doctor.normalize_directory must skip conversion_errors.csv."""
+        from market_monitor.ohlcv_doctor import normalize_directory
+
+        raw_dir = tmp_path / "raw"
+        _write_ohlcv(raw_dir, "AAPL")
+
+        (raw_dir / "conversion_errors.csv").write_text(
+            "file,error\nfoo.csv,bad date\n", encoding="utf-8"
+        )
+
+        out_dir = tmp_path / "normalized"
+        result = normalize_directory(
+            raw_dir=raw_dir,
+            out_dir=out_dir,
+            date_col=None,
+            delimiter=None,
+            symbol_from_filename=True,
+            coerce=True,
+            strict=False,
+            streaming=False,
+            chunk_rows=200_000,
+        )
+        # Should succeed; only AAPL should appear in results
+        symbols = [r.symbol for r in result["results"]]
+        assert "AAPL" in symbols
+        assert "CONVERSION_ERRORS" not in symbols
+
 
 # ---------------------------------------------------------------------------
 # 4) Env var overrides
