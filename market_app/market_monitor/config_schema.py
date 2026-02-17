@@ -130,6 +130,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "ohlcv_daily_dir": "data/ohlcv_daily",
         "exogenous_daily_dir": "data/exogenous/daily_features",
     },
+    "exogenous": {
+        "enabled": False,
+    },
     "pipeline": {
         "auto_normalize_ohlcv": True,
         "include_raw_exogenous_same_day": False,
@@ -216,7 +219,8 @@ def _load_env_overrides() -> dict[str, Any]:
     overrides: dict[str, Any] = {"data": {"paths": {}}, "corpus": {}, "paths": {}, "data_roots": {}}
     root = os.getenv("MARKET_APP_DATA_ROOT")
     ohlcv = (
-        os.getenv("MARKET_APP_OHLCV_DIR")
+        os.getenv("MARKET_APP_OHLCV_DAILY_DIR")
+        or os.getenv("MARKET_APP_OHLCV_DIR")
         or os.getenv("MARKET_APP_NASDAQ_DAILY_DIR")
         or os.getenv("NASDAQ_DAILY_DIR")
     )
@@ -225,10 +229,11 @@ def _load_env_overrides() -> dict[str, Any]:
         or os.getenv("SILVER_PRICES_DIR")
         or os.getenv("SILVER_PRICES_CSV")
     )
-    corpus_root = os.getenv("MARKET_APP_CORPUS_ROOT")
+    corpus_root = os.getenv("MARKET_APP_CORPUS_DIR") or os.getenv("MARKET_APP_CORPUS_ROOT")
     gdelt_dir = os.getenv("MARKET_APP_GDELT_DIR") or os.getenv("MARKET_APP_GDELT_CONFLICT_DIR")
     gdelt_raw_dir = os.getenv("MARKET_APP_GDELT_RAW_DIR") or os.getenv("MARKET_APP_GDELT_EVENTS_RAW_DIR")
     outputs_dir = os.getenv("MARKET_APP_OUTPUTS_DIR") or os.getenv("OUTPUTS_DIR")
+    exogenous_daily = os.getenv("MARKET_APP_EXOGENOUS_DAILY_DIR")
     offline = _parse_bool(os.getenv("OFFLINE_MODE"))
 
     if root:
@@ -246,6 +251,8 @@ def _load_env_overrides() -> dict[str, Any]:
     if gdelt_raw_dir:
         overrides["corpus"]["gdelt_events_raw_dir"] = gdelt_raw_dir
         overrides["data_roots"]["gdelt_raw_dir"] = gdelt_raw_dir
+    if exogenous_daily:
+        overrides["paths"]["exogenous_daily_dir"] = exogenous_daily
     if outputs_dir:
         overrides["paths"]["outputs_dir"] = outputs_dir
         overrides["data_roots"]["outputs_dir"] = outputs_dir
@@ -313,6 +320,11 @@ def _apply_env_overrides(
         corpus_cfg["gdelt_events_raw_dir"] = env_corpus["gdelt_events_raw_dir"]
         if not _has_config_value(config_data, ["data_roots", "gdelt_raw_dir"]):
             data_roots["gdelt_raw_dir"] = env_corpus["gdelt_events_raw_dir"]
+
+    if env_paths.get("exogenous_daily_dir") and not _has_config_value(
+        config_data, ["paths", "exogenous_daily_dir"]
+    ):
+        paths_cfg["exogenous_daily_dir"] = env_paths["exogenous_daily_dir"]
 
     if env_paths.get("outputs_dir") and not (
         _has_config_value(config_data, ["paths", "outputs_dir"])

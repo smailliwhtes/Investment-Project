@@ -111,6 +111,7 @@ def validate_data(
     asof_date: str,
     min_history_days: int,
     benchmark_symbols: list[str],
+    exogenous_enabled: bool = False,
 ) -> ValidationResult:
     errors: list[str] = []
     warnings: list[str] = []
@@ -142,7 +143,7 @@ def validate_data(
         if missing_symbols:
             errors.append(f"Missing OHLCV files for symbols: {', '.join(sorted(missing_symbols))}.")
 
-    if exogenous_daily_dir:
+    if exogenous_enabled and exogenous_daily_dir:
         ok, gaps = _exogenous_coverage(exogenous_daily_dir, asof_date)
         if not ok:
             errors.extend(gaps)

@@ -2,6 +2,59 @@
 
 Primary application: `market_app/`.
 
+## First Run on Windows
+
+1. **Bootstrap local dev environment** (discovers paths, creates directories, generates watchlist):
+
+```powershell
+.\scripts\bootstrap_local_dev.ps1
+```
+
+2. **Launch the GUI** (requires .NET SDK 8 + MAUI workload):
+
+```powershell
+.\scripts\run_gui.ps1
+```
+
+3. **Run the engine pipeline**:
+
+```powershell
+cd market_app
+python -m market_monitor.cli run --config .\config\config.yaml --out-dir ..\outputs\runs\manual_run --offline --progress-jsonl
+```
+
+### Environment Variables
+
+Set these to override paths from `config.yaml` (or use `.env.local` for the bootstrap script):
+
+| Variable | Description |
+|---|---|
+| `MARKET_APP_OHLCV_DAILY_DIR` | Path to OHLCV daily CSV directory |
+| `MARKET_APP_CORPUS_DIR` | Path to NLP corpus directory |
+| `MARKET_APP_EXOGENOUS_DAILY_DIR` | Path to exogenous daily features directory |
+
+See `.env.local.example` for a template (copy to `.env.local` — it is gitignored).
+
+### Watchlist
+
+The engine requires a watchlist at `market_app/config/watchlists/watchlist_core.csv`.
+Format: CSV with columns `symbol,theme_bucket,asset_type` (one symbol per row).
+The bootstrap script generates one automatically from OHLCV files.
+
+### Exogenous Data
+
+Exogenous data is **optional by default** (`exogenous.enabled: false` in config).
+Set `exogenous.enabled: true` in your config to require exogenous daily features.
+
+### Preflight
+
+```powershell
+cd market_app
+python -m market_monitor.cli preflight --config .\config\config.yaml
+```
+
+The `--offline` flag is accepted for compatibility but has no effect (preflight is always offline).
+
 ## Provisioning (may use network)
 
 ```bash

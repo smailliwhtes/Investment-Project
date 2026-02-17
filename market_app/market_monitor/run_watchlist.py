@@ -237,11 +237,14 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     if not asof_date and paths.ohlcv_daily_dir.exists():
         asof_date = _latest_common_date(symbols, paths.ohlcv_daily_dir)
     output_dir = paths.outputs_dir / args.run_id
+    output_dir.mkdir(parents=True, exist_ok=True)
     log_path = output_dir / "logs" / "run.log"
     logger = configure_logging(LogPaths(console_level=args.log_level, file_path=log_path))
     timings: dict[str, float] = {}
     warnings: list[str] = []
     _log_stage(logger, "run", "start", f"run_id={args.run_id}")
+
+    exogenous_enabled = bool(config.get("exogenous", {}).get("enabled", False))
 
     _log_stage(logger, "validation", "start")
     validation = validate_data(
@@ -251,6 +254,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
         asof_date=asof_date or "",
         min_history_days=int(config.get("scoring", {}).get("minimum_history_days", 252)),
         benchmark_symbols=config.get("pipeline", {}).get("benchmarks") or [],
+        exogenous_enabled=exogenous_enabled,
     )
     warnings.extend(validation.warnings)
     diagnostics = {
@@ -332,11 +336,14 @@ def run_watchlist(args: argparse.Namespace) -> dict:
 
     _log_stage(logger, "exogenous", "start", f"asof={asof_date}")
     start = time.perf_counter()
-    exogenous_row, exogenous_meta = _load_exogenous_features(
-        paths.exogenous_daily_dir,
-        asof_date,
-        include_raw=config.get("pipeline", {}).get("include_raw_exogenous_same_day", False),
-    )
+    if exogenous_enabled:
+        exogenous_row, exogenous_meta = _load_exogenous_features(
+            paths.exogenous_daily_dir,
+            asof_date,
+            include_raw=config.get("pipeline", {}).get("include_raw_exogenous_same_day", False),
+        )
+    else:
+        exogenous_row, exogenous_meta = {}, {"coverage": 0, "missing_dates": []}
     timings["exogenous"] = time.perf_counter() - start
     if exogenous_meta.get("missing_dates"):
         warnings.append(f"Exogenous coverage missing: {exogenous_meta['missing_dates']}")
