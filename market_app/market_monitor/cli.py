@@ -455,7 +455,64 @@ def run_validate_data(args: argparse.Namespace) -> int:
 
 def run_validate_config_json(args: argparse.Namespace) -> int:
     try:
-        load_config(Path(args.config))
+        config_path = Path(args.config)
+        config_result = load_config(config_path)
+        config = config_result.config
+        base_dir = config_path.expanduser().resolve().parent
+
+        runtime_errors: list[dict[str, str]] = []
+
+        watchlist_file = config.get("paths", {}).get("watchlist_file", "")
+        if watchlist_file:
+            wl_path = Path(watchlist_file)
+            if not wl_path.is_absolute():
+                wl_path = (base_dir / wl_path).resolve()
+            if not wl_path.exists():
+                runtime_errors.append({
+                    "path": "paths.watchlist_file",
+                    "message": (
+                        f"Watchlist file not found at {wl_path}. "
+                        "Generate one with: scripts/bootstrap_local_dev.ps1"
+                    ),
+                    "severity": "error",
+                })
+            elif wl_path.stat().st_size == 0:
+                runtime_errors.append({
+                    "path": "paths.watchlist_file",
+                    "message": f"Watchlist file is empty at {wl_path}.",
+                    "severity": "error",
+                })
+
+        exogenous_enabled = config.get("exogenous", {}).get("enabled", False)
+        if exogenous_enabled:
+            exog_dir_val = config.get("paths", {}).get("exogenous_daily_dir", "")
+            if exog_dir_val:
+                exog_path = Path(exog_dir_val)
+                if not exog_path.is_absolute():
+                    exog_path = (base_dir / exog_path).resolve()
+                if not exog_path.exists():
+                    runtime_errors.append({
+                        "path": "paths.exogenous_daily_dir",
+                        "message": f"Exogenous daily dir missing: {exog_path} (exogenous.enabled=true)",
+                        "severity": "error",
+                    })
+                elif not list(exog_path.glob("*.csv")):
+                    runtime_errors.append({
+                        "path": "paths.exogenous_daily_dir",
+                        "message": f"Exogenous daily dir has no CSVs: {exog_path}",
+                        "severity": "error",
+                    })
+
+        if runtime_errors:
+            payload = {"valid": False, "errors": runtime_errors}
+            if args.format == "json":
+                print(json.dumps(payload))
+            else:
+                print("Config invalid:")
+                for err in runtime_errors:
+                    print(f"  [{err['path']}] {err['message']}")
+            return 2
+
         payload = {"valid": True, "errors": []}
         if args.format == "json":
             print(json.dumps(payload))
