@@ -1,1 +1,29 @@
-name: Windows Build\n\non: push\n\njobs:\n  build:\n    runs-on: windows-latest\n    steps:\n      - name: Checkout code\n        uses: actions/checkout@v2\n      - name: Setup .NET\n        uses: actions/setup-dotnet@v4\n        with:\n          dotnet-version: '9.0.x'\n      - name: Restore dependencies\n        run: dotnet restore\n      - name: Build\n        run: dotnet build --configuration Release\n      - name: Test\n        run: dotnet test --configuration Release
+name: GUI Windows Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui --ignore-failed-sources
+
+      - name: Restore dependencies
+        run: dotnet restore src/gui/MarketApp.Gui.sln
+
+      - name: Build
+        run: dotnet build src/gui/MarketApp.Gui.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj --configuration Release --no-build
