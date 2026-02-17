@@ -6,7 +6,11 @@
 
     <Style TargetType="Page" ApplyToDerivedTypes="True">
         <Setter Property="Padding" Value="10" />
-        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Gray950}}" />
+        <Setter Property="BackgroundColor">
+            <Setter.Value>
+                <AppThemeBinding Light="{StaticResource White}" Dark="{StaticResource Gray950}" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style TargetType="Shell" ApplyToDerivedTypes="True">
@@ -16,7 +20,11 @@
     </Style>
 
     <Style TargetType="Label">
-        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource White}}" />
+        <Setter Property="TextColor">
+            <Setter.Value>
+                <AppThemeBinding Light="{StaticResource Gray900}" Dark="{StaticResource White}" />
+            </Setter.Value>
+        </Setter>
         <Setter Property="FontFamily" Value="OpenSansRegular" />
         <Setter Property="FontSize" Value="14" />
     </Style>
@@ -33,7 +41,11 @@
     </Style>
 
     <Style TargetType="Entry">
-        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+        <Setter Property="TextColor">
+            <Setter.Value>
+                <AppThemeBinding Light="{StaticResource Black}" Dark="{StaticResource White}" />
+            </Setter.Value>
+        </Setter>
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="OpenSansRegular" />
         <Setter Property="FontSize" Value="14" />
@@ -47,7 +59,11 @@
     </Style>
 
     <Style TargetType="Editor">
-        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
+        <Setter Property="TextColor">
+            <Setter.Value>
+                <AppThemeBinding Light="{StaticResource Black}" Dark="{StaticResource White}" />
+            </Setter.Value>
+        </Setter>
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="FontFamily" Value="OpenSansRegular" />
         <Setter Property="FontSize" Value="14" />
