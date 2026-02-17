@@ -15,6 +15,29 @@ class ValidationError(Exception):
     """Raised when validation fails with a user-friendly message."""
 
 
+def _expand_user_path(raw: str) -> Path:
+    """Expand user home, preferring HOME when provided (supports ~/ and ~\\)."""
+    s = raw.strip()
+
+    home_env = os.environ.get("HOME")
+    user_profile = os.environ.get("USERPROFILE")
+
+    if home_env:
+        home_path = Path(home_env)
+    elif user_profile:
+        home_path = Path(user_profile)
+    else:
+        home_path = Path.home()
+
+    if s == "~":
+        return home_path
+
+    if s.startswith("~/") or s.startswith("~\\"):
+        return home_path / s[2:]
+
+    return Path(s)
+
+
 def validate_config_path(config_path: str) -> Path:
     """
     Validate and resolve config file path.
@@ -31,7 +54,7 @@ def validate_config_path(config_path: str) -> Path:
     if not config_path or not config_path.strip():
         raise ValidationError("Config path cannot be empty.")
 
-    path = Path(config_path.strip()).expanduser().resolve()
+    path = _expand_user_path(config_path).resolve()
 
     if not path.exists():
         raise ValidationError(f"Config file does not exist: {path}")
@@ -58,7 +81,7 @@ def validate_runs_directory(runs_dir: str) -> Path:
     if not runs_dir or not runs_dir.strip():
         raise ValidationError("Runs directory path cannot be empty.")
 
-    path = Path(runs_dir.strip()).expanduser().resolve()
+    path = _expand_user_path(runs_dir).resolve()
 
     # Create directory if it doesn't exist
     if not path.exists():

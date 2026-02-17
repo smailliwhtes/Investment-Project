@@ -87,6 +87,36 @@ class TestValidateConfigPath:
         assert result.is_absolute()
         assert result.exists()
 
+    def test_expands_user_home_windows_separator(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        config_file = fake_home / "config.yaml"
+        config_file.write_text("# Test config\n")
+
+        monkeypatch.delenv("HOME", raising=False)
+        monkeypatch.setenv("USERPROFILE", str(fake_home))
+
+        result = validate_config_path("~\\config.yaml")
+        assert result == config_file.resolve()
+        assert result.exists()
+
+    def test_home_takes_precedence_over_userprofile(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        preferred_home = tmp_path / "home_preferred"
+        preferred_home.mkdir()
+        fallback_home = tmp_path / "profile_home"
+        fallback_home.mkdir()
+
+        preferred_config = preferred_home / "config.yaml"
+        preferred_config.write_text("# Test config\n")
+        (fallback_home / "config.yaml").write_text("# Wrong config\n")
+
+        monkeypatch.setenv("HOME", str(preferred_home))
+        monkeypatch.setenv("USERPROFILE", str(fallback_home))
+
+        result = validate_config_path("~/config.yaml")
+        assert result == preferred_config.resolve()
+        assert result.exists()
+
 
 class TestValidateRunsDirectory:
     """Tests for runs directory validation."""
@@ -157,7 +187,7 @@ class TestValidateRunsDirectory:
         fake_home = tmp_path / "home"
         fake_home.mkdir()
         runs_dir = fake_home / "runs"
-        
+
         monkeypatch.setenv("HOME", str(fake_home))
         
         result = validate_runs_directory("~/runs")
@@ -165,6 +195,16 @@ class TestValidateRunsDirectory:
         assert result.is_absolute()
         assert result.exists()
         assert result == runs_dir.resolve()
+
+    def test_tilde_expands_to_home_directory(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+
+        monkeypatch.setenv("HOME", str(fake_home))
+        result = validate_runs_directory("~")
+
+        assert result == fake_home.resolve()
+        assert result.is_dir()
 
 
 class TestValidateRunId:
