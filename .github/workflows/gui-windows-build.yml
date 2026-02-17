@@ -19,8 +19,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Update MAUI workload
+        run: dotnet workload update
+
       - name: Install MAUI workload
-        run: dotnet workload install maui --ignore-failed-sources
+        run: dotnet workload install maui
 
       - name: Restore dependencies
         run: dotnet restore src/gui/MarketApp.Gui.sln
