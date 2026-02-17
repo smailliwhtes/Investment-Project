@@ -1,4 +1,5 @@
-﻿symbol,theme_bucket,asset_type
+﻿symbol
+symbol,theme_bucket,asset_type
 A,,equity
 AA,,equity
 AAA,,equity
@@ -11845,3 +11846,4 @@ ZWS,,equity
 ZYBT,,equity
 ZYME,,equity
 ZYXIQ,,equity
+
