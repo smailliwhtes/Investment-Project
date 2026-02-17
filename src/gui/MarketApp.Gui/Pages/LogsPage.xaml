@@ -4,7 +4,7 @@
              x:Class="MarketApp.Gui.Pages.LogsPage"
              Title="Logs">
   <VerticalStackLayout Padding="16" Spacing="12">
-    <Label Text="Engine & UI logs" FontSize="22" FontAttributes="Bold" />
+    <Label Text="Engine &amp; UI logs" FontSize="22" FontAttributes="Bold" />
     <Editor Text="{Binding CombinedLog}" AutoSize="TextChanges" IsReadOnly="True" HeightRequest="300" />
   </VerticalStackLayout>
 </ContentPage>
