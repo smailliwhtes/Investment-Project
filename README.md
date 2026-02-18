@@ -128,8 +128,11 @@ This creates/overwrites **MarketApp GUI.lnk** on your Desktop. The shortcut laun
 If you don't see the icon, run:
 
 ```powershell
-Test-Path "$HOME\Desktop\MarketApp GUI.lnk"
+$desktop = [Environment]::GetFolderPath("Desktop")
+Test-Path (Join-Path $desktop "MarketApp GUI.lnk")
 ```
+
+Note: on OneDrive-redirected Windows profiles, `$HOME\Desktop` can point to a different folder than your actual Desktop. Use `[Environment]::GetFolderPath("Desktop")` for reliable verification.
 
 If this returns `False`, rerun the installer and confirm the printed `Created Desktop shortcut:` path.
 
