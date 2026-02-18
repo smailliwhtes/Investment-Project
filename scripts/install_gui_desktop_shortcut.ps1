@@ -1,7 +1,6 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-function Write-Info($msg) { Write-Host "[info] $msg" -ForegroundColor Cyan }
 function Write-Err($msg)  { Write-Host "[error] $msg" -ForegroundColor Red }
 
 function Resolve-DesktopPath {
@@ -28,7 +27,7 @@ $scriptDir = $PSScriptRoot
 if (-not $scriptDir) {
   $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 }
-$repoRoot  = Resolve-Path (Join-Path $scriptDir "..")
+$repoRoot = (Resolve-Path (Join-Path $scriptDir "..")).ProviderPath
 
 $runScript = Join-Path $repoRoot "scripts\run_gui.ps1"
 if (-not (Test-Path $runScript)) {
@@ -37,17 +36,15 @@ if (-not (Test-Path $runScript)) {
 }
 
 # Choose pwsh if available, else Windows PowerShell
-$targetExe = $null
 $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
-if ($pwsh) {
-  $targetExe = $pwsh.Source
+$targetExe = if ($pwsh) {
+  $pwsh.Source
 } else {
-  $ps = Get-Command powershell -ErrorAction SilentlyContinue
-  if ($ps) { $targetExe = $ps.Source }
+  Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
 }
 
-if (-not $targetExe) {
-  Write-Err "Neither pwsh nor powershell was found on PATH."
+if (-not (Test-Path $targetExe)) {
+  Write-Err "No PowerShell executable found. Expected: $targetExe"
   exit 127
 }
 
@@ -55,13 +52,13 @@ $desktop = Resolve-DesktopPath
 $lnkPath = Join-Path $desktop "MarketApp GUI.lnk"
 
 # Use the helper run script so builds/restores happen automatically.
-$arg = "-NoProfile -ExecutionPolicy Bypass -File `"$runScript`""
+$arguments = "-NoExit -ExecutionPolicy Bypass -File `"$runScript`""
 
 $wsh = New-Object -ComObject WScript.Shell
 $sc  = $wsh.CreateShortcut($lnkPath)
 $sc.TargetPath = $targetExe
-$sc.Arguments  = $arg
-$sc.WorkingDirectory = $repoRoot.ProviderPath
+$sc.Arguments  = $arguments
+$sc.WorkingDirectory = $repoRoot
 # Optional: PowerShell icon
 $sc.IconLocation = "$targetExe,0"
 $sc.Save()
@@ -71,6 +68,8 @@ if (-not (Test-Path $lnkPath)) {
   exit 4
 }
 
-Write-Info "Created Desktop shortcut:"
-Write-Host "  $lnkPath"
-Write-Info "Double-click it to launch the MarketApp GUI (builds if needed)."
+$saved = $wsh.CreateShortcut($lnkPath)
+Write-Host "Created Desktop shortcut: $lnkPath"
+Write-Host "TargetPath: $($saved.TargetPath)"
+Write-Host "Arguments: $($saved.Arguments)"
+Write-Host "WorkingDirectory: $($saved.WorkingDirectory)"
