@@ -20,3 +20,7 @@
 **/data/processed/
 **/_backup*/
 .env.local
+
+# runtime verification outputs
+audit/**
+!audit/.gitkeep
