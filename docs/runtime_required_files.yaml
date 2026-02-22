@@ -1,0 +1,38 @@
+schema_version: 1
+description: "Minimum required files/dirs/patterns for launch + smoke verification."
+
+required:
+  - id: "engine_config_default"
+    kind: "file"
+    path: "market_app/config.yaml"
+    must_exist: true
+    notes: "Default config used by CLI/GUI orchestration."
+
+  - id: "engine_package"
+    kind: "dir"
+    path: "market_app"
+    must_exist: true
+
+  - id: "reports_templates"
+    kind: "glob"
+    glob: "market_app/**/templates/**/*"
+    min_count: 1
+    notes: "At least one report template must exist."
+
+either:
+  - id: "gui_project"
+    any_of:
+      - kind: "glob"
+        glob: "**/*MarketApp*.csproj"
+        min_count: 1
+      - kind: "glob"
+        glob: "**/*.sln"
+        min_count: 1
+    notes: "GUI project or solution must exist."
+
+optional:
+  - id: "demo_dataset"
+    kind: "dir"
+    path: "data/demo"
+    must_exist: false
+    notes: "If present, release_verify will run the demo E2E pipeline."
