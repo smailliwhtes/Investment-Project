@@ -48,10 +48,20 @@ jobs:
       - name: Install MAUI workload
         if: matrix.language == 'csharp'
         shell: pwsh
-        run: dotnet workload install maui --ignore-failed-sources
+        run: |
+          dotnet workload update
+          dotnet workload install maui
 
       - name: Autobuild
+        if: matrix.language != 'csharp'
         uses: github/codeql-action/autobuild@v3
+
+      - name: Build C# for CodeQL
+        if: matrix.language == 'csharp'
+        shell: pwsh
+        run: |
+          dotnet restore src/gui/MarketApp.Gui.sln
+          dotnet build src/gui/MarketApp.Gui.sln --no-restore
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
