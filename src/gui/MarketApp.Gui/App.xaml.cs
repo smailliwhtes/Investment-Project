@@ -18,11 +18,8 @@ public partial class App : Application
             TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
             _ = RunSmokeModeAsync().ContinueWith(t =>
             {
-                if (t.IsFaulted)
-                {
-                    WriteSmokeError(t.Exception?.ToString() ?? "Smoke mode failed");
-                    Environment.Exit(1);
-                }
+                WriteSmokeError(t.Exception?.ToString() ?? "Smoke mode failed");
+                Environment.Exit(1);
             }, TaskContinuationOptions.OnlyOnFaulted);
         }
     }

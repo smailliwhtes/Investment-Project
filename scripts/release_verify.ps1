@@ -411,12 +411,17 @@ try {
         if (-not $cyclone) { $cyclone = Get-Command 'cyclonedx' -ErrorAction SilentlyContinue }
 
         if ($cyclone -and (Test-Path -LiteralPath (Join-Path $repoRoot 'src/gui/MarketApp.Gui.sln'))) {
-            $sbomFile = Join-Path $auditRoot 'sbom.cdx.json'
             $sbomCmd = "dotnet-cyclonedx src/gui/MarketApp.Gui.sln -o '$auditRoot' -j"
             $sbomRes = Invoke-LoggedCommand -Name 'sbom' -Command $sbomCmd
             if ($sbomRes.ExitCode -eq 0) {
-                $sbomArtifactPath = [System.IO.Path]::GetRelativePath($repoRoot, $sbomFile) -replace '\\','/'
-                if (Test-Path -LiteralPath $sbomFile) {
+                # dotnet-cyclonedx default output name may be bom.json or sbom.cdx.json; discover it
+                $sbomFile = $null
+                foreach ($candidate in @('sbom.cdx.json','bom.json')) {
+                    $candidatePath = Join-Path $auditRoot $candidate
+                    if (Test-Path -LiteralPath $candidatePath) { $sbomFile = $candidatePath; break }
+                }
+                if ($sbomFile) {
+                    $sbomArtifactPath = [System.IO.Path]::GetRelativePath($repoRoot, $sbomFile) -replace '\\','/'
                     Add-GateResult @{ name='sbom'; status='pass'; artifacts=@($sbomArtifactPath); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX' } }
                 } else {
                     Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX'; reason='sbom file missing' } }
