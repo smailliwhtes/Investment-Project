@@ -16,7 +16,11 @@ public partial class App : Application
         {
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
-            _ = RunSmokeModeAsync();
+            _ = RunSmokeModeAsync().ContinueWith(t =>
+            {
+                WriteSmokeError(t.Exception?.ToString() ?? "Smoke mode failed");
+                Environment.Exit(1);
+            }, TaskContinuationOptions.OnlyOnFaulted);
         }
     }
 
@@ -37,7 +41,11 @@ public partial class App : Application
         var json = JsonSerializer.Serialize(payload);
         if (!string.IsNullOrWhiteSpace(readyFile))
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(readyFile)!);
+            var directory = Path.GetDirectoryName(readyFile);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
             await File.WriteAllTextAsync(readyFile, json);
         }
 

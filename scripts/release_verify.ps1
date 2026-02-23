@@ -332,27 +332,36 @@ try {
         }
         $dotnetTestStatus = 'pass'
     }
-    Add-GateResult @{ name='tests_engine'; status='pass'; details=@{ pytest=$pytestStatus; dotnet_test=$dotnetTestStatus } }
+    $testsEngineStatus = if ($pytestStatus -eq 'skipped' -and $dotnetTestStatus -eq 'skipped') { 'skipped' } else { 'pass' }
+    Add-GateResult @{ name='tests_engine'; status=$testsEngineStatus; details=@{ pytest=$pytestStatus; dotnet_test=$dotnetTestStatus } }
 
     # Gate: e2e_offline
     if ($SkipE2E) {
         Add-GateResult @{ name='e2e_offline'; status='skipped'; details=@{ command='skipped by flag'; outputs_dir=$null } }
     } else {
-        $e2eOut = Join-Path $auditRoot ("runs/$runId")
-        New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
+        $ohlcvDir = Join-Path $repoRoot 'market_app/data/ohlcv_daily'
+        if (-not (Test-Path -LiteralPath $ohlcvDir -PathType Container)) {
+            Add-GateResult @{ name='e2e_offline'; status='skipped'; details=@{ command='skipped: no OHLCV data at market_app/data/ohlcv_daily'; outputs_dir=$null } }
+        } else {
+            $e2eOut = Join-Path $auditRoot ("runs/$runId")
+            New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
 
-        $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
-        $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
-        if ($e2eResult.ExitCode -ne 0) {
-            Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
-            throw "Offline E2E failed (see $($e2eResult.Log))"
+            $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
+            $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
+            if ($e2eResult.ExitCode -ne 0) {
+                Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
+                throw "Offline E2E failed (see $($e2eResult.Log))"
+            }
+            Add-GateResult @{ name='e2e_offline'; status='pass'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
         }
-        Add-GateResult @{ name='e2e_offline'; status='pass'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
     }
 
     # Gate: gui_smoke
-    if ($SkipGuiSmoke -or -not $IsWindows) {
-        Add-GateResult @{ name='gui_smoke'; status='skipped'; details=@{ ready_file=$null; hold_seconds=15; exit_code=0 } }
+    if ($SkipGuiSmoke -or -not $IsWindows -or $env:GITHUB_ACTIONS -eq 'true') {
+        $skipReason = if ($env:GITHUB_ACTIONS -eq 'true') { 'skipped: MAUI WinUI requires a desktop session; not supported in GitHub Actions (headless)' } `
+                      elseif (-not $IsWindows) { 'skipped: non-Windows platform' } `
+                      else { 'skipped by flag' }
+        Add-GateResult @{ name='gui_smoke'; status='skipped'; details=@{ ready_file=$null; hold_seconds=15; exit_code=0; reason=$skipReason } }
     } else {
         $guiProj = Get-ChildItem -Path $repoRoot -Recurse -Filter '*.csproj' |
             Where-Object { Select-String -Path $_.FullName -Pattern '<UseMaui>true</UseMaui>' -Quiet } |
@@ -370,20 +379,30 @@ try {
         $guiOutLog = Join-Path $logsRoot 'gui_smoke.out.log'
         $guiErrLog = Join-Path $logsRoot 'gui_smoke.err.log'
 
-        $proc = Start-Process dotnet -ArgumentList @('run','--project',$guiProj.FullName,'--','--smoke') `
+        # Pre-build to avoid compilation delay eating into the READY-file timeout.
+        Write-Host "gui_smoke: pre-building MAUI project..."
+        $buildOutput = & dotnet build $guiProj.FullName -c Release --no-restore 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$null; hold_seconds=15; exit_code=$LASTEXITCODE; reason='pre-build failed'; build_output=($buildOutput | Select-Object -Last 30 | Out-String) } }
+            throw "GUI smoke pre-build failed (exit $LASTEXITCODE). Run 'dotnet build $($guiProj.FullName) -c Release' locally for details."
+        }
+
+        $proc = Start-Process dotnet -ArgumentList @('run','--project',$guiProj.FullName,'--no-build','--','--smoke') `
             -PassThru -NoNewWindow `
             -RedirectStandardOutput $guiOutLog `
             -RedirectStandardError  $guiErrLog
 
-        $deadline = (Get-Date).AddSeconds(60)
+        $deadline = (Get-Date).AddSeconds(120)
         while ((Get-Date) -lt $deadline -and -not (Test-Path -LiteralPath $readyFile)) {
             Start-Sleep -Milliseconds 500
         }
 
         if (-not (Test-Path -LiteralPath $readyFile)) {
             if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
-            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=1; stdout_log=$guiOutLog; stderr_log=$guiErrLog } }
-            throw 'GUI smoke failed: READY file was not created within timeout.'
+            $stdoutSnippet = if (Test-Path -LiteralPath $guiOutLog) { (Get-Content $guiOutLog -Tail 50 -ErrorAction SilentlyContinue) -join "`n" } else { '' }
+            $stderrSnippet = if (Test-Path -LiteralPath $guiErrLog) { (Get-Content $guiErrLog -Tail 50 -ErrorAction SilentlyContinue) -join "`n" } else { '' }
+            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=1; stdout_log=$guiOutLog; stderr_log=$guiErrLog; stdout_snippet=$stdoutSnippet; stderr_snippet=$stderrSnippet } }
+            throw "GUI smoke failed: READY file '$readyFile' was not created within 120 s. See $guiErrLog for details."
         }
 
         Start-Sleep -Seconds 15
@@ -413,7 +432,18 @@ try {
             $sbomCmd = "dotnet-cyclonedx src/gui/MarketApp.Gui.sln -o '$auditRoot' -j"
             $sbomRes = Invoke-LoggedCommand -Name 'sbom' -Command $sbomCmd
             if ($sbomRes.ExitCode -eq 0) {
-                Add-GateResult @{ name='sbom'; status='pass'; artifacts=@('audit/bom.json'); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX' } }
+                # dotnet-cyclonedx default output name may be bom.json or sbom.cdx.json; discover it
+                $sbomFile = $null
+                foreach ($candidate in @('sbom.cdx.json','bom.json')) {
+                    $candidatePath = Join-Path $auditRoot $candidate
+                    if (Test-Path -LiteralPath $candidatePath) { $sbomFile = $candidatePath; break }
+                }
+                if ($sbomFile) {
+                    $sbomArtifactPath = [System.IO.Path]::GetRelativePath($repoRoot, $sbomFile) -replace '\\','/'
+                    Add-GateResult @{ name='sbom'; status='pass'; artifacts=@($sbomArtifactPath); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX' } }
+                } else {
+                    Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX'; reason='sbom file missing' } }
+                }
             } else {
                 Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX'; reason='tool failed' } }
             }

@@ -35,4 +35,4 @@ optional:
     kind: "dir"
     path: "data/demo"
     must_exist: false
-    notes: "If present, release_verify will run the demo E2E pipeline."
+    notes: "Optional demo dataset (not required for release_verify)."
