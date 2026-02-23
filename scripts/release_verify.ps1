@@ -332,7 +332,8 @@ try {
         }
         $dotnetTestStatus = 'pass'
     }
-    Add-GateResult @{ name='tests_engine'; status='pass'; details=@{ pytest=$pytestStatus; dotnet_test=$dotnetTestStatus } }
+    $testsEngineStatus = if ($pytestStatus -eq 'skipped' -and $dotnetTestStatus -eq 'skipped') { 'skipped' } else { 'pass' }
+    Add-GateResult @{ name='tests_engine'; status=$testsEngineStatus; details=@{ pytest=$pytestStatus; dotnet_test=$dotnetTestStatus } }
 
     # Gate: e2e_offline
     if ($SkipE2E) {
@@ -410,10 +411,16 @@ try {
         if (-not $cyclone) { $cyclone = Get-Command 'cyclonedx' -ErrorAction SilentlyContinue }
 
         if ($cyclone -and (Test-Path -LiteralPath (Join-Path $repoRoot 'src/gui/MarketApp.Gui.sln'))) {
+            $sbomFile = Join-Path $auditRoot 'sbom.cdx.json'
             $sbomCmd = "dotnet-cyclonedx src/gui/MarketApp.Gui.sln -o '$auditRoot' -j"
             $sbomRes = Invoke-LoggedCommand -Name 'sbom' -Command $sbomCmd
             if ($sbomRes.ExitCode -eq 0) {
-                Add-GateResult @{ name='sbom'; status='pass'; artifacts=@('audit/bom.json'); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX' } }
+                $sbomArtifactPath = [System.IO.Path]::GetRelativePath($repoRoot, $sbomFile) -replace '\\','/'
+                if (Test-Path -LiteralPath $sbomFile) {
+                    Add-GateResult @{ name='sbom'; status='pass'; artifacts=@($sbomArtifactPath); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX' } }
+                } else {
+                    Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX'; reason='sbom file missing' } }
+                }
             } else {
                 Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX'; reason='tool failed' } }
             }
