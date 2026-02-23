@@ -53,20 +53,16 @@ jobs:
 
       - name: pip-audit (official action)
         uses: pypa/gh-action-pip-audit@v1.1.0
-        with:
-          virtual-environment: ''
-          inputs: market_app/pyproject.toml
-          extra-index-urls: ''
 
       - name: Release verify (Windows strict)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\release_verify.ps1
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\release_verify.ps1 -SkipPipAudit
 
       - name: Release verify (Ubuntu, GUI skipped)
         if: runner.os == 'Linux'
         shell: bash
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/release_verify.ps1 -SkipDotnetTests -SkipGuiSmoke
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/release_verify.ps1 -SkipDotnetTests -SkipGuiSmoke -SkipPipAudit
 
       - name: Upload audit artifacts
         if: always()

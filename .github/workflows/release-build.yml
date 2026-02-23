@@ -52,7 +52,7 @@ jobs:
           cyclonedx-py environment --output-format JSON --output-file release/sbom/python.cdx.json
           dotnet-CycloneDX src/gui/MarketApp.Gui.sln -o release/sbom -j
           if (Test-Path release/sbom/bom.json) { Copy-Item release/sbom/bom.json release/sbom/dotnet.cdx.json -Force }
-          if (Test-Path release/sbom/sbom.cdx.json) { Copy-Item release/sbom/sbom.cdx.json release/sbom/dotnet.cdx.json -Force }
+          elseif (Test-Path release/sbom/sbom.cdx.json) { Copy-Item release/sbom/sbom.cdx.json release/sbom/dotnet.cdx.json -Force }
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
@@ -88,10 +88,10 @@ jobs:
       - name: Attestation support summary
         shell: pwsh
         run: |
-          if ('${{ steps.attest_py.outcome }}' -ne 'success' -or '${{ steps.attest_gui.outcome }}' -ne 'success') {
+          if ('${{ steps.attest_py.outcome }}' -ne 'success' -or '${{ steps.attest_gui.outcome }}' -ne 'success' -or '${{ steps.attest_sbom.outcome }}' -ne 'success') {
             Write-Warning 'Attestations were not fully supported or failed in this environment. Artifacts were still produced.'
           } else {
-            Write-Host 'Provenance attestations created successfully.'
+            Write-Host 'Provenance and SBOM attestations created successfully.'
           }
 
       - name: Verify attestation (demonstration)

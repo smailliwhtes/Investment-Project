@@ -98,6 +98,13 @@ missing_cols = {'last_date', 'lag_days'} - scored_cols
 if missing_cols:
     raise SystemExit(f"scored.csv missing columns: {sorted(missing_cols)}")
 
+if not dq_rows:
+    raise SystemExit('data_quality.csv has no rows')
+dq_cols = set(dq_rows[0].keys())
+dq_missing = {'symbol', 'last_date', 'lag_days'} - dq_cols
+if dq_missing:
+    raise SystemExit(f"data_quality.csv missing columns: {sorted(dq_missing)}")
+
 dq_index = {row['symbol']: row for row in dq_rows}
 for row in scored_rows:
     sym = row.get('symbol', '')
@@ -178,7 +185,7 @@ try {
         $skipReason = if ($env:GITHUB_ACTIONS -eq 'true') { 'skipped: MAUI WinUI requires desktop session' } elseif (-not $IsWindows) { 'skipped: non-Windows platform' } else { 'skipped by flag' }
         Add-GateResult @{ name='gui_smoke'; status='skipped'; details=@{ reason=$skipReason } }
     } else {
-        $guiCmd = 'dotnet run --project src/gui/MarketApp.Gui/MarketApp.Gui.csproj --no-build -- --smoke'
+        $guiCmd = 'dotnet run --project src/gui/MarketApp.Gui/MarketApp.Gui.csproj -- --smoke'
         $guiRes = Invoke-LoggedCommand -Name 'gui_smoke' -Command $guiCmd
         if ($guiRes.ExitCode -ne 0) {
             Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ command=$guiCmd } }
