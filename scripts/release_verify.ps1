@@ -99,7 +99,7 @@ if missing_cols:
     raise SystemExit(f"scored.csv missing columns: {sorted(missing_cols)}")
 
 if not dq_rows:
-    raise SystemExit('data_quality.csv has no rows')
+    raise SystemExit('data_quality.csv is empty — cannot validate staleness contract')
 dq_cols = set(dq_rows[0].keys())
 dq_missing = {'symbol', 'last_date', 'lag_days'} - dq_cols
 if dq_missing:
