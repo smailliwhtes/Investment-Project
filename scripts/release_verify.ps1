@@ -341,13 +341,36 @@ try {
         $e2eOut = Join-Path $auditRoot ("runs/$runId")
         New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
 
-        $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
-        $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
-        if ($e2eResult.ExitCode -ne 0) {
-            Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
-            throw "Offline E2E failed (see $($e2eResult.Log))"
+        # Resolve config path: prefer config/config.yaml (per AGENTS.md contract) then fall back
+        # to config.yaml in the working directory.
+        $e2eWorkDir    = Join-Path $repoRoot 'market_app'
+        $e2eConfigRel  = 'config/config.yaml'
+        $e2eConfigAbs  = Join-Path $e2eWorkDir $e2eConfigRel
+        if (-not (Test-Path -LiteralPath $e2eConfigAbs)) {
+            $e2eConfigRel = 'config.yaml'
+            $e2eConfigAbs = Join-Path $e2eWorkDir $e2eConfigRel
         }
-        Add-GateResult @{ name='e2e_offline'; status='pass'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
+        if (-not (Test-Path -LiteralPath $e2eConfigAbs)) {
+            Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command='config not found'; outputs_dir=$e2eOut } }
+            throw "Offline E2E: config file not found. Tried config/config.yaml and config.yaml under $e2eWorkDir"
+        }
+        Write-Host "[e2e] resolved config: $e2eConfigAbs"
+        Write-Host "[e2e] working dir:     $e2eWorkDir"
+        $pyVer = try { (& python --version 2>&1) | Out-String } catch { 'unknown' }
+        Write-Host "[e2e] python:          $($pyVer.Trim())"
+
+        $e2eCmd = "python -m market_monitor.cli run --config '$e2eConfigRel' --out-dir '$e2eOut' --offline --progress-jsonl"
+        $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory $e2eWorkDir -Command $e2eCmd
+        if ($e2eResult.ExitCode -ne 0) {
+            # Surface the last 30 lines of the log so CI output is self-contained.
+            if (Test-Path -LiteralPath $e2eResult.Log) {
+                $tail = (Get-Content -Path $e2eResult.Log -Tail 30) -join [Environment]::NewLine
+                Write-Host "[e2e] last 30 log lines:$([Environment]::NewLine)$tail"
+            }
+            Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut; config=$e2eConfigAbs; exit_code=$e2eResult.ExitCode } }
+            throw "Offline E2E failed (exit $($e2eResult.ExitCode)) (see $($e2eResult.Log))"
+        }
+        Add-GateResult @{ name='e2e_offline'; status='pass'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut; config=$e2eConfigAbs } }
     }
 
     # Gate: gui_smoke
@@ -382,6 +405,22 @@ try {
 
         if (-not (Test-Path -LiteralPath $readyFile)) {
             if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+            # Surface gui smoke logs for diagnosis
+            Write-Host "[gui_smoke] READY file NOT found at: $readyFile"
+            Write-Host "[gui_smoke] GUI project used: $($guiProj.FullName)"
+            if (Test-Path -LiteralPath $guiOutLog) {
+                $outTail = (Get-Content -Path $guiOutLog -Tail 30 -ErrorAction SilentlyContinue) -join [Environment]::NewLine
+                Write-Host "[gui_smoke] stdout (last 30 lines):$([Environment]::NewLine)$outTail"
+            }
+            if (Test-Path -LiteralPath $guiErrLog) {
+                $errTail = (Get-Content -Path $guiErrLog -Tail 30 -ErrorAction SilentlyContinue) -join [Environment]::NewLine
+                Write-Host "[gui_smoke] stderr (last 30 lines):$([Environment]::NewLine)$errTail"
+            }
+            $smokeErrPath = Join-Path $env:TEMP 'marketapp_smoke_error.log'
+            if (Test-Path -LiteralPath $smokeErrPath) {
+                $smokeErr = Get-Content -Raw -Path $smokeErrPath -ErrorAction SilentlyContinue
+                Write-Host "[gui_smoke] smoke error log:$([Environment]::NewLine)$smokeErr"
+            }
             Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=1; stdout_log=$guiOutLog; stderr_log=$guiErrLog } }
             throw 'GUI smoke failed: READY file was not created within timeout.'
         }
@@ -395,6 +434,21 @@ try {
 
         if ($exitCode -ne 0) {
             if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+            # Surface gui smoke logs for diagnosis
+            Write-Host "[gui_smoke] Process exited with code: $exitCode"
+            if (Test-Path -LiteralPath $guiOutLog) {
+                $outTail = (Get-Content -Path $guiOutLog -Tail 30 -ErrorAction SilentlyContinue) -join [Environment]::NewLine
+                Write-Host "[gui_smoke] stdout (last 30 lines):$([Environment]::NewLine)$outTail"
+            }
+            if (Test-Path -LiteralPath $guiErrLog) {
+                $errTail = (Get-Content -Path $guiErrLog -Tail 30 -ErrorAction SilentlyContinue) -join [Environment]::NewLine
+                Write-Host "[gui_smoke] stderr (last 30 lines):$([Environment]::NewLine)$errTail"
+            }
+            $smokeErrPath = Join-Path $env:TEMP 'marketapp_smoke_error.log'
+            if (Test-Path -LiteralPath $smokeErrPath) {
+                $smokeErr = Get-Content -Raw -Path $smokeErrPath -ErrorAction SilentlyContinue
+                Write-Host "[gui_smoke] smoke error log:$([Environment]::NewLine)$smokeErr"
+            }
             Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=$exitCode; stdout_log=$guiOutLog; stderr_log=$guiErrLog } }
             throw "GUI smoke failed with exit code $exitCode"
         }
