@@ -444,6 +444,11 @@ try {
                 $errTail = (Get-Content -Path $guiErrLog -Tail 30 -ErrorAction SilentlyContinue) -join [Environment]::NewLine
                 Write-Host "[gui_smoke] stderr (last 30 lines):$([Environment]::NewLine)$errTail"
             }
+            $smokeErrPath = Join-Path $env:TEMP 'marketapp_smoke_error.log'
+            if (Test-Path -LiteralPath $smokeErrPath) {
+                $smokeErr = Get-Content -Raw -Path $smokeErrPath -ErrorAction SilentlyContinue
+                Write-Host "[gui_smoke] smoke error log:$([Environment]::NewLine)$smokeErr"
+            }
             Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=$exitCode; stdout_log=$guiOutLog; stderr_log=$guiErrLog } }
             throw "GUI smoke failed with exit code $exitCode"
         }

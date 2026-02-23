@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
-using Microsoft.UI.Xaml;
 
 namespace MarketApp.Gui.WinUI;
 
@@ -22,7 +21,7 @@ public static class Program
         }
 
         WinRT.ComWrappersSupport.InitializeComWrappers();
-        Application.Start(p =>
+        Microsoft.UI.Xaml.Application.Start(p =>
         {
             var context = new Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(
                 Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
@@ -50,10 +49,19 @@ public static class Program
 
         if (!string.IsNullOrWhiteSpace(readyFile))
         {
-            var dir = Path.GetDirectoryName(readyFile);
-            if (!string.IsNullOrEmpty(dir))
-                Directory.CreateDirectory(dir);
-            File.WriteAllText(readyFile, json);
+            try
+            {
+                var dir = Path.GetDirectoryName(readyFile);
+                if (!string.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
+                File.WriteAllText(readyFile, json);
+            }
+            catch (Exception ex)
+            {
+                var logPath = Path.Combine(Path.GetTempPath(), "marketapp_smoke_error.log");
+                try { File.WriteAllText(logPath, $"{DateTimeOffset.UtcNow:o} Failed to write ready file: {ex}"); } catch (Exception logEx) { Console.Error.WriteLine($"[smoke] Also failed to write error log: {logEx.Message}"); }
+                Console.Error.WriteLine($"[smoke] Failed to write ready file '{readyFile}': {ex.Message}");
+            }
         }
 
         Console.WriteLine("SMOKE_READY");
