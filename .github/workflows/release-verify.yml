@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   verify:
@@ -24,9 +25,9 @@ jobs:
       - name: Install Python test deps
         shell: pwsh
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           if (Test-Path market_app/pyproject.toml) {
-            python -m pip install -e market_app[dev]
+            python -m pip install -e "./market_app[dev]" --no-build-isolation
           }
 
       - name: Restore GUI workloads
