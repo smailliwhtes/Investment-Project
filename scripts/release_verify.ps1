@@ -339,16 +339,21 @@ try {
     if ($SkipE2E) {
         Add-GateResult @{ name='e2e_offline'; status='skipped'; details=@{ command='skipped by flag'; outputs_dir=$null } }
     } else {
-        $e2eOut = Join-Path $auditRoot ("runs/$runId")
-        New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
+        $ohlcvDir = Join-Path $repoRoot 'market_app/data/ohlcv_daily'
+        if (-not (Test-Path -LiteralPath $ohlcvDir -PathType Container)) {
+            Add-GateResult @{ name='e2e_offline'; status='skipped'; details=@{ command='skipped: no OHLCV data at market_app/data/ohlcv_daily'; outputs_dir=$null } }
+        } else {
+            $e2eOut = Join-Path $auditRoot ("runs/$runId")
+            New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
 
-        $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
-        $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
-        if ($e2eResult.ExitCode -ne 0) {
-            Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
-            throw "Offline E2E failed (see $($e2eResult.Log))"
+            $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
+            $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
+            if ($e2eResult.ExitCode -ne 0) {
+                Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
+                throw "Offline E2E failed (see $($e2eResult.Log))"
+            }
+            Add-GateResult @{ name='e2e_offline'; status='pass'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
         }
-        Add-GateResult @{ name='e2e_offline'; status='pass'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
     }
 
     # Gate: gui_smoke
