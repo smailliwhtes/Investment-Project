@@ -51,8 +51,10 @@ jobs:
         shell: pwsh
         run: dotnet workload restore src/gui/MarketApp.Gui.sln
 
-      - name: pip-audit (official action)
+      - name: pip-audit (official action, strict)
         uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          internal-be-careful-extra-flags: --strict
 
       - name: Release verify (Windows strict)
         if: runner.os == 'Windows'

@@ -94,7 +94,7 @@ if not scored_rows:
     raise SystemExit('scored.csv has no rows')
 
 scored_cols = set(scored_rows[0].keys())
-missing_cols = {'last_date', 'lag_days'} - scored_cols
+missing_cols = {'symbol', 'last_date', 'lag_days'} - scored_cols
 if missing_cols:
     raise SystemExit(f"scored.csv missing columns: {sorted(missing_cols)}")
 
