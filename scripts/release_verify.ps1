@@ -357,8 +357,11 @@ try {
     }
 
     # Gate: gui_smoke
-    if ($SkipGuiSmoke -or -not $IsWindows) {
-        Add-GateResult @{ name='gui_smoke'; status='skipped'; details=@{ ready_file=$null; hold_seconds=15; exit_code=0 } }
+    if ($SkipGuiSmoke -or -not $IsWindows -or $env:GITHUB_ACTIONS -eq 'true') {
+        $skipReason = if ($env:GITHUB_ACTIONS -eq 'true') { 'skipped: MAUI WinUI requires a desktop session; not supported in GitHub Actions (headless)' } `
+                      elseif (-not $IsWindows) { 'skipped: non-Windows platform' } `
+                      else { 'skipped by flag' }
+        Add-GateResult @{ name='gui_smoke'; status='skipped'; details=@{ ready_file=$null; hold_seconds=15; exit_code=0; reason=$skipReason } }
     } else {
         $guiProj = Get-ChildItem -Path $repoRoot -Recurse -Filter '*.csproj' |
             Where-Object { Select-String -Path $_.FullName -Pattern '<UseMaui>true</UseMaui>' -Quiet } |
@@ -376,20 +379,30 @@ try {
         $guiOutLog = Join-Path $logsRoot 'gui_smoke.out.log'
         $guiErrLog = Join-Path $logsRoot 'gui_smoke.err.log'
 
-        $proc = Start-Process dotnet -ArgumentList @('run','--project',$guiProj.FullName,'--','--smoke') `
+        # Pre-build to avoid compilation delay eating into the READY-file timeout.
+        Write-Host "gui_smoke: pre-building MAUI project..."
+        $buildOutput = & dotnet build $guiProj.FullName -c Release --no-restore 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$null; hold_seconds=15; exit_code=$LASTEXITCODE; reason='pre-build failed'; build_output=($buildOutput | Select-Object -Last 30 | Out-String) } }
+            throw "GUI smoke pre-build failed (exit $LASTEXITCODE). Run 'dotnet build $($guiProj.FullName) -c Release' locally for details."
+        }
+
+        $proc = Start-Process dotnet -ArgumentList @('run','--project',$guiProj.FullName,'--no-build','--','--smoke') `
             -PassThru -NoNewWindow `
             -RedirectStandardOutput $guiOutLog `
             -RedirectStandardError  $guiErrLog
 
-        $deadline = (Get-Date).AddSeconds(60)
+        $deadline = (Get-Date).AddSeconds(120)
         while ((Get-Date) -lt $deadline -and -not (Test-Path -LiteralPath $readyFile)) {
             Start-Sleep -Milliseconds 500
         }
 
         if (-not (Test-Path -LiteralPath $readyFile)) {
             if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
-            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=1; stdout_log=$guiOutLog; stderr_log=$guiErrLog } }
-            throw 'GUI smoke failed: READY file was not created within timeout.'
+            $stdoutSnippet = if (Test-Path -LiteralPath $guiOutLog) { (Get-Content $guiOutLog -Tail 50 -ErrorAction SilentlyContinue) -join "`n" } else { '' }
+            $stderrSnippet = if (Test-Path -LiteralPath $guiErrLog) { (Get-Content $guiErrLog -Tail 50 -ErrorAction SilentlyContinue) -join "`n" } else { '' }
+            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=1; stdout_log=$guiOutLog; stderr_log=$guiErrLog; stdout_snippet=$stdoutSnippet; stderr_snippet=$stderrSnippet } }
+            throw "GUI smoke failed: READY file '$readyFile' was not created within 120 s. See $guiErrLog for details."
         }
 
         Start-Sleep -Seconds 15
