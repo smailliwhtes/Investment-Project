@@ -133,8 +133,25 @@ def test_offline_e2e_market_and_corpus(tmp_path: Path) -> None:
     assert (run_dir / "report.md").exists()
 
     scored = pd.read_csv(run_dir / "scored.csv")
+    data_quality = pd.read_csv(run_dir / "data_quality.csv")
     assert "last_date" in scored.columns
     assert "lag_days" in scored.columns
+
+    merged = scored[["symbol", "last_date", "lag_days"]].merge(
+        data_quality[["symbol", "last_date", "lag_days"]],
+        on="symbol",
+        how="left",
+        suffixes=("_scored", "_dq"),
+    )
+    assert not merged[["last_date_dq", "lag_days_dq"]].isna().any().any(), (
+        "Every scored symbol must have deterministic staleness source rows in data_quality.csv"
+    )
+    assert (merged["last_date_scored"].astype(str) == merged["last_date_dq"].astype(str)).all()
+    assert (
+        pd.to_numeric(merged["lag_days_scored"], errors="raise")
+        == pd.to_numeric(merged["lag_days_dq"], errors="raise")
+    ).all()
+
     forecast_like = [
         col
         for col in scored.columns

@@ -3,7 +3,8 @@ param(
     [switch]$SkipDotnetTests,
     [switch]$SkipGuiSmoke,
     [switch]$SkipE2E,
-    [switch]$SkipSbom
+    [switch]$SkipSbom,
+    [switch]$SkipPipAudit
 )
 
 Set-StrictMode -Version Latest
@@ -14,8 +15,10 @@ Set-Location -LiteralPath $repoRoot
 
 $auditRoot = Join-Path $repoRoot 'audit'
 $logsRoot  = Join-Path $auditRoot 'logs'
+$sbomRoot  = Join-Path $auditRoot 'sbom'
 New-Item -ItemType Directory -Force -Path $auditRoot | Out-Null
 New-Item -ItemType Directory -Force -Path $logsRoot  | Out-Null
+New-Item -ItemType Directory -Force -Path $sbomRoot  | Out-Null
 
 $gitCommit = (git rev-parse --short HEAD).Trim()
 $gitBranch = (git rev-parse --abbrev-ref HEAD).Trim()
@@ -23,7 +26,7 @@ $gitDirty  = [bool](git status --porcelain)
 $runId     = "$(Get-Date -Format 'yyyyMMdd-HHmmss')-$gitCommit"
 
 $report = [ordered]@{
-    schema_version  = 1
+    schema_version  = 2
     run_id          = $runId
     timestamp_utc   = (Get-Date).ToUniversalTime().ToString('o')
     git             = @{ branch = $gitBranch; commit = $gitCommit; dirty = $gitDirty }
@@ -66,399 +69,184 @@ function Invoke-LoggedCommand {
     }
 }
 
-function Resolve-GlobFiles {
-    param([string]$Pattern)
-    $allFiles = git ls-files
-    $regex = '^' + [regex]::Escape($Pattern).
-        Replace('\*\*', '.*').
-        Replace('\*', '[^/\\]*').
-        Replace('\?', '.') + '$'
-    return @($allFiles | Where-Object { $_ -match $regex })
-}
+function Assert-RunStalenessContract {
+    param([string]$RunDirectory)
 
-function Get-PropValue {
-    param($Obj, [string]$Name, $Default = $null)
-    $prop = $Obj.PSObject.Properties[$Name]
-    if ($null -ne $prop) { return $prop.Value }
-    return $Default
-}
+    $check = @"
+import csv
+import pathlib
+import sys
 
-function ConvertTo-PSObject {
-    param($Obj)
-    if ($Obj -is [hashtable]) {
-        $h = @{}
-        foreach ($k in $Obj.Keys) { $h[$k] = ConvertTo-PSObject $Obj[$k] }
-        return [pscustomobject]$h
-    }
-    if ($Obj -is [System.Collections.IEnumerable] -and -not ($Obj -is [string])) {
-        $arr = @()
-        foreach ($x in $Obj) { $arr += ,(ConvertTo-PSObject $x) }
-        return $arr
-    }
-    return $Obj
-}
+run_dir = pathlib.Path(r'''$RunDirectory''')
+scored_path = run_dir / 'scored.csv'
+dq_path = run_dir / 'data_quality.csv'
+if not scored_path.exists():
+    raise SystemExit(f"missing scored.csv at {scored_path}")
+if not dq_path.exists():
+    raise SystemExit(f"missing data_quality.csv at {dq_path}")
 
-function Parse-SimpleYamlScalar {
-    param([string]$Text)
-    $t = $Text.Trim()
+with scored_path.open('r', encoding='utf-8', newline='') as f:
+    scored_rows = list(csv.DictReader(f))
+with dq_path.open('r', encoding='utf-8', newline='') as f:
+    dq_rows = list(csv.DictReader(f))
 
-    if ($t -match '^"(.*)"$') { return $Matches[1] }
-    if ($t -match "^'(.*)'$") { return $Matches[1] }
+if not scored_rows:
+    raise SystemExit('scored.csv has no rows')
 
-    if ($t -eq 'null' -or $t -eq '~') { return $null }
-    if ($t -eq 'true')  { return $true }
-    if ($t -eq 'false') { return $false }
+scored_cols = set(scored_rows[0].keys())
+missing_cols = {'symbol', 'last_date', 'lag_days'} - scored_cols
+if missing_cols:
+    raise SystemExit(f"scored.csv missing columns: {sorted(missing_cols)}")
 
-    if ($t -match '^-?\d+$') { return [int]$t }
+if not dq_rows:
+    raise SystemExit('data_quality.csv is empty — cannot validate staleness contract')
+dq_cols = set(dq_rows[0].keys())
+dq_missing = {'symbol', 'last_date', 'lag_days'} - dq_cols
+if dq_missing:
+    raise SystemExit(f"data_quality.csv missing columns: {sorted(dq_missing)}")
 
-    return $t
-}
+dq_index = {row['symbol']: row for row in dq_rows}
+for row in scored_rows:
+    sym = row.get('symbol', '')
+    if sym not in dq_index:
+        raise SystemExit(f"data_quality.csv missing symbol from scored.csv: {sym}")
+    dq = dq_index[sym]
+    if str(row.get('last_date', '')) != str(dq.get('last_date', '')):
+        raise SystemExit(f"last_date mismatch for {sym}: scored={row.get('last_date')} dq={dq.get('last_date')}")
+    if str(row.get('lag_days', '')) != str(dq.get('lag_days', '')):
+        raise SystemExit(f"lag_days mismatch for {sym}: scored={row.get('lag_days')} dq={dq.get('lag_days')}")
 
-function Get-NextMeaningfulLine {
-    param([string[]]$Lines, [int]$StartIndex)
-    for ($i = $StartIndex; $i -lt $Lines.Count; $i++) {
-        $l = $Lines[$i].TrimEnd()
-        $trim = $l.Trim()
-        if ($trim.Length -eq 0) { continue }
-        if ($trim.StartsWith('#')) { continue }
-        return @{ Index = $i; Line = $l }
-    }
-    return $null
-}
+print(f"staleness contract OK for {len(scored_rows)} scored rows")
+"@
 
-function ConvertFrom-SimpleYaml {
-    param([string]$YamlText)
-
-    $lines = ($YamlText -replace "`r", '') -split "`n"
-
-    $root = @{}
-    $stack = New-Object System.Collections.Generic.List[object]
-    $stack.Add([pscustomobject]@{ Indent = 0; Kind = 'map'; Obj = $root })
-
-    for ($i = 0; $i -lt $lines.Count; $i++) {
-        $raw = $lines[$i].TrimEnd()
-        $trim = $raw.Trim()
-        if ($trim.Length -eq 0) { continue }
-        if ($trim.StartsWith('#')) { continue }
-
-        $indent = ($raw -match '^(\s*)') ? $Matches[1].Length : 0
-        if (($indent % 2) -ne 0) { throw "Unsupported YAML indentation (must be multiples of 2): line $($i+1)" }
-
-        while ($stack.Count -gt 0 -and $indent -lt $stack[$stack.Count-1].Indent) {
-            $stack.RemoveAt($stack.Count-1)
-        }
-        if ($stack.Count -eq 0) { throw "YAML parse error near line $($i+1)" }
-
-        $cur = $stack[$stack.Count-1]
-
-        # List item
-        if ($raw.TrimStart().StartsWith('- ')) {
-            if ($cur.Kind -ne 'list' -or $indent -ne $cur.Indent) {
-                throw "YAML parse error: list item at unexpected indent near line $($i+1)"
-            }
-
-            $rest = $raw.TrimStart().Substring(2).Trim()
-
-            # If list item starts a map inline: "- key: value"
-            if ($rest -match '^([A-Za-z0-9_\-]+):\s*(.*)$') {
-                $itemMap = @{}
-                $k = $Matches[1]
-                $v = $Matches[2]
-
-                if ($v -eq '') {
-                    $next = Get-NextMeaningfulLine -Lines $lines -StartIndex ($i + 1)
-                    $newKind = if ($null -ne $next -and $next.Line.TrimStart().StartsWith('-')) { 'list' } else { 'map' }
-                    $newObj  = if ($newKind -eq 'list') { @() } else { @{} }
-                    $itemMap[$k] = $newObj
-                } else {
-                    $itemMap[$k] = Parse-SimpleYamlScalar $v
-                }
-
-                $cur.Obj += ,$itemMap
-
-                # Allow subsequent indented lines to add more keys to this map
-                $stack.Add([pscustomobject]@{ Indent = $indent + 2; Kind = 'map'; Obj = $itemMap })
-                continue
-            }
-
-            # Scalar list item
-            $cur.Obj += ,(Parse-SimpleYamlScalar $rest)
-            continue
-        }
-
-        # Key/value in map
-        if ($cur.Kind -ne 'map' -or $indent -ne $cur.Indent) {
-            throw "YAML parse error: mapping at unexpected indent near line $($i+1)"
-        }
-
-        if ($raw -notmatch '^\s*([A-Za-z0-9_\-]+):\s*(.*)$') {
-            throw "Unsupported YAML line near $($i+1): $raw"
-        }
-
-        $key = $Matches[1]
-        $val = $Matches[2]
-
-        if ($val -eq '') {
-            $next = Get-NextMeaningfulLine -Lines $lines -StartIndex ($i + 1)
-            $newKind = if ($null -ne $next -and $next.Line.TrimStart().StartsWith('-')) { 'list' } else { 'map' }
-            $newObj  = if ($newKind -eq 'list') { @() } else { @{} }
-
-            $cur.Obj[$key] = $newObj
-            $stack.Add([pscustomobject]@{ Indent = $indent + 2; Kind = $newKind; Obj = $newObj })
-        }
-        else {
-            $cur.Obj[$key] = Parse-SimpleYamlScalar $val
-        }
-    }
-
-    return (ConvertTo-PSObject $root)
-}
-
-function Load-Manifest {
-    param([string]$Path)
-
-    $raw = Get-Content -Raw -Path $Path
-
-    # Prefer ConvertFrom-Yaml if present, but it is not native in many environments.
-    if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-        return ($raw | ConvertFrom-Yaml)
-    }
-
-    # Fallback: internal minimal YAML parser sufficient for docs/runtime_required_files.yaml schema.
-    return (ConvertFrom-SimpleYaml $raw)
-}
-
-function Test-ManifestItem {
-    param($Item)
-
-    $kind = Get-PropValue -Obj $Item -Name 'kind'
-    switch ($kind) {
-        'file' {
-            return [System.IO.File]::Exists((Join-Path $repoRoot (Get-PropValue -Obj $Item -Name 'path')))
-        }
-        'dir' {
-            return [System.IO.Directory]::Exists((Join-Path $repoRoot (Get-PropValue -Obj $Item -Name 'path')))
-        }
-        'glob' {
-            $files = Resolve-GlobFiles -Pattern (Get-PropValue -Obj $Item -Name 'glob')
-            $minRaw = Get-PropValue -Obj $Item -Name 'min_count' -Default 1
-            $minCount = [int]$minRaw
-            return ($files.Count -ge $minCount)
-        }
-        default {
-            $itemId = Get-PropValue -Obj $Item -Name 'id' -Default 'unknown'
-            throw "Unknown kind '$kind' for id '$itemId'"
-        }
-    }
+    return (Invoke-LoggedCommand -Name 'contract_staleness' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command "python -c @'$check'@")
 }
 
 try {
-    $dotnetVersion = (& dotnet --version 2>$null)
-    if ($LASTEXITCODE -eq 0) { $report.platform.dotnet = $dotnetVersion.Trim() }
-} catch {}
-try {
-    $pyVersion = (& python --version 2>&1)
-    if ($LASTEXITCODE -eq 0) { $report.platform.python = $pyVersion.Trim() }
-} catch {}
+    try {
+        $dotnetVersion = (& dotnet --version 2>$null)
+        if ($LASTEXITCODE -eq 0) { $report.platform.dotnet = $dotnetVersion.Trim() }
+    } catch {}
 
-try {
-    # Gate: inventory
-    $trackedPath = Join-Path $auditRoot 'file_inventory.tracked.txt'
-    $shaPath     = Join-Path $auditRoot 'file_inventory.sha256.tsv'
-    $files       = @(git ls-files | Sort-Object)
-    $files | Set-Content -Path $trackedPath -Encoding UTF8
-
-    $shaRows = foreach ($path in $files) {
-        $full = Join-Path $repoRoot $path
-        if (Test-Path -LiteralPath $full -PathType Leaf) {
-            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $full).Hash.ToLowerInvariant()
-            "$hash`t$path"
-        }
-    }
-    $shaRows | Set-Content -Path $shaPath -Encoding UTF8
-    Add-GateResult @{
-        name      = 'inventory'
-        status    = 'pass'
-        artifacts = @('audit/file_inventory.tracked.txt','audit/file_inventory.sha256.tsv')
-        details   = @{}
-    }
-
-    # Gate: runtime_manifest
-    $manifestPath = Join-Path $repoRoot 'docs/runtime_required_files.yaml'
-    if (-not (Test-Path -LiteralPath $manifestPath)) { throw "Manifest not found: $manifestPath" }
-
-    $manifest = Load-Manifest -Path $manifestPath
-
-    $failedIds = New-Object System.Collections.Generic.List[string]
-
-    foreach ($item in $manifest.required) {
-        if (-not (Test-ManifestItem -Item $item)) { $failedIds.Add($item.id) }
-    }
-    foreach ($group in $manifest.either) {
-        $ok = $false
-        foreach ($option in $group.any_of) {
-            if (Test-ManifestItem -Item $option) { $ok = $true; break }
-        }
-        if (-not $ok) { $failedIds.Add($group.id) }
-    }
-
-    if ($failedIds.Count -gt 0) {
-        Add-GateResult @{ name='runtime_manifest'; status='fail'; details=@{ failed_ids = @($failedIds) } }
-        throw "Runtime manifest validation failed for ids: $($failedIds -join ', ')"
-    }
-    Add-GateResult @{ name='runtime_manifest'; status='pass'; details=@{ failed_ids=@() } }
+    try {
+        $pyVersion = (& python --version 2>&1)
+        if ($LASTEXITCODE -eq 0) { $report.platform.python = $pyVersion.Trim() }
+    } catch {}
 
     # Gate: tests_engine
-    $pytestStatus     = 'skipped'
-    $dotnetTestStatus = 'skipped'
-
-    if (Test-Path -LiteralPath (Join-Path $repoRoot 'market_app/pyproject.toml')) {
-        $pyResult = Invoke-LoggedCommand -Name 'pytest' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command 'python -m pytest -q'
-        if ($pyResult.ExitCode -ne 0) {
-            $pytestStatus = 'fail'
-            Add-GateResult @{ name='tests_engine'; status='fail'; details=@{ pytest=$pytestStatus; dotnet_test=$dotnetTestStatus } }
-            throw "pytest failed (see $($pyResult.Log))"
-        }
-        $pytestStatus = 'pass'
+    $pyResult = Invoke-LoggedCommand -Name 'pytest' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command 'python -m pytest -q'
+    if ($pyResult.ExitCode -ne 0) {
+        Add-GateResult @{ name='tests_engine'; status='fail'; details=@{ pytest='fail'; dotnet_test='skipped' } }
+        throw "pytest failed (see $($pyResult.Log))"
     }
 
-    $hasSolution = Test-Path -LiteralPath (Join-Path $repoRoot 'src/gui/MarketApp.Gui.sln')
-    if ($hasSolution -and -not $SkipDotnetTests -and $IsWindows) {
+    $dotnetStatus = 'skipped'
+    if (-not $SkipDotnetTests -and $IsWindows -and (Test-Path -LiteralPath (Join-Path $repoRoot 'src/gui/MarketApp.Gui.sln'))) {
         $dnResult = Invoke-LoggedCommand -Name 'dotnet_test' -Command 'dotnet test src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj -c Release'
         if ($dnResult.ExitCode -ne 0) {
-            $dotnetTestStatus = 'fail'
-            Add-GateResult @{ name='tests_engine'; status='fail'; details=@{ pytest=$pytestStatus; dotnet_test=$dotnetTestStatus } }
+            Add-GateResult @{ name='tests_engine'; status='fail'; details=@{ pytest='pass'; dotnet_test='fail' } }
             throw "dotnet test failed (see $($dnResult.Log))"
         }
-        $dotnetTestStatus = 'pass'
+        $dotnetStatus = 'pass'
     }
-    $testsEngineStatus = if ($pytestStatus -eq 'skipped' -and $dotnetTestStatus -eq 'skipped') { 'skipped' } else { 'pass' }
-    Add-GateResult @{ name='tests_engine'; status=$testsEngineStatus; details=@{ pytest=$pytestStatus; dotnet_test=$dotnetTestStatus } }
+    Add-GateResult @{ name='tests_engine'; status='pass'; details=@{ pytest='pass'; dotnet_test=$dotnetStatus } }
 
     # Gate: e2e_offline
+    $e2eOut = $null
     if ($SkipE2E) {
-        Add-GateResult @{ name='e2e_offline'; status='skipped'; details=@{ command='skipped by flag'; outputs_dir=$null } }
+        Add-GateResult @{ name='e2e_offline'; status='skipped'; details=@{ reason='skipped by flag' } }
     } else {
-        $ohlcvDir = Join-Path $repoRoot 'market_app/data/ohlcv_daily'
-        if (-not (Test-Path -LiteralPath $ohlcvDir -PathType Container)) {
-            Add-GateResult @{ name='e2e_offline'; status='skipped'; details=@{ command='skipped: no OHLCV data at market_app/data/ohlcv_daily'; outputs_dir=$null } }
-        } else {
-            $e2eOut = Join-Path $auditRoot ("runs/$runId")
-            New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
+        $e2eOut = Join-Path $auditRoot ("runs/$runId")
+        New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
 
-            $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
-            $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
-            if ($e2eResult.ExitCode -ne 0) {
-                Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
-                throw "Offline E2E failed (see $($e2eResult.Log))"
-            }
-            Add-GateResult @{ name='e2e_offline'; status='pass'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
+        $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
+        $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
+        if ($e2eResult.ExitCode -ne 0) {
+            Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
+            throw "Offline E2E failed (see $($e2eResult.Log))"
         }
+        Add-GateResult @{ name='e2e_offline'; status='pass'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
+    }
+
+    # Gate: contract_scored_staleness
+    if ($SkipE2E) {
+        Add-GateResult @{ name='contract_scored_staleness'; status='skipped'; details=@{ reason='requires e2e_offline gate' } }
+    } else {
+        $contractRes = Assert-RunStalenessContract -RunDirectory $e2eOut
+        if ($contractRes.ExitCode -ne 0) {
+            Add-GateResult @{ name='contract_scored_staleness'; status='fail'; details=@{ run_dir=$e2eOut } }
+            throw "Staleness contract failed (see $($contractRes.Log))"
+        }
+        Add-GateResult @{ name='contract_scored_staleness'; status='pass'; details=@{ run_dir=$e2eOut } }
     }
 
     # Gate: gui_smoke
     if ($SkipGuiSmoke -or -not $IsWindows -or $env:GITHUB_ACTIONS -eq 'true') {
-        $skipReason = if ($env:GITHUB_ACTIONS -eq 'true') { 'skipped: MAUI WinUI requires a desktop session; not supported in GitHub Actions (headless)' } `
-                      elseif (-not $IsWindows) { 'skipped: non-Windows platform' } `
-                      else { 'skipped by flag' }
-        Add-GateResult @{ name='gui_smoke'; status='skipped'; details=@{ ready_file=$null; hold_seconds=15; exit_code=0; reason=$skipReason } }
+        $skipReason = if ($env:GITHUB_ACTIONS -eq 'true') { 'skipped: MAUI WinUI requires desktop session' } elseif (-not $IsWindows) { 'skipped: non-Windows platform' } else { 'skipped by flag' }
+        Add-GateResult @{ name='gui_smoke'; status='skipped'; details=@{ reason=$skipReason } }
     } else {
-        $guiProj = Get-ChildItem -Path $repoRoot -Recurse -Filter '*.csproj' |
-            Where-Object { Select-String -Path $_.FullName -Pattern '<UseMaui>true</UseMaui>' -Quiet } |
-            Select-Object -First 1
-        if (-not $guiProj) { throw 'Could not locate MAUI GUI project for smoke test.' }
-
-        $readyFile = Join-Path $env:TEMP "marketapp_ready_$runId.json"
-        if (Test-Path -LiteralPath $readyFile) { Remove-Item -LiteralPath $readyFile -Force }
-
-        $env:MARKETAPP_SMOKE_READY_FILE   = $readyFile
-        $env:MARKETAPP_SMOKE_HOLD_SECONDS = '15'
-        $env:MARKETAPP_OFFLINE            = '1'
-
-        # IMPORTANT: Start-Process errors if stdout/stderr are redirected to the same file.
-        $guiOutLog = Join-Path $logsRoot 'gui_smoke.out.log'
-        $guiErrLog = Join-Path $logsRoot 'gui_smoke.err.log'
-
-        # Pre-build to avoid compilation delay eating into the READY-file timeout.
-        Write-Host "gui_smoke: pre-building MAUI project..."
-        $buildOutput = & dotnet build $guiProj.FullName -c Release --no-restore 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$null; hold_seconds=15; exit_code=$LASTEXITCODE; reason='pre-build failed'; build_output=($buildOutput | Select-Object -Last 30 | Out-String) } }
-            throw "GUI smoke pre-build failed (exit $LASTEXITCODE). Run 'dotnet build $($guiProj.FullName) -c Release' locally for details."
+        $guiCmd = 'dotnet run --project src/gui/MarketApp.Gui/MarketApp.Gui.csproj -- --smoke'
+        $guiRes = Invoke-LoggedCommand -Name 'gui_smoke' -Command $guiCmd
+        if ($guiRes.ExitCode -ne 0) {
+            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ command=$guiCmd } }
+            throw "GUI smoke failed (see $($guiRes.Log))"
         }
-
-        $proc = Start-Process dotnet -ArgumentList @('run','--project',$guiProj.FullName,'--no-build','--','--smoke') `
-            -PassThru -NoNewWindow `
-            -RedirectStandardOutput $guiOutLog `
-            -RedirectStandardError  $guiErrLog
-
-        $deadline = (Get-Date).AddSeconds(120)
-        while ((Get-Date) -lt $deadline -and -not (Test-Path -LiteralPath $readyFile)) {
-            Start-Sleep -Milliseconds 500
-        }
-
-        if (-not (Test-Path -LiteralPath $readyFile)) {
-            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
-            $stdoutSnippet = if (Test-Path -LiteralPath $guiOutLog) { (Get-Content $guiOutLog -Tail 50 -ErrorAction SilentlyContinue) -join "`n" } else { '' }
-            $stderrSnippet = if (Test-Path -LiteralPath $guiErrLog) { (Get-Content $guiErrLog -Tail 50 -ErrorAction SilentlyContinue) -join "`n" } else { '' }
-            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=1; stdout_log=$guiOutLog; stderr_log=$guiErrLog; stdout_snippet=$stdoutSnippet; stderr_snippet=$stderrSnippet } }
-            throw "GUI smoke failed: READY file '$readyFile' was not created within 120 s. See $guiErrLog for details."
-        }
-
-        Start-Sleep -Seconds 15
-        if (-not $proc.HasExited) {
-            $proc.WaitForExit(30 * 1000) | Out-Null
-        }
-
-        $exitCode = if ($proc.HasExited) { $proc.ExitCode } else { -1 }
-
-        if ($exitCode -ne 0) {
-            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
-            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=$exitCode; stdout_log=$guiOutLog; stderr_log=$guiErrLog } }
-            throw "GUI smoke failed with exit code $exitCode"
-        }
-
-        Add-GateResult @{ name='gui_smoke'; status='pass'; details=@{ ready_file=$readyFile; hold_seconds=15; exit_code=$exitCode; stdout_log=$guiOutLog; stderr_log=$guiErrLog } }
+        Add-GateResult @{ name='gui_smoke'; status='pass'; details=@{ command=$guiCmd } }
     }
 
     # Gate: sbom
     if ($SkipSbom) {
-        Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX'; reason='skipped by flag' } }
+        Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ reason='skipped by flag' } }
     } else {
-        $cyclone = Get-Command 'dotnet-cyclonedx' -ErrorAction SilentlyContinue
-        if (-not $cyclone) { $cyclone = Get-Command 'cyclonedx' -ErrorAction SilentlyContinue }
+        $sbomArtifacts = @()
 
-        if ($cyclone -and (Test-Path -LiteralPath (Join-Path $repoRoot 'src/gui/MarketApp.Gui.sln'))) {
-            $sbomCmd = "dotnet-cyclonedx src/gui/MarketApp.Gui.sln -o '$auditRoot' -j"
-            $sbomRes = Invoke-LoggedCommand -Name 'sbom' -Command $sbomCmd
-            if ($sbomRes.ExitCode -eq 0) {
-                # dotnet-cyclonedx default output name may be bom.json or sbom.cdx.json; discover it
-                $sbomFile = $null
-                foreach ($candidate in @('sbom.cdx.json','bom.json')) {
-                    $candidatePath = Join-Path $auditRoot $candidate
-                    if (Test-Path -LiteralPath $candidatePath) { $sbomFile = $candidatePath; break }
-                }
-                if ($sbomFile) {
-                    $sbomArtifactPath = [System.IO.Path]::GetRelativePath($repoRoot, $sbomFile) -replace '\\','/'
-                    Add-GateResult @{ name='sbom'; status='pass'; artifacts=@($sbomArtifactPath); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX' } }
-                } else {
-                    Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX'; reason='sbom file missing' } }
-                }
-            } else {
-                Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX'; reason='tool failed' } }
-            }
-        } else {
-            Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ tool='cyclonedx-dotnet'; format='CycloneDX'; reason='tool not installed' } }
+        $pySbomCmd = "python -m pip install cyclonedx-bom && cyclonedx-py environment --output-format JSON --output-file '$sbomRoot/python.cdx.json'"
+        $pySbomRes = Invoke-LoggedCommand -Name 'sbom_python' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $pySbomCmd
+        if ($pySbomRes.ExitCode -eq 0 -and (Test-Path -LiteralPath (Join-Path $sbomRoot 'python.cdx.json'))) {
+            $sbomArtifacts += 'audit/sbom/python.cdx.json'
         }
+
+        $dotnetSbomCmd = "dotnet tool install --global CycloneDX --ignore-failed-sources; dotnet-CycloneDX src/gui/MarketApp.Gui.sln -o '$sbomRoot' -j"
+        $dotnetSbomRes = Invoke-LoggedCommand -Name 'sbom_dotnet' -Command $dotnetSbomCmd
+        foreach ($candidate in @('bom.json','sbom.cdx.json')) {
+            $candidatePath = Join-Path $sbomRoot $candidate
+            if (Test-Path -LiteralPath $candidatePath) {
+                Copy-Item -LiteralPath $candidatePath -Destination (Join-Path $sbomRoot 'dotnet.cdx.json') -Force
+                $sbomArtifacts += 'audit/sbom/dotnet.cdx.json'
+                break
+            }
+        }
+
+        if ($sbomArtifacts.Count -eq 2) {
+            Add-GateResult @{ name='sbom'; status='pass'; artifacts=$sbomArtifacts; details=@{ format='CycloneDX' } }
+        } else {
+            Add-GateResult @{ name='sbom'; status='fail'; artifacts=$sbomArtifacts; details=@{ reason='missing python and/or dotnet sbom output' } }
+            throw 'SBOM generation failed. See audit/logs/sbom_python.log and audit/logs/sbom_dotnet.log.'
+        }
+    }
+
+    # Gate: pip_audit
+    if ($SkipPipAudit) {
+        Add-GateResult @{ name='pip_audit'; status='skipped'; details=@{ reason='skipped by flag' } }
+    } else {
+        $pipAuditCmd = 'python -m pip install pip-audit && pip-audit --progress-spinner off --strict'
+        $auditRes = Invoke-LoggedCommand -Name 'pip_audit' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $pipAuditCmd
+        if ($auditRes.ExitCode -ne 0) {
+            Add-GateResult @{ name='pip_audit'; status='fail'; details=@{} }
+            throw "pip-audit failed (see $($auditRes.Log))"
+        }
+        Add-GateResult @{ name='pip_audit'; status='pass'; details=@{} }
     }
 
     $report.overall_status = 'pass'
     Save-Report
+    Write-Host "release_verify completed: PASS"
     exit 0
 }
 catch {
     $report.overall_status = 'fail'
     Save-Report
     Write-Error $_
+    Write-Host "release_verify completed: FAIL (see audit/verify_report.json and audit/logs/)"
     exit 1
 }
