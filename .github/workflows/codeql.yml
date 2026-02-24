@@ -56,7 +56,7 @@ jobs:
 
       - name: Restore NuGet packages
         if: matrix.language == 'csharp'
-        run: dotnet restore src/gui/MarketApp.Gui.sln
+        run: dotnet restore src/gui/MarketApp.Gui.Core/MarketApp.Gui.Core.csproj src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj
 
       - name: Build C# solution
         if: matrix.language == 'csharp'
