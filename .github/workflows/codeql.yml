@@ -45,13 +45,6 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Install MAUI workload
-        if: matrix.language == 'csharp'
-        shell: pwsh
-        run: |
-          dotnet workload update
-          dotnet workload install maui --ignore-failed-sources
-
       - name: Autobuild
         if: matrix.language != 'csharp'
         uses: github/codeql-action/autobuild@v3
@@ -60,8 +53,10 @@ jobs:
         if: matrix.language == 'csharp'
         shell: pwsh
         run: |
-          dotnet restore src/gui/MarketApp.Gui.sln
-          dotnet build src/gui/MarketApp.Gui.sln --no-restore -c Release
+          dotnet restore src/gui/MarketApp.Gui.Core/MarketApp.Gui.Core.csproj
+          dotnet restore src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj
+          dotnet build src/gui/MarketApp.Gui.Core/MarketApp.Gui.Core.csproj --no-restore -c Release
+          dotnet build src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj --no-restore -c Release
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

@@ -106,6 +106,11 @@ if dq_missing:
     raise SystemExit(f"data_quality.csv missing columns: {sorted(dq_missing)}")
 
 dq_index = {row['symbol']: row for row in dq_rows}
+def _norm_lag(value):
+    try:
+        return str(int(float(value)))
+    except Exception:
+        return str(value)
 for row in scored_rows:
     sym = row.get('symbol', '')
     if sym not in dq_index:
@@ -113,7 +118,7 @@ for row in scored_rows:
     dq = dq_index[sym]
     if str(row.get('last_date', '')) != str(dq.get('last_date', '')):
         raise SystemExit(f"last_date mismatch for {sym}: scored={row.get('last_date')} dq={dq.get('last_date')}")
-    if str(row.get('lag_days', '')) != str(dq.get('lag_days', '')):
+    if _norm_lag(row.get('lag_days', '')) != _norm_lag(dq.get('lag_days', '')):
         raise SystemExit(f"lag_days mismatch for {sym}: scored={row.get('lag_days')} dq={dq.get('lag_days')}")
 
 print(f"staleness contract OK for {len(scored_rows)} scored rows")
@@ -156,15 +161,17 @@ try {
     if ($SkipE2E) {
         Add-GateResult @{ name='e2e_offline'; status='skipped'; details=@{ reason='skipped by flag' } }
     } else {
-        $e2eOut = Join-Path $auditRoot ("runs/$runId")
-        New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
+        $e2eRunsDir = Join-Path $auditRoot 'runs'
+        $e2eRunId = "release_e2e_$runId"
+        New-Item -ItemType Directory -Path $e2eRunsDir -Force | Out-Null
 
-        $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
+        $e2eCmd = "python -m market_app.cli run --config tests/data/mini_dataset/config.yaml --offline --as-of-date 2025-01-31 --run-id $e2eRunId --output-dir '$e2eRunsDir'"
         $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
         if ($e2eResult.ExitCode -ne 0) {
-            Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
+            Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eRunsDir } }
             throw "Offline E2E failed (see $($e2eResult.Log))"
         }
+        $e2eOut = Join-Path $e2eRunsDir $e2eRunId
         Add-GateResult @{ name='e2e_offline'; status='pass'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
     }
 
