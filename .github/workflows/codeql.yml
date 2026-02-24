@@ -15,11 +15,15 @@ permissions:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'python', 'csharp' ]
+        include:
+          - language: python
+            os: ubuntu-latest
+          - language: csharp
+            os: windows-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,14 +39,29 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Build C# projects
+      - name: Setup .NET
         if: matrix.language == 'csharp'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
+      - name: Install MAUI workload
+        if: matrix.language == 'csharp'
+        shell: pwsh
+        run: |
+          dotnet workload update
+          dotnet workload install maui --ignore-failed-sources
+
       - name: Autobuild
+        if: matrix.language != 'csharp'
         uses: github/codeql-action/autobuild@v3
+
+      - name: Build C# for CodeQL
+        if: matrix.language == 'csharp'
+        shell: pwsh
+        run: |
+          dotnet restore src/gui/MarketApp.Gui.sln
+          dotnet build src/gui/MarketApp.Gui.sln --no-restore -c Release
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
