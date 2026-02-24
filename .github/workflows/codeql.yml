@@ -61,7 +61,7 @@ jobs:
         shell: pwsh
         run: |
           dotnet restore src/gui/MarketApp.Gui.sln
-          dotnet build src/gui/MarketApp.Gui.sln --no-restore
+          dotnet build src/gui/MarketApp.Gui.sln --no-restore -c Release
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
