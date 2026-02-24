@@ -1,0 +1,5 @@
+symbol,last_date,as_of_date,lag_days,stale_data,volume_missing,missing_data,history_days,n_rows,missing_days,zero_volume_fraction,bad_ohlc_count,lag_bin,has_volume,stale,dq_flags
+AAPL,2023-12-29,2025-01-31,399,False,False,False,260,260,0,0.0,0,15+,True,False,
+DEFN,2023-12-29,2025-01-31,399,False,False,False,260,260,0,0.0,0,15+,True,False,
+MSFT,2023-12-29,2025-01-31,399,False,False,False,260,260,0,0.0,0,15+,True,False,
+SPY,2023-02-24,2025-01-31,707,False,False,False,300,300,0,0.0,0,15+,True,False,

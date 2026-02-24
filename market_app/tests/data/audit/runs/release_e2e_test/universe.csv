@@ -1,0 +1,5 @@
+symbol,name,exchange,asset_type,is_etf,is_test_issue
+AAPL,Apple Inc,NASDAQ,COMMON,False,False
+MSFT,Microsoft Corp,NASDAQ,COMMON,False,False
+DEFN,Defiance Defense ETF,NYSE ARCA,COMMON,True,False
+SPY,SPDR S&P 500 ETF Trust,NYSE ARCA,COMMON,True,False

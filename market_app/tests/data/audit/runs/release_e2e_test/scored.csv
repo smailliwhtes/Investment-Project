@@ -1,0 +1,5 @@
+symbol,monitor_score,total_score,risk_flags,risk_level,themes,theme_confidence,forecast_return_21d,last_date,lag_days,lag_bin,stale,dq_flags
+SPY,10,0.8797693024094577,theme_uncertain,AMBER,,0.0,0.022916108281961778,2023-02-24,707,15+,False,
+MSFT,7,0.06598694666576008,,GREEN,strategic_tech,0.4,0.005716586151368608,2023-12-29,399,15+,False,
+AAPL,4,-0.10975565858252578,,GREEN,strategic_tech,0.4,0.022952143770613054,2023-12-29,399,15+,False,
+DEFN,1,-0.6860005904926936,,GREEN,defense,0.7,0.14179104477611926,2023-12-29,399,15+,False,
