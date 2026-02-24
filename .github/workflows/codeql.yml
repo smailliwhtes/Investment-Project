@@ -1,0 +1,66 @@
+name: codeql
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  schedule:
+    - cron: '23 3 * * 1'
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            runner: ubuntu-latest
+          - language: csharp
+            runner: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Setup Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Autobuild (Python)
+        if: matrix.language == 'python'
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Setup .NET
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore MAUI workload
+        if: matrix.language == 'csharp'
+        run: dotnet workload restore src/gui/MarketApp.Gui.sln
+
+      - name: Restore NuGet packages
+        if: matrix.language == 'csharp'
+        run: dotnet restore src/gui/MarketApp.Gui.sln
+
+      - name: Build C# solution
+        if: matrix.language == 'csharp'
+        run: dotnet build src/gui/MarketApp.Gui.sln -c Release --no-restore
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
