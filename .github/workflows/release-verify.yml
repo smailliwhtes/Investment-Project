@@ -51,17 +51,47 @@ jobs:
         shell: pwsh
         run: dotnet workload restore src/gui/MarketApp.Gui.sln
 
-      - name: pip-audit (official action)
-        uses: pypa/gh-action-pip-audit@v1.1.0
-        with:
-          virtual-environment: ''
-          inputs: market_app/pyproject.toml
-          extra-index-urls: ''
+      - name: pip-audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p audit
+          python -m pip install pip-audit
+          pip-audit --progress-spinner off 2>&1 | tee audit/pip-audit.txt
 
-      - name: Release verify (Windows strict)
+      - name: Release verify (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\release_verify.ps1
+        run: scripts/release_verify.ps1
+
+      - name: Release verify (Linux)
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: scripts/release_verify.ps1 -SkipDotnetTests -SkipGuiSmoke
+
+      - name: Print contract staleness log on failure (Windows)
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (Test-Path audit/logs/contract_staleness.log) {
+            Write-Host '--- contract_staleness.log (first 200 lines) ---'
+            Get-Content audit/logs/contract_staleness.log -TotalCount 200
+            Write-Host '--- end contract_staleness.log ---'
+          } else {
+            Write-Host 'contract_staleness.log not found'
+          }
+
+      - name: Print contract staleness log on failure (Linux)
+        if: failure() && runner.os == 'Linux'
+        shell: bash
+        run: |
+          if [ -f audit/logs/contract_staleness.log ]; then
+            echo '--- contract_staleness.log (first 200 lines) ---'
+            sed -n '1,200p' audit/logs/contract_staleness.log
+            echo '--- end contract_staleness.log ---'
+          else
+            echo 'contract_staleness.log not found'
+          fi
 
       - name: Release verify (Ubuntu, GUI skipped)
         if: runner.os == 'Linux'

@@ -15,11 +15,16 @@ permissions:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'python', 'csharp' ]
+        include:
+          - language: python
+            runner: ubuntu-latest
+          - language: csharp
+            runner: windows-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,14 +40,31 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Build C# projects
+      - name: Autobuild (Python)
+        if: matrix.language == 'python'
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Setup .NET
         if: matrix.language == 'csharp'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+      - name: Restore MAUI workload
+        if: matrix.language == 'csharp'
+        run: dotnet workload restore src/gui/MarketApp.Gui.Core/MarketApp.Gui.Core.csproj src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj
+
+      - name: Restore NuGet packages
+        if: matrix.language == 'csharp'
+        run: |
+          dotnet restore src/gui/MarketApp.Gui.Core/MarketApp.Gui.Core.csproj
+          dotnet restore src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj
+
+      - name: Build C# solution
+        if: matrix.language == 'csharp'
+        run: |
+          dotnet build src/gui/MarketApp.Gui.Core/MarketApp.Gui.Core.csproj -c Release --no-restore
+          dotnet build src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj -c Release --no-restore
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
