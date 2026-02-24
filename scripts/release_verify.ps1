@@ -113,7 +113,7 @@ try {
         $e2eOut = Join-Path $auditRoot ("runs/$runId")
         New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
 
-        $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
+        $e2eCmd = "python -m market_app.cli run --config tests/data/mini_dataset/config.yaml --out-dir '$e2eOut' --offline --progress-jsonl --as-of-date 2025-01-31"
         $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
         if ($e2eResult.ExitCode -ne 0) {
             Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
