@@ -1,5 +1,0 @@
-symbol,eligible,gate_fail_reasons,last_date,lag_days,lag_bin,stale,dq_flags
-AAPL,True,,2023-12-29,399,15+,False,
-DEFN,True,,2023-12-29,399,15+,False,
-MSFT,True,,2023-12-29,399,15+,False,
-SPY,True,,2023-02-24,707,15+,False,

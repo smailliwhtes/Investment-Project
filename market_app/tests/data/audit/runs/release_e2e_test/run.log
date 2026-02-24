@@ -1,3 +1,0 @@
-2026-02-24 00:57:09,055 INFO Starting local offline pipeline run
-2026-02-24 00:57:09,128 WARNING Corpus lane skipped: no local corpus files found.
-2026-02-24 00:57:09,138 INFO Offline pipeline complete at /home/runner/work/Investment-Project/Investment-Project/market_app/tests/data/audit/runs/release_e2e_test
