@@ -226,11 +226,15 @@ Manifest schema (minimum):
   - `path` (string, relative to out_dir)
   - `rows` (int, optional)
   - `hash_sha256` (string, optional)
-- `data_freshness` (object) (required when available):
+- `data_freshness` (object) (**required for every successful run**):
+  - `last_date_max` (string YYYY-MM-DD)
   - `worst_lag_days` (int)
   - `median_lag_days` (number)
-  - `stale_count_over_threshold` (int)
-  - `last_date_max` (string YYYY-MM-DD)
+  - `staleness_days_at_run` (int)
+
+Freshness semantics (deterministic):
+- `lag_days` in `scored.csv` is measured versus the run's as-of frontier (`as_of_date`/`last_date_max` context for that run).
+- `staleness_days_at_run` is measured versus the run timestamp anchor (`finished_at` preferred, else `started_at`) and is computed at run time only (no read-time `..._now` variant).
 
 ### 5.3 Config snapshot
 `<out_dir>/config_snapshot.yaml` must exist and be exactly what the run used. Hash in manifest must match.
@@ -271,6 +275,7 @@ At minimum:
 
 “Killer requirement”:
 - `last_date` and `lag_days` must be present in `scored.csv` for debugging staleness/gaps.
+- `lag_days` semantics: calendar-day lag versus the run's as-of frontier (not wall-clock now).
 - If engine computes these in `data_quality.csv`, engine must merge them into `scored.csv` (preferred).
 - If GUI merges, it must be deterministic, tested, and documented; missingness must be a hard error.
 

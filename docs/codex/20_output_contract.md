@@ -26,7 +26,8 @@ Required columns:
 - theme_bucket (string)
 - asset_type (string)
 - last_date (YYYY-MM-DD)
-- lag_days (int)
+- lag_days (int; calendar-day lag vs run as-of frontier / last_date_max)
+- staleness_days_at_run (int; calendar-day lag vs run timestamp anchor: finished_at preferred, else started_at)
 - ml_signal (float; nullable; model output only when available)
 - ml_model_id (string; nullable; training identifier)
 - ml_featureset_id (string; nullable; dataset schema/config hash)
@@ -45,6 +46,12 @@ Must include:
 
 ## 4) run_manifest.json (required)
 Required for successful runs.
+
+Must include `data_freshness` object:
+- `last_date_max` (YYYY-MM-DD)
+- `worst_lag_days` (int)
+- `median_lag_days` (number)
+- `staleness_days_at_run` (int, computed at run time from run timestamp anchor; do not compute a read-time `..._now` field)
 
 ## 5) config_snapshot.yaml (required)
 Exact run config snapshot used for the run.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 import subprocess
 import sys
 from pathlib import Path
@@ -117,6 +118,27 @@ def test_contract_run_out_dir_emits_required_artifacts(tmp_path: Path) -> None:
     scored = pd.read_csv(out_dir / "scored.csv")
     assert "last_date" in scored.columns
     assert "lag_days" in scored.columns
+
+    manifest = json.loads((out_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    assert "data_freshness" in manifest
+    freshness = manifest["data_freshness"]
+
+    last_dates = pd.to_datetime(scored["last_date"], errors="raise").dt.date
+    lag_days = pd.to_numeric(scored["lag_days"], errors="raise")
+    assert freshness["last_date_max"] == max(last_dates).isoformat()
+    assert freshness["worst_lag_days"] == int(lag_days.max())
+    assert freshness["median_lag_days"] == float(lag_days.median())
+
+    anchor_iso = manifest.get("finished_at") or manifest.get("started_at")
+    assert anchor_iso
+    anchor_date = pd.to_datetime(anchor_iso, errors="raise").date()
+    expected_staleness = int((anchor_date - date.fromisoformat(freshness["last_date_max"])).days)
+    assert freshness["staleness_days_at_run"] == expected_staleness
+
+    assert "staleness_days_at_run" in scored.columns
+    staleness_values = pd.to_numeric(scored["staleness_days_at_run"], errors="raise")
+    assert (staleness_values == expected_staleness).all()
+
     progress_lines = [line for line in result.stdout.splitlines() if line.strip().startswith("{")]
     assert progress_lines
     assert any(json.loads(line).get("type") == "artifact_emitted" for line in progress_lines)

@@ -152,15 +152,63 @@ def _ensure_scored_freshness_columns(run_dir: Path) -> None:
     merged.to_csv(scored_path, index=False, lineterminator="\n")
 
 
+
+
+def _parse_iso_datetime(value: str) -> pd.Timestamp:
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    timestamp = pd.to_datetime(normalized, errors="raise")
+    if isinstance(timestamp, pd.DatetimeIndex):
+        timestamp = timestamp[0]
+    return pd.Timestamp(timestamp)
+
+
+def _compute_data_freshness(scored_df: pd.DataFrame, *, run_anchor_iso: str) -> dict[str, Any]:
+    if scored_df.empty:
+        raise RuntimeError("Unable to compute data_freshness: scored.csv is empty.")
+    required = {"last_date", "lag_days"}
+    if not required.issubset(scored_df.columns):
+        missing = sorted(required - set(scored_df.columns))
+        raise RuntimeError(f"Unable to compute data_freshness: scored.csv missing columns {missing}.")
+
+    last_dates = pd.to_datetime(scored_df["last_date"], errors="coerce").dt.date
+    if last_dates.isna().any():
+        raise RuntimeError("Unable to compute data_freshness: scored.csv contains invalid last_date values.")
+    lag_days = pd.to_numeric(scored_df["lag_days"], errors="coerce")
+    if lag_days.isna().any():
+        raise RuntimeError("Unable to compute data_freshness: scored.csv contains invalid lag_days values.")
+
+    last_date_max = max(last_dates)
+    run_anchor_dt = _parse_iso_datetime(run_anchor_iso)
+    run_anchor_local_date = run_anchor_dt.date()
+    staleness_days_at_run = int((run_anchor_local_date - last_date_max).days)
+
+    return {
+        "last_date_max": last_date_max.isoformat(),
+        "worst_lag_days": int(lag_days.max()),
+        "median_lag_days": float(lag_days.median()),
+        "staleness_days_at_run": staleness_days_at_run,
+    }
 def _augment_run_manifest(manifest_path: Path, *, config_path: Path, run_dir: Path) -> None:
     if not manifest_path.exists():
         raise RuntimeError("Missing required artifact: run_manifest.json")
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     started_at = payload.get("started_at") or payload.get("started_utc") or utcnow().isoformat()
     finished_at = payload.get("finished_at") or utcnow().isoformat()
+    run_anchor = finished_at or started_at
+
     scored_rows = 0
     eligible_rows = 0
     artifacts = []
+    scored_path = run_dir / "scored.csv"
+    scored_df = pd.read_csv(scored_path) if scored_path.exists() else pd.DataFrame()
+    data_freshness = _compute_data_freshness(scored_df, run_anchor_iso=run_anchor)
+
+    if "staleness_days_at_run" not in scored_df.columns:
+        scored_df["staleness_days_at_run"] = int(data_freshness["staleness_days_at_run"])
+        scored_df.to_csv(scored_path, index=False, lineterminator="\n")
+
     for name in ("scored.csv", "eligible.csv", "report.md", "run_manifest.json", "config_snapshot.yaml"):
         file_path = run_dir / name
         if not file_path.exists():
@@ -178,8 +226,8 @@ def _augment_run_manifest(manifest_path: Path, *, config_path: Path, run_dir: Pa
             pass
         artifacts.append(artifact_entry)
     payload.setdefault("run_id", run_dir.name)
-    payload.setdefault("started_at", started_at)
-    payload.setdefault("finished_at", finished_at)
+    payload["started_at"] = started_at
+    payload["finished_at"] = finished_at
     payload.setdefault("duration_s", 0)
     payload.setdefault("app", {"name": "market_monitor", "version": resolve_git_commit(run_dir)})
     payload.setdefault(
@@ -191,8 +239,9 @@ def _augment_run_manifest(manifest_path: Path, *, config_path: Path, run_dir: Pa
         },
     )
     payload.setdefault("config", {"path": str(config_path), "hash_sha256": hash_file(config_path)})
-    payload.setdefault("counts", {"universe_count": scored_rows, "eligible_count": eligible_rows})
-    payload.setdefault("artifacts", artifacts)
+    payload["counts"] = {"universe_count": scored_rows, "eligible_count": eligible_rows}
+    payload["data_freshness"] = data_freshness
+    payload["artifacts"] = artifacts
     manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
