@@ -69,6 +69,25 @@ Agent rule:
 - Discover gates from workflows and scripts (e.g., `.github/workflows/*`, `scripts/release_verify.ps1`).
 - Add the canonical local commands here (no guesswork).
 
+Current CI gates discovered from workflows/scripts:
+- There are currently **no dedicated CI lint/format/typecheck steps** (no `ruff`, `black --check`, or `mypy` gate is enforced in workflows today).
+- Binary diff guard (`.github/workflows/ci.yml`):
+  - `git fetch origin main`
+  - `git diff --numstat origin/main...HEAD | awk '{print $1, $2}' | grep -E '^- -$'`
+- Python test gate (`.github/workflows/ci.yml`):
+  - `python -m pytest -q`
+  - `python -m pytest -q tests/test_offline_e2e_market_and_corpus.py -k offline_e2e --maxfail=1`
+- Determinism gate (`.github/workflows/ci.yml`):
+  - `python -m market_app.cli determinism-check --config tests/fixtures/blueprint_config.yaml --runs-dir outputs/determinism_ci --offline --as-of-date 2025-01-31 --run-id ci_det`
+- Release verify gate (`.github/workflows/release-verify.yml`):
+  - Windows (PowerShell): `scripts/release_verify.ps1`
+  - Linux (PowerShell): `scripts/release_verify.ps1 -SkipDotnetTests -SkipGuiSmoke`
+  - Linux duplicate invocation currently present in workflow (bash -> pwsh): `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/release_verify.ps1 -SkipDotnetTests -SkipGuiSmoke`
+- GUI build/test gate (`.github/workflows/gui-windows-build.yml`):
+  - `dotnet restore src/gui/MarketApp.Gui.sln`
+  - `dotnet build src/gui/MarketApp.Gui.sln --configuration Release --no-restore`
+  - `dotnet test src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj --configuration Release --no-restore`
+
 Examples (only if present in repo/workflows):
 - `python -m ruff check .`
 - `python -m ruff format --check .` (or `black --check .`)
