@@ -93,6 +93,35 @@ jobs:
             echo 'contract_staleness.log not found'
           fi
 
+      - name: Release verify (Ubuntu, GUI skipped)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/release_verify.ps1 -SkipDotnetTests -SkipGuiSmoke
+
+      - name: Print contract staleness log on failure (Windows)
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (Test-Path audit/logs/contract_staleness.log) {
+            Write-Host '--- contract_staleness.log (first 200 lines) ---'
+            Get-Content audit/logs/contract_staleness.log -TotalCount 200
+            Write-Host '--- end contract_staleness.log ---'
+          } else {
+            Write-Host 'contract_staleness.log not found'
+          }
+
+      - name: Print contract staleness log on failure (Linux)
+        if: failure() && runner.os == 'Linux'
+        shell: bash
+        run: |
+          if [ -f audit/logs/contract_staleness.log ]; then
+            echo '--- contract_staleness.log (first 200 lines) ---'
+            sed -n '1,200p' audit/logs/contract_staleness.log
+            echo '--- end contract_staleness.log ---'
+          else
+            echo 'contract_staleness.log not found'
+          fi
+
       - name: Upload audit artifacts
         if: always()
         uses: actions/upload-artifact@v4

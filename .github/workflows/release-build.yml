@@ -1,0 +1,103 @@
+name: release-build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install build deps
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip build cyclonedx-bom
+          dotnet workload restore src/gui/MarketApp.Gui.sln
+          dotnet tool install --global CycloneDX --ignore-failed-sources
+
+      - name: Build Python distributables
+        shell: pwsh
+        run: |
+          python -m build market_app --outdir release/python
+
+      - name: Publish GUI distributable
+        shell: pwsh
+        run: |
+          dotnet publish src/gui/MarketApp.Gui/MarketApp.Gui.csproj -c Release -f net8.0-windows10.0.19041.0 -o release/gui
+          Compress-Archive -Path release/gui/* -DestinationPath release/MarketApp.Gui-win-x64.zip -Force
+
+      - name: Generate SBOMs
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release/sbom | Out-Null
+          cyclonedx-py environment --output-format JSON --output-file release/sbom/python.cdx.json
+          dotnet-CycloneDX src/gui/MarketApp.Gui.sln -o release/sbom -j
+          if (Test-Path release/sbom/bom.json) { Copy-Item release/sbom/bom.json release/sbom/dotnet.cdx.json -Force }
+          if (Test-Path release/sbom/sbom.cdx.json) { Copy-Item release/sbom/sbom.cdx.json release/sbom/dotnet.cdx.json -Force }
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: |
+            release/python/*
+            release/MarketApp.Gui-win-x64.zip
+            release/sbom/*
+
+      - name: Attest build provenance (Python)
+        id: attest_py
+        continue-on-error: true
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: release/python/*
+
+      - name: Attest build provenance (GUI)
+        id: attest_gui
+        continue-on-error: true
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: release/MarketApp.Gui-win-x64.zip
+
+      - name: Attest SBOM (best effort)
+        id: attest_sbom
+        continue-on-error: true
+        uses: actions/attest-sbom@v1
+        with:
+          subject-path: release/MarketApp.Gui-win-x64.zip
+          sbom-path: release/sbom/dotnet.cdx.json
+
+      - name: Attestation support summary
+        shell: pwsh
+        run: |
+          if ('${{ steps.attest_py.outcome }}' -ne 'success' -or '${{ steps.attest_gui.outcome }}' -ne 'success') {
+            Write-Warning 'Attestations were not fully supported or failed in this environment. Artifacts were still produced.'
+          } else {
+            Write-Host 'Provenance attestations created successfully.'
+          }
+
+      - name: Verify attestation (demonstration)
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify release/MarketApp.Gui-win-x64.zip --repo "$env:GITHUB_REPOSITORY"
