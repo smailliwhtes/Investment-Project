@@ -166,15 +166,10 @@ try {
             $sbomArtifacts += 'audit/sbom/python.cdx.json'
         }
 
-        $dotnetSbomCmd = "dotnet tool install --global CycloneDX --ignore-failed-sources; dotnet-CycloneDX src/gui/MarketApp.Gui.sln -o '$sbomRoot' -j"
+        $dotnetSbomCmd = "dotnet tool install --global CycloneDX --ignore-failed-sources; dotnet-CycloneDX src/gui/MarketApp.Gui.sln -o '$sbomRoot/dotnet.cdx.json' -f json"
         $dotnetSbomRes = Invoke-LoggedCommand -Name 'sbom_dotnet' -Command $dotnetSbomCmd
-        foreach ($candidate in @('bom.json','sbom.cdx.json')) {
-            $candidatePath = Join-Path $sbomRoot $candidate
-            if (Test-Path -LiteralPath $candidatePath) {
-                Copy-Item -LiteralPath $candidatePath -Destination (Join-Path $sbomRoot 'dotnet.cdx.json') -Force
-                $sbomArtifacts += 'audit/sbom/dotnet.cdx.json'
-                break
-            }
+        if (Test-Path -LiteralPath (Join-Path $sbomRoot 'dotnet.cdx.json')) {
+            $sbomArtifacts += 'audit/sbom/dotnet.cdx.json'
         }
 
         if ($sbomArtifacts.Count -eq 2) {
