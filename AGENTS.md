@@ -69,6 +69,25 @@ Agent rule:
 - Discover gates from workflows and scripts (e.g., `.github/workflows/*`, `scripts/release_verify.ps1`).
 - Add the canonical local commands here (no guesswork).
 
+Current CI gates discovered from workflows/scripts:
+- There are currently **no dedicated CI lint/format/typecheck steps** (no `ruff`, `black --check`, or `mypy` gate is enforced in workflows today).
+- Binary diff guard (`.github/workflows/ci.yml`):
+  - `git fetch origin main`
+  - `git diff --numstat origin/main...HEAD | awk '{print $1, $2}' | grep -E '^- -$'`
+- Python test gate (`.github/workflows/ci.yml`):
+  - `python -m pytest -q`
+  - `python -m pytest -q tests/test_offline_e2e_market_and_corpus.py -k offline_e2e --maxfail=1`
+- Determinism gate (`.github/workflows/ci.yml`):
+  - `python -m market_app.cli determinism-check --config tests/fixtures/blueprint_config.yaml --runs-dir outputs/determinism_ci --offline --as-of-date 2025-01-31 --run-id ci_det`
+- Release verify gate (`.github/workflows/release-verify.yml`):
+  - Windows (PowerShell): `scripts/release_verify.ps1`
+  - Linux (PowerShell): `scripts/release_verify.ps1 -SkipDotnetTests -SkipGuiSmoke`
+  - Linux duplicate invocation currently present in workflow (bash -> pwsh): `pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/release_verify.ps1 -SkipDotnetTests -SkipGuiSmoke`
+- GUI build/test gate (`.github/workflows/gui-windows-build.yml`):
+  - `dotnet restore src/gui/MarketApp.Gui.sln`
+  - `dotnet build src/gui/MarketApp.Gui.sln --configuration Release --no-restore`
+  - `dotnet test src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj --configuration Release --no-restore`
+
 Examples (only if present in repo/workflows):
 - `python -m ruff check .`
 - `python -m ruff format --check .` (or `black --check .`)
@@ -207,11 +226,15 @@ Manifest schema (minimum):
   - `path` (string, relative to out_dir)
   - `rows` (int, optional)
   - `hash_sha256` (string, optional)
-- `data_freshness` (object) (required when available):
+- `data_freshness` (object) (**required for every successful run**):
+  - `last_date_max` (string YYYY-MM-DD)
   - `worst_lag_days` (int)
   - `median_lag_days` (number)
-  - `stale_count_over_threshold` (int)
-  - `last_date_max` (string YYYY-MM-DD)
+  - `staleness_days_at_run` (int)
+
+Freshness semantics (deterministic):
+- `lag_days` in `scored.csv` is measured versus the run's as-of frontier (`as_of_date`/`last_date_max` context for that run).
+- `staleness_days_at_run` is measured versus the run timestamp anchor (`finished_at` preferred, else `started_at`) and is computed at run time only (no read-time `..._now` variant).
 
 ### 5.3 Config snapshot
 `<out_dir>/config_snapshot.yaml` must exist and be exactly what the run used. Hash in manifest must match.
@@ -252,6 +275,7 @@ At minimum:
 
 “Killer requirement”:
 - `last_date` and `lag_days` must be present in `scored.csv` for debugging staleness/gaps.
+- `lag_days` semantics: calendar-day lag versus the run's as-of frontier (not wall-clock now).
 - If engine computes these in `data_quality.csv`, engine must merge them into `scored.csv` (preferred).
 - If GUI merges, it must be deterministic, tested, and documented; missingness must be a hard error.
 
