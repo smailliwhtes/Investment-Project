@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 param(
     [switch]$SkipDotnetTests,
     [switch]$SkipGuiSmoke,
@@ -204,8 +204,8 @@ if (Test-Path -LiteralPath '$sbomRoot/bom.json') {
             $sbomArtifacts += 'audit/sbom/dotnet.cdx.json'
         }
 
-        $missingSboms = @(Get-MissingSbomArtifacts -PythonSbomPath $pythonSbomPath -DotnetSbomPath $dotnetSbomPath)
-if (@($missingSboms).Count -eq 0) {
+        $missingSboms = Get-MissingSbomArtifacts -PythonSbomPath $pythonSbomPath -DotnetSbomPath $dotnetSbomPath
+        if ($missingSboms.Count -eq 0) {
             Add-GateResult @{ name='sbom'; status='pass'; artifacts=$sbomArtifacts; details=@{ format='CycloneDX' } }
         } else {
             $missingList = ($missingSboms -join ', ')
@@ -235,9 +235,7 @@ if (@($missingSboms).Count -eq 0) {
 catch {
     $report.overall_status = 'fail'
     Save-Report
-    Write-Host $_
+    Write-Error $_
     Write-Host "release_verify completed: FAIL (see audit/verify_report.json and audit/logs/)"
     exit 1
 }
-
-

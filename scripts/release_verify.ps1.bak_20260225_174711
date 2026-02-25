@@ -235,9 +235,8 @@ if (@($missingSboms).Count -eq 0) {
 catch {
     $report.overall_status = 'fail'
     Save-Report
-    Write-Host $_
+    Write-Error $_
     Write-Host "release_verify completed: FAIL (see audit/verify_report.json and audit/logs/)"
     exit 1
 }
-
 
