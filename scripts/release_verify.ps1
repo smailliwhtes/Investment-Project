@@ -110,10 +110,11 @@ try {
     if ($SkipE2E) {
         Add-GateResult @{ name='e2e_offline'; status='skipped'; details=@{ reason='skipped by flag' } }
     } else {
-        $e2eOut = Join-Path $auditRoot ("runs/$runId")
+        $runsRoot = Join-Path $auditRoot 'runs'
+        $e2eOut = Join-Path $runsRoot $runId
         New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
 
-        $e2eCmd = "python -m market_monitor.cli run --config config.yaml --out-dir '$e2eOut' --offline --progress-jsonl"
+        $e2eCmd = "python -m market_app.cli run --config tests/data/mini_dataset/config.yaml --output-dir '$runsRoot' --run-id '$runId' --offline --as-of-date 2025-01-31"
         $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
         if ($e2eResult.ExitCode -ne 0) {
             Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
@@ -165,15 +166,10 @@ try {
             $sbomArtifacts += 'audit/sbom/python.cdx.json'
         }
 
-        $dotnetSbomCmd = "dotnet tool install --global CycloneDX --ignore-failed-sources; dotnet-CycloneDX src/gui/MarketApp.Gui.sln -o '$sbomRoot' -j"
+        $dotnetSbomCmd = "dotnet tool install --global CycloneDX --ignore-failed-sources; dotnet-CycloneDX src/gui/MarketApp.Gui.sln -o '$sbomRoot/dotnet.cdx.json' -f json"
         $dotnetSbomRes = Invoke-LoggedCommand -Name 'sbom_dotnet' -Command $dotnetSbomCmd
-        foreach ($candidate in @('bom.json','sbom.cdx.json')) {
-            $candidatePath = Join-Path $sbomRoot $candidate
-            if (Test-Path -LiteralPath $candidatePath) {
-                Copy-Item -LiteralPath $candidatePath -Destination (Join-Path $sbomRoot 'dotnet.cdx.json') -Force
-                $sbomArtifacts += 'audit/sbom/dotnet.cdx.json'
-                break
-            }
+        if (Test-Path -LiteralPath (Join-Path $sbomRoot 'dotnet.cdx.json')) {
+            $sbomArtifacts += 'audit/sbom/dotnet.cdx.json'
         }
 
         if ($sbomArtifacts.Count -eq 2) {
