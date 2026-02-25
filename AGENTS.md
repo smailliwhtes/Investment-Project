@@ -5,6 +5,13 @@ This file is the authoritative “how to work in this repo” contract for codin
 ## 0) Prime directive
 This is an OFFLINE-FIRST market monitoring application. The Python engine is the source of truth. The .NET MAUI GUI is a thin orchestration + visualization layer over the engine. Do not duplicate scoring/eligibility logic in the UI.
 
+## 0.1 Instruction discovery + precedence (Codex)
+Codex reads `AGENTS.md` files before doing work and may also read nested `AGENTS.md` files in subdirectories. Treat this as a layered contract: more-specific (deeper) `AGENTS.md` overrides less-specific guidance.
+
+Agent rule:
+- Before coding, search for nested instruction files (e.g., `git ls-files "**/AGENTS.md"`). If any exist, list them and confirm whether any rule conflicts with this root contract.
+- Keep the “Prime directive” + “After changes commands” near the top. Codex only ingests a limited amount of project guidance per file; prioritize the most check-critical guidance early.
+
 ## 1) Repository expectations (non-negotiable)
 1) Offline-first: no mandatory runtime internet calls. Tests must be hermetic and runnable offline.
 2) Determinism: stable output naming, stable schemas, seeded randomness, content hashing for artifacts.
@@ -35,6 +42,18 @@ This is an OFFLINE-FIRST market monitoring application. The Python engine is the
   - `GUI design guidelines.pdf` (repo root copy; also uploaded to the project chat)
 
 ## 3) Authoritative “after changes” commands
+
+### 3.0 Environment/setup preflight (avoid CI-only failures)
+Before running tests, ensure the repo is in a reproducible dev state:
+
+Python (from repo root):
+- `python -m pip install --upgrade pip`
+- `python -m pip install -e "./market_app[dev]"`  (if the extra is named differently, use the repo’s documented dev install command)
+
+.NET (Windows):
+- `dotnet --info`
+- `dotnet workload restore src/gui/MarketApp.Gui.sln` (if MAUI workload is required)
+
 ### 3.1 Python engine validation
 From repo root (PowerShell or bash):
 - `cd market_app`
@@ -42,6 +61,18 @@ From repo root (PowerShell or bash):
 
 Optional but recommended:
 - `python -m compileall -q .`
+
+### 3.1.1 Code-quality gates (whatever CI runs must be documented here)
+If CI has formatting/lint/typecheck gates, the exact commands must be listed in this file.
+
+Agent rule:
+- Discover gates from workflows and scripts (e.g., `.github/workflows/*`, `scripts/release_verify.ps1`).
+- Add the canonical local commands here (no guesswork).
+
+Examples (only if present in repo/workflows):
+- `python -m ruff check .`
+- `python -m ruff format --check .` (or `black --check .`)
+- `python -m mypy .`
 
 ### 3.2 Offline smoke run (engine)
 A run must be possible without internet given local OHLCV data:
@@ -61,6 +92,20 @@ From repo root:
 If CI needs it:
 - `dotnet workload restore src/gui/MarketApp.Gui.sln`
 (or install workload explicitly in workflow: `dotnet workload install maui --ignore-failed-sources`)
+
+### 3.4 Full “release verify” parity gate (must match CI)
+CI “green” is defined by this script. After any change that could affect gates, run it locally (Windows PowerShell):
+
+- `scripts/release_verify.ps1`
+
+Common skip switches (use only when explicitly justified):
+- `scripts/release_verify.ps1 -SkipDotnetTests -SkipGuiSmoke`
+- `scripts/release_verify.ps1 -SkipSbom` (only if SBOM is explicitly non-blocking)
+
+### 3.5 When a gate fails (where to look first)
+The release verify script writes detailed diagnostics under:
+- `audit/logs/` (per-gate log files; these are the first stop)
+- `audit/sbom/` (expected SBOM artifacts when SBOM gate is enabled)
 
 ## 4) Engine ⇄ GUI integration contract (must remain stable)
 The MAUI GUI is a client of the engine via CLI + files. The engine must support these commands and outputs.
@@ -423,6 +468,21 @@ Workflow: `.github/workflows/gui-windows-build.yml` must:
 - Build + test:
   - `dotnet build ... -c Release`
   - `dotnet test  ... -c Release`
+
+### 12.3 SBOM gate (CycloneDX) — determinism + CI reliability
+If SBOM generation is enabled (not `-SkipSbom`), the repo must reliably generate BOTH:
+- `audit/sbom/python.cdx.json`
+- `audit/sbom/dotnet.cdx.json`
+
+Reliability requirements:
+- Python SBOM generation must be deterministic and should be generated from the project definition/manifests (not from a fragile “ambient environment” when possible).
+- .NET SBOM generation must not depend on a “lucky PATH”; prefer a local tool manifest (`dotnet new tool-manifest`, `dotnet tool install CycloneDX`, `dotnet tool restore`) or otherwise make tool discovery explicit.
+
+Failure handling requirements:
+- SBOM logs must always be written when the gate runs:
+  - `audit/logs/sbom_python.log`
+  - `audit/logs/sbom_dotnet.log`
+- The gate must fail with a message that includes which output(s) are missing and points to the log(s).
 
 ## 13) Testing expectations (high signal)
 ### 13.1 Python tests
