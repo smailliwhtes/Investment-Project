@@ -78,7 +78,7 @@ function Get-MissingSbomArtifacts {
     $missing = @()
     if (-not (Test-Path -LiteralPath $PythonSbomPath)) { $missing += 'audit/sbom/python.cdx.json' }
     if (-not (Test-Path -LiteralPath $DotnetSbomPath)) { $missing += 'audit/sbom/dotnet.cdx.json' }
-    return $missing
+    return ,$missing
 }
 
 function Assert-RunStalenessContract {
@@ -181,6 +181,7 @@ python -m pip install cyclonedx-bom
 python -c "import pathlib, tomllib; p=pathlib.Path('pyproject.toml'); deps=tomllib.loads(p.read_text(encoding='utf-8')).get('project', {}).get('dependencies', []); pathlib.Path('.sbom-requirements.txt').write_text('\\n'.join(deps)+'\\n', encoding='utf-8')"
 cyclonedx-py requirements --output-format JSON --output-file '$pythonSbomPath' '.sbom-requirements.txt'
 "@
+$pySbomCmd = $pySbomCmd + " 2>&1 | Tee-Object -FilePath `"$logsRoot/sbom_python.log`""
         $pySbomRes = Invoke-LoggedCommand -Name 'sbom_python' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $pySbomCmd
         $pySbomCleanup = Invoke-LoggedCommand -Name 'sbom_python_cleanup' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command "if (Test-Path -LiteralPath '.sbom-requirements.txt') { Remove-Item -LiteralPath '.sbom-requirements.txt' -Force }"
         if ($pySbomRes.ExitCode -eq 0 -and (Test-Path -LiteralPath $pythonSbomPath)) {
@@ -191,7 +192,7 @@ cyclonedx-py requirements --output-format JSON --output-file '$pythonSbomPath' '
 if (-not (Test-Path -LiteralPath '.config/dotnet-tools.json')) {
     dotnet new tool-manifest
 }
-dotnet tool restore
+dotnet tool restore --tool-manifest "$repoRoot/.config/dotnet-tools.json"${rest}
 dotnet tool run dotnet-CycloneDX src/gui/MarketApp.Gui.sln -o '$sbomRoot' -j
 if (Test-Path -LiteralPath '$sbomRoot/bom.json') {
     Copy-Item -LiteralPath '$sbomRoot/bom.json' -Destination '$dotnetSbomPath' -Force
@@ -199,6 +200,7 @@ if (Test-Path -LiteralPath '$sbomRoot/bom.json') {
     Copy-Item -LiteralPath '$sbomRoot/sbom.cdx.json' -Destination '$dotnetSbomPath' -Force
 }
 "@
+$dotnetSbomCmd = $dotnetSbomCmd + " 2>&1 | Tee-Object -FilePath `"$logsRoot/sbom_dotnet.log`""
         $dotnetSbomRes = Invoke-LoggedCommand -Name 'sbom_dotnet' -Command $dotnetSbomCmd
         if ($dotnetSbomRes.ExitCode -eq 0 -and (Test-Path -LiteralPath $dotnetSbomPath)) {
             $sbomArtifacts += 'audit/sbom/dotnet.cdx.json'
@@ -239,5 +241,8 @@ catch {
     Write-Host "release_verify completed: FAIL (see audit/verify_report.json and audit/logs/)"
     exit 1
 }
+
+
+
 
 
