@@ -24,3 +24,7 @@
 # runtime verification outputs
 audit/**
 !audit/.gitkeep
+
+# Local safety backups
+scripts/release_verify.ps1.bak_*
+

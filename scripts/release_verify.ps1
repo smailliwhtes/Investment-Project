@@ -78,7 +78,7 @@ function Get-MissingSbomArtifacts {
     $missing = @()
     if (-not (Test-Path -LiteralPath $PythonSbomPath)) { $missing += 'audit/sbom/python.cdx.json' }
     if (-not (Test-Path -LiteralPath $DotnetSbomPath)) { $missing += 'audit/sbom/dotnet.cdx.json' }
-    return ,$missing
+    return $missing
 }
 
 function Assert-RunStalenessContract {
@@ -241,6 +241,7 @@ catch {
     Write-Host "release_verify completed: FAIL (see audit/verify_report.json and audit/logs/)"
     exit 1
 }
+
 
 
 
