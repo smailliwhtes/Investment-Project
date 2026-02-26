@@ -1,34 +1,35 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = (Resolve-Path (Join-Path $scriptDir "..")).ProviderPath
+$repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
-$dotnetCmd = Get-Command dotnet -ErrorAction SilentlyContinue
-if (-not $dotnetCmd) {
-    Write-Host "dotnet not found. Install .NET SDK 8.x. Then rerun." -ForegroundColor Red
-    Write-Host "Install command: winget install --id Microsoft.DotNet.SDK.8 --source winget" -ForegroundColor Yellow
-    exit 1
+Write-Host "Repo: $repoRoot"
+
+# Prefer explicit MarketApp.Gui.csproj, else any csproj with 'Gui' in name/path
+$gui = Get-ChildItem -Recurse -Filter "MarketApp.Gui.csproj" -ErrorAction SilentlyContinue |
+  Select-Object -First 1 -ExpandProperty FullName
+
+if (-not $gui) {
+  $gui = Get-ChildItem -Recurse -Filter "*.csproj" -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match 'MarketApp\.Gui' -or $_.Name -match 'MarketApp\.Gui' } |
+    Select-Object -First 1 -ExpandProperty FullName
 }
 
-$sdks = & dotnet --list-sdks 2>&1
-if ($LASTEXITCODE -ne 0 -or -not $sdks -or "$sdks" -match "No .NET SDKs" -or "$sdks" -notmatch "(?m)^8\.") {
-    Write-Host "dotnet not found. Install .NET SDK 8.x. Then rerun." -ForegroundColor Red
-    Write-Host "Install command: winget install --id Microsoft.DotNet.SDK.8 --source winget" -ForegroundColor Yellow
-    Write-Host "Detected SDKs:" -ForegroundColor Yellow
-    Write-Host "$sdks" -ForegroundColor Yellow
-    exit 1
+if (-not $gui) {
+  $gui = Get-ChildItem -Recurse -Filter "*.csproj" -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match '(?i)gui' } |
+    Select-Object -First 1 -ExpandProperty FullName
 }
 
-$workloads = & dotnet workload list 2>&1
-if ($LASTEXITCODE -ne 0 -or "$workloads" -notmatch "(?im)^\s*maui\s") {
-    Write-Host "MAUI workload missing. Run: dotnet workload install maui" -ForegroundColor Red
-    exit 1
-}
+if (-not $gui) { throw "GUI .csproj not found under $repoRoot" }
 
-dotnet build "src/gui/MarketApp.Gui.sln" -c Release
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+Write-Host "GUI project: $gui"
 
-dotnet run --project "src/gui/MarketApp.Gui/MarketApp.Gui.csproj" -c Release
-exit $LASTEXITCODE
+# Ensure MAUI workloads exist
+dotnet workload install maui maui-windows | Out-Host
+
+# Restore/build/run against the project (NOT the repo root)
+dotnet workload restore --project "$gui" | Out-Host
+dotnet restore "$gui" | Out-Host
+dotnet run --project "$gui" -c Debug | Out-Host
