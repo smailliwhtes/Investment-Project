@@ -6,12 +6,29 @@
   <VerticalStackLayout Padding="16" Spacing="12">
     <Label Text="Run orchestration" FontSize="22" FontAttributes="Bold" />
 
-    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
       <Label Text="Config path" Grid.Row="0" Grid.Column="0" />
       <Entry Text="{Binding ConfigPath}" Grid.Row="0" Grid.Column="1" />
+
       <Label Text="Output directory" Grid.Row="1" Grid.Column="0" />
       <Entry Text="{Binding OutputDirectory}" Grid.Row="1" Grid.Column="1" />
-      <HorizontalStackLayout Grid.Row="2" Grid.ColumnSpan="2" Spacing="8">
+
+      <Label Text="Python path" Grid.Row="2" Grid.Column="0" />
+      <Entry Text="{Binding PythonPath}" Grid.Row="2" Grid.Column="1" />
+
+      <HorizontalStackLayout Grid.Row="3" Grid.ColumnSpan="2" Spacing="16">
+        <HorizontalStackLayout Spacing="6">
+          <CheckBox IsChecked="{Binding RunBuildLinkedAfterRun}" />
+          <Label Text="Run linked corpus" VerticalTextAlignment="Center" />
+        </HorizontalStackLayout>
+        <HorizontalStackLayout Spacing="6">
+          <CheckBox IsChecked="{Binding RunEvaluateAfterRun}" />
+          <Label Text="Run evaluate" VerticalTextAlignment="Center" />
+        </HorizontalStackLayout>
+      </HorizontalStackLayout>
+
+      <HorizontalStackLayout Grid.Row="4" Grid.ColumnSpan="2" Spacing="8">
+        <Button Text="Validate" Command="{Binding ValidateConfigCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
         <Button Text="Start" Command="{Binding StartCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
         <Button Text="Cancel" Command="{Binding CancelCommand}" IsEnabled="{Binding IsRunning}" />
       </HorizontalStackLayout>
@@ -23,12 +40,13 @@
     <Frame>
       <VerticalStackLayout>
         <Label Text="Progress events" FontAttributes="Bold" />
-        <CollectionView ItemsSource="{Binding ProgressEvents}" HeightRequest="250">
+        <CollectionView ItemsSource="{Binding ProgressEvents}" HeightRequest="280">
           <CollectionView.ItemTemplate>
             <DataTemplate>
-              <Grid ColumnDefinitions="Auto,*,Auto" Padding="0,2">
+              <Grid ColumnDefinitions="Auto,Auto,*,Auto" Padding="0,2" ColumnSpacing="8">
                 <Label Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" />
-                <Label Text="{Binding Message}" />
+                <Label Text="{Binding Type}" FontAttributes="Bold" />
+                <Label Text="{Binding Message}" LineBreakMode="TailTruncation" />
                 <Label Text="{Binding Pct, StringFormat='{}{0:P0}'}" />
               </Grid>
             </DataTemplate>

@@ -19,6 +19,46 @@
       </Frame>
 
       <Frame>
+        <VerticalStackLayout Spacing="4">
+          <Label Text="Cause/effect linkage" FontAttributes="Bold" />
+          <Label Text="{Binding CauseEffect.JoinedRows, StringFormat='Joined rows: {0}'}" />
+          <Label Text="{Binding CauseEffect.EventImpactRows, StringFormat='Event impact rows: {0}'}" />
+          <Label Text="{Binding CauseEffect.TopContextDay, StringFormat='Top context day: {0}'}" />
+          <Label Text="{Binding CauseEffect.TopContextMetric, StringFormat='Top metric: {0}'}" />
+        </VerticalStackLayout>
+      </Frame>
+
+      <Frame>
+        <VerticalStackLayout Spacing="4">
+          <Label Text="Backtest quality" FontAttributes="Bold" />
+          <Label Text="{Binding QualitySnapshot.RunId, StringFormat='Run: {0}'}" />
+          <Label Text="{Binding QualitySnapshot.EvaluatedAtUtc, StringFormat='Evaluated (UTC): {0:yyyy-MM-dd HH:mm:ss}'}" />
+          <CollectionView ItemsSource="{Binding BacktestMetrics}" HeightRequest="140">
+            <CollectionView.Header>
+              <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
+                <Label Text="Model" />
+                <Label Text="MSE" />
+                <Label Text="MAE" />
+                <Label Text="Accuracy" />
+                <Label Text="F1" />
+              </Grid>
+            </CollectionView.Header>
+            <CollectionView.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2">
+                  <Label Text="{Binding Model}" />
+                  <Label Text="{Binding Mse, StringFormat='{}{0:F4}'}" />
+                  <Label Text="{Binding Mae, StringFormat='{}{0:F4}'}" />
+                  <Label Text="{Binding Accuracy, StringFormat='{}{0:P1}'}" />
+                  <Label Text="{Binding F1, StringFormat='{}{0:P1}'}" />
+                </Grid>
+              </DataTemplate>
+            </CollectionView.ItemTemplate>
+          </CollectionView>
+        </VerticalStackLayout>
+      </Frame>
+
+      <Frame>
         <VerticalStackLayout>
           <Label Text="Top symbols" FontAttributes="Bold" />
           <CollectionView ItemsSource="{Binding TopSymbols}" HeightRequest="200">
@@ -63,3 +103,4 @@
     </VerticalStackLayout>
   </ScrollView>
 </ContentPage>
+

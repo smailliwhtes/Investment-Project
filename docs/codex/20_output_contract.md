@@ -63,3 +63,20 @@ Exact run config snapshot used for the run.
 ## Optional artifacts (allowed)
 - features_*.csv / intermediate debug files
 Optional artifacts must NOT replace the required outputs.
+
+## 7) linked cause/effect artifacts (corpus build-linked)
+When running:
+- `python -m market_monitor corpus build-linked --config <path> ...`
+
+Expected artifacts in the selected output directory:
+- `cause_effect_manifest.json` (schema + artifact hashes/counts)
+- `cause_effect_summary.json` (top context days + return stats)
+- `market_daily.csv` (historical market panel used for joins)
+- `gdelt_daily_features.csv` (daily GDELT context features)
+- `linked_market_gdelt/manifest.json` plus partitions (joined market+GDELT features)
+- `event_impact_library.csv` (if spike windows produce outcomes)
+- `analog_outcomes.csv` (if analog outcomes are produced)
+
+Notes:
+- These files are optional and additive; they do not replace the required run outputs in sections 1-6.
+- Outputs must be deterministic given the same config and local inputs.

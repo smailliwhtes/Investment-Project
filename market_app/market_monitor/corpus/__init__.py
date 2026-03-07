@@ -1,3 +1,4 @@
+from market_monitor.corpus.linkage import LinkageResult, build_market_gdelt_linkage
 from market_monitor.corpus.pipeline import (
     CorpusRun,
     build_corpus_daily_store,
@@ -14,10 +15,12 @@ from market_monitor.corpus.pipeline import (
 
 __all__ = [
     "CorpusRun",
+    "LinkageResult",
     "build_corpus_index",
     "build_corpus_manifest",
     "build_corpus_daily_store",
     "build_daily_features_from_sources",
+    "build_market_gdelt_linkage",
     "discover_corpus_sources",
     "discover_corpus_files",
     "discover_raw_event_zips",

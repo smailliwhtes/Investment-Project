@@ -5,11 +5,13 @@
              Title="Universe">
   <VerticalStackLayout Padding="16" Spacing="12">
     <Label Text="Universe and scored symbols" FontSize="22" FontAttributes="Bold" />
+
     <Entry Placeholder="Filter by symbol or theme" Text="{Binding FilterText}" />
+
     <CollectionView ItemsSource="{Binding FilteredScores}"
                     SelectionMode="Single"
                     SelectedItem="{Binding SelectedScore}"
-                    HeightRequest="320">
+                    HeightRequest="280">
       <CollectionView.Header>
         <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
           <Label Text="Symbol" />
@@ -33,11 +35,29 @@
     </CollectionView>
 
     <Frame>
-      <VerticalStackLayout>
-        <Label Text="Selected symbol details" FontAttributes="Bold" />
-        <Label Text="{Binding SelectedScore.Symbol}" />
-        <Label Text="{Binding SelectedScore.LastDate, StringFormat='Last date: {0}'}" />
-        <Label Text="{Binding SelectedScore.GatesPassed, StringFormat='Gates: {0}'}" />
+      <VerticalStackLayout Spacing="8">
+        <Label Text="Symbol detail" FontAttributes="Bold" />
+        <Picker ItemsSource="{Binding DetailTabs}" SelectedItem="{Binding SelectedDetailTab}" />
+
+        <VerticalStackLayout IsVisible="{Binding IsOverviewTab}" Spacing="8">
+          <Label Text="{Binding SelectedScore.Symbol}" FontAttributes="Bold" FontSize="18" />
+          <Label Text="{Binding SelectedScore.LastDate, StringFormat='Last date: {0}'}" />
+          <Label Text="{Binding SelectedScore.GatesPassed, StringFormat='Gates: {0}'}" />
+          <Label Text="{Binding SelectedScore.ThemeLabels, StringFormat='Themes: {0}'}" />
+
+          <ContentView Content="{Binding PriceChart}" HeightRequest="280" />
+          <ContentView Content="{Binding IndicatorChart}" HeightRequest="200" />
+        </VerticalStackLayout>
+
+        <VerticalStackLayout IsVisible="{Binding IsExplainTab}" Spacing="6">
+          <Label Text="Explain" FontAttributes="Bold" />
+          <Label Text="{Binding ExplainSummary}" />
+        </VerticalStackLayout>
+
+        <VerticalStackLayout IsVisible="{Binding IsQualityTab}" Spacing="6">
+          <Label Text="Quality" FontAttributes="Bold" />
+          <Label Text="{Binding QualitySummary}" />
+        </VerticalStackLayout>
       </VerticalStackLayout>
     </Frame>
   </VerticalStackLayout>

@@ -145,6 +145,14 @@ Required flags:
 Required:
 - `--format json` returns machine-readable errors.
 
+3) Build linked historical market + GDELT cause/effect dataset (optional but supported):
+- `python -m market_monitor.cli corpus build-linked --config <path> --watchlist <path?> --outdir <dir?> --lags 1,3,7 --rolling-window 7 --rolling-mean --rolling-sum --output-format csv`
+
+Notes:
+- Uses local OHLCV history + local corpus/GDELT files only (offline-first).
+- Produces deterministic linkage artifacts under the selected output dir.
+- This command is additive and must not change `run` command output contracts.
+
 ### 4.2 Exit codes (engine)
 - `0`: success (all required artifacts produced)
 - `2`: invalid config / schema validation failure
@@ -255,6 +263,11 @@ These are the minimum required outputs for every run (unless explicitly stated o
 - `<out_dir>/flags.csv`
 - `<out_dir>/explain/` (per-symbol explainability packs)
 - `<out_dir>/progress.jsonl` (if engine also writes progress file)
+- `<out_dir>/cause_effect_manifest.json` (linked market+GDELT build manifest)
+- `<out_dir>/cause_effect_summary.json` (cause/effect summary stats)
+- `<out_dir>/linked_market_gdelt/` (partitioned joined market+GDELT features + manifest)
+- `<out_dir>/event_impact_library.csv` (event-spike forward-return outcomes, when available)
+- `<out_dir>/analog_outcomes.csv` (analog forward-return outcomes, when available)
 
 ### 6.3 `eligible.csv` minimal columns
 At minimum:

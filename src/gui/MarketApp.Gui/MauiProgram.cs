@@ -11,8 +11,13 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>();
 
+        builder.Services.AddSingleton<IUserSettingsService, UserSettingsService>();
+        builder.Services.AddSingleton<IEngineBridgeService, EngineBridgeService>();
+        builder.Services.AddSingleton<IRunDiscoveryService, RunDiscoveryService>();
+        builder.Services.AddSingleton<IRunCompareService, RunCompareService>();
+        builder.Services.AddSingleton<IQualityMetricsService, QualityMetricsService>();
+
         builder.Services.AddSingleton<SampleDataService>();
-        builder.Services.AddSingleton<SimulatedRunOrchestrator>();
         builder.Services.AddSingleton<ISecretsStore, SecureSecretsStore>();
         builder.Services.AddSingleton<IChartProvider, DefaultChartProvider>();
 

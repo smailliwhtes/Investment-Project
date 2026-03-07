@@ -11,6 +11,19 @@ from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error, mean_
 
 from market_monitor.features import compute_features
 from market_monitor.paths import resolve_path
+from market_monitor.quant_math import (
+    annualized_volatility,
+    beta,
+    binary_log_loss,
+    brier_score,
+    cvar,
+    downside_volatility,
+    expected_calibration_error,
+    information_ratio,
+    max_drawdown_from_returns,
+    sharpe_ratio,
+    sortino_ratio,
+)
 from market_monitor.universe import read_watchlist
 
 
@@ -98,8 +111,16 @@ def _feature_columns(panel: pd.DataFrame, *, include_corpus: bool) -> list[str]:
     exclude = {"symbol", "Date", "forward_return", "label", "corpus_date"}
     cols = [col for col in panel.columns if col not in exclude]
     if not include_corpus:
-        cols = [col for col in cols if not col.startswith("conflict_") and not col.endswith("_sum") and not col.endswith("_mean")]
-        cols = [col for col in cols if not col.startswith("mentions_") and not col.startswith("sources_") and not col.startswith("articles_")]
+        cols = [
+            col
+            for col in cols
+            if not col.startswith("conflict_") and not col.endswith("_sum") and not col.endswith("_mean")
+        ]
+        cols = [
+            col
+            for col in cols
+            if not col.startswith("mentions_") and not col.startswith("sources_") and not col.startswith("articles_")
+        ]
         cols = [col for col in cols if not col.startswith("goldstein") and not col.startswith("tone")]
         cols = [col for col in cols if not col.startswith("conflict_event_count")]
     return cols
@@ -126,12 +147,56 @@ def build_walk_forward_splits(dates: pd.Series, folds: int) -> list[EvaluationSp
     return splits
 
 
+def _portfolio_vs_benchmark_metrics(test: pd.DataFrame, *, risk_free_rate_annual: float) -> dict[str, Any]:
+    metrics: dict[str, Any] = {
+        "beta_spy": float("nan"),
+        "information_ratio": float("nan"),
+    }
+
+    if test.empty or "Date" not in test.columns or "symbol" not in test.columns:
+        return _normalize_metric_values(metrics)
+
+    portfolio_by_date = test.groupby("Date")["forward_return"].mean().sort_index()
+    benchmark = (
+        test[test["symbol"].astype(str).str.upper() == "SPY"]
+        .groupby("Date")["forward_return"]
+        .mean()
+        .sort_index()
+    )
+
+    if benchmark.empty:
+        return _normalize_metric_values(metrics)
+
+    aligned = pd.concat([portfolio_by_date, benchmark], axis=1, join="inner").dropna()
+    if aligned.empty or len(aligned) < 2:
+        return _normalize_metric_values(metrics)
+
+    portfolio_arr = aligned.iloc[:, 0].to_numpy(dtype=float)
+    benchmark_arr = aligned.iloc[:, 1].to_numpy(dtype=float)
+
+    metrics["beta_spy"] = beta(portfolio_arr, benchmark_arr)
+    metrics["information_ratio"] = information_ratio(portfolio_arr, benchmark_arr)
+    metrics["sharpe"] = sharpe_ratio(portfolio_arr, risk_free_rate_annual=risk_free_rate_annual)
+    metrics["sortino"] = sortino_ratio(portfolio_arr, risk_free_rate_annual=risk_free_rate_annual)
+    return _normalize_metric_values(metrics)
+
+
+
+def _normalize_metric_values(metrics: dict[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
+    for key, value in metrics.items():
+        if isinstance(value, float) and np.isnan(value):
+            normalized[key] = None
+        else:
+            normalized[key] = value
+    return normalized
 def _evaluate_split(
     panel: pd.DataFrame,
     split: EvaluationSplit,
     *,
     include_corpus: bool,
     mode: str,
+    risk_free_rate_annual: float,
 ) -> dict[str, Any]:
     feature_cols = _feature_columns(panel, include_corpus=include_corpus)
     train = panel[panel["Date"] <= split.train_end].dropna(
@@ -145,21 +210,38 @@ def _evaluate_split(
 
     X_train = train[feature_cols].to_numpy()
     X_test = test[feature_cols].to_numpy()
-    y_train = train["forward_return"].to_numpy()
-    y_test = test["forward_return"].to_numpy()
+    y_train = train["forward_return"].to_numpy(dtype=float)
+    y_test = test["forward_return"].to_numpy(dtype=float)
 
     metrics: dict[str, Any] = {
         "split": split.name,
         "train_end": split.train_end.date().isoformat(),
         "test_start": split.test_start.date().isoformat(),
         "test_end": split.test_end.date().isoformat(),
+        "volatility_ann": annualized_volatility(y_test),
+        "downside_vol_ann": downside_volatility(y_test),
+        "cvar_95": cvar(y_test, alpha=0.95),
+        "max_drawdown": max_drawdown_from_returns(y_test),
+        "sharpe": sharpe_ratio(y_test, risk_free_rate_annual=risk_free_rate_annual),
+        "sortino": sortino_ratio(y_test, risk_free_rate_annual=risk_free_rate_annual),
+        "beta_spy": float("nan"),
+        "information_ratio": float("nan"),
+        "brier": float("nan"),
+        "log_loss": float("nan"),
+        "calibration_ece": float("nan"),
     }
+
+    metrics.update(_portfolio_vs_benchmark_metrics(test, risk_free_rate_annual=risk_free_rate_annual))
+
     if mode in {"both", "regression"}:
         ridge = Ridge(alpha=1.0)
         ridge.fit(X_train, y_train)
         pred = ridge.predict(X_test)
-        metrics["mse"] = float(mean_squared_error(y_test, pred))
+        mse = float(mean_squared_error(y_test, pred))
+        metrics["mse"] = mse
+        metrics["rmse"] = float(np.sqrt(mse))
         metrics["mae"] = float(mean_absolute_error(y_test, pred))
+
     if mode in {"both", "classification"}:
         if train["label"].nunique() < 2:
             metrics["accuracy"] = float("nan")
@@ -169,9 +251,14 @@ def _evaluate_split(
             clf.fit(X_train, train["label"].to_numpy())
             prob = clf.predict_proba(X_test)[:, 1]
             pred_label = (prob >= 0.5).astype(int)
-            metrics["accuracy"] = float(accuracy_score(test["label"], pred_label))
-            metrics["f1"] = float(f1_score(test["label"], pred_label, zero_division=0))
-    return metrics
+            y_label = test["label"].to_numpy(dtype=float)
+            metrics["accuracy"] = float(accuracy_score(y_label, pred_label))
+            metrics["f1"] = float(f1_score(y_label, pred_label, zero_division=0))
+            metrics["brier"] = brier_score(y_label, prob)
+            metrics["log_loss"] = binary_log_loss(y_label, prob)
+            metrics["calibration_ece"] = expected_calibration_error(y_label, prob)
+
+    return _normalize_metric_values(metrics)
 
 
 def run_evaluation(
@@ -205,7 +292,9 @@ def run_evaluation(
         return 2
 
     threshold = float(eval_cfg.get("classification_threshold", 0.02))
+    risk_free_rate_annual = float(eval_cfg.get("risk_free_rate_annual", 0.0))
     panel["label"] = (panel["forward_return"] >= threshold).astype(int)
+
     corpus_features = None
     corpus_dir = outputs_dir.parent / "corpus"
     daily_features_path = corpus_dir / "daily_features.csv"
@@ -224,19 +313,33 @@ def run_evaluation(
     mode = str(eval_cfg.get("mode", "both")).lower()
     for split in splits:
         enforce_no_lookahead(panel[panel["Date"] <= split.train_end], cutoff=split.train_end)
-        metrics_a = _evaluate_split(panel, split, include_corpus=False, mode=mode)
+
+        metrics_a = _evaluate_split(
+            panel,
+            split,
+            include_corpus=False,
+            mode=mode,
+            risk_free_rate_annual=risk_free_rate_annual,
+        )
         if metrics_a:
             metrics_a["model"] = "market_only"
             metrics_rows.append(metrics_a)
+
         if corpus_features is not None and not corpus_features.empty:
-            metrics_b = _evaluate_split(panel, split, include_corpus=True, mode=mode)
+            metrics_b = _evaluate_split(
+                panel,
+                split,
+                include_corpus=True,
+                mode=mode,
+                risk_free_rate_annual=risk_free_rate_annual,
+            )
             if metrics_b:
                 metrics_b["model"] = "market_plus_corpus"
                 metrics_rows.append(metrics_b)
 
     metrics_df = pd.DataFrame(metrics_rows)
     metrics_path = outputs_dir / "eval_metrics.csv"
-    metrics_df.to_csv(metrics_path, index=False)
+    metrics_df.to_csv(metrics_path, index=False, lineterminator="\n")
 
     report_lines = [
         "# Offline Evaluation Report",
@@ -244,19 +347,41 @@ def run_evaluation(
         f"- Symbols evaluated: {len(set(panel['symbol']))}",
         f"- Splits: {len(splits)}",
         f"- Classification threshold: {threshold:.2%}",
+        f"- Risk-free annual rate: {risk_free_rate_annual:.2%}",
         "",
     ]
+
     if metrics_df.empty:
         report_lines.append("No evaluation metrics generated.")
     else:
-        metric_cols = [col for col in ["mse", "mae", "accuracy", "f1"] if col in metrics_df.columns]
+        preferred_cols = [
+            "mse",
+            "rmse",
+            "mae",
+            "accuracy",
+            "f1",
+            "brier",
+            "log_loss",
+            "calibration_ece",
+            "volatility_ann",
+            "downside_vol_ann",
+            "cvar_95",
+            "max_drawdown",
+            "sharpe",
+            "sortino",
+            "beta_spy",
+            "information_ratio",
+        ]
+        metric_cols = [col for col in preferred_cols if col in metrics_df.columns]
         summary = metrics_df.groupby("model")[metric_cols].mean(numeric_only=True)
         report_lines.append("## Average Metrics")
         report_lines.append("")
         report_lines.append(summary.to_markdown())
+
     report_path = outputs_dir / "eval_report.md"
     report_path.write_text("\n".join(report_lines), encoding="utf-8")
 
     logger.info(f"[eval] metrics written to {metrics_path}")
     logger.info(f"[eval] report written to {report_path}")
     return 0
+

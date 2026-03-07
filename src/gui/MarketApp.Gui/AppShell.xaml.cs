@@ -16,33 +16,44 @@ public partial class AppShell : Shell
 
         Items.Add(new FlyoutItem
         {
+            Route = "dashboard",
             Title = "Dashboard",
-            Items = { new ShellContent { Content = dashboardPage, Title = "Dashboard" } }
+            Items = { new ShellContent { Route = "dashboard/home", Content = dashboardPage, Title = "Dashboard" } }
         });
+
         Items.Add(new FlyoutItem
         {
+            Route = "run",
             Title = "Run",
-            Items = { new ShellContent { Content = runPage, Title = "Run" } }
+            Items = { new ShellContent { Route = "run/orchestration", Content = runPage, Title = "Run Orchestration" } }
         });
+
         Items.Add(new FlyoutItem
         {
+            Route = "runs",
             Title = "Runs",
-            Items = { new ShellContent { Content = runsPage, Title = "History" } }
+            Items = { new ShellContent { Route = "runs/history", Content = runsPage, Title = "Runs History" } }
         });
+
         Items.Add(new FlyoutItem
         {
-            Title = "Universe",
-            Items = { new ShellContent { Content = universePage, Title = "Universe" } }
+            Route = "analysis",
+            Title = "Analysis",
+            Items = { new ShellContent { Route = "analysis/universe", Content = universePage, Title = "Universe" } }
         });
+
         Items.Add(new FlyoutItem
         {
+            Route = "settings",
             Title = "Settings",
-            Items = { new ShellContent { Content = settingsPage, Title = "Settings" } }
+            Items = { new ShellContent { Route = "settings/home", Content = settingsPage, Title = "Settings" } }
         });
+
         Items.Add(new FlyoutItem
         {
+            Route = "logs",
             Title = "Logs",
-            Items = { new ShellContent { Content = logsPage, Title = "Logs" } }
+            Items = { new ShellContent { Route = "logs/home", Content = logsPage, Title = "Logs" } }
         });
     }
 }

@@ -3,6 +3,7 @@ namespace MarketApp.Gui.Core;
 public class SettingsViewModel : ViewModelBase
 {
     private readonly ISecretsStore _secretsStore;
+    private readonly IUserSettingsService _userSettings;
     private string _configPath = "config/config.yaml";
     private string _pythonPath = "python";
     private string? _finnhub;
@@ -10,9 +11,10 @@ public class SettingsViewModel : ViewModelBase
     private string? _alphaVantage;
     private string _status = "Offline ready";
 
-    public SettingsViewModel(ISecretsStore secretsStore)
+    public SettingsViewModel(ISecretsStore secretsStore, IUserSettingsService userSettings)
     {
         _secretsStore = secretsStore;
+        _userSettings = userSettings;
         Title = "Settings";
         SaveSecretsCommand = new AsyncRelayCommand(SaveSecretsAsync);
     }
@@ -60,6 +62,7 @@ public class SettingsViewModel : ViewModelBase
         FinnhubKey = await _secretsStore.GetAsync("FINNHUB_API_KEY").ConfigureAwait(false);
         TwelveDataKey = await _secretsStore.GetAsync("TWELVEDATA_API_KEY").ConfigureAwait(false);
         AlphaVantageKey = await _secretsStore.GetAsync("ALPHAVANTAGE_API_KEY").ConfigureAwait(false);
+        PythonPath = _userSettings.GetPythonPath() ?? "python";
     }
 
     private async Task SaveSecretsAsync()
@@ -67,6 +70,8 @@ public class SettingsViewModel : ViewModelBase
         await _secretsStore.SetAsync("FINNHUB_API_KEY", FinnhubKey ?? string.Empty).ConfigureAwait(false);
         await _secretsStore.SetAsync("TWELVEDATA_API_KEY", TwelveDataKey ?? string.Empty).ConfigureAwait(false);
         await _secretsStore.SetAsync("ALPHAVANTAGE_API_KEY", AlphaVantageKey ?? string.Empty).ConfigureAwait(false);
-        StatusMessage = "Secrets saved locally";
+
+        _userSettings.SetPythonPath(PythonPath);
+        StatusMessage = "Settings saved locally";
     }
 }

@@ -157,15 +157,31 @@ try {
         $skipReason = if ($env:GITHUB_ACTIONS -eq 'true') { 'skipped: MAUI WinUI requires desktop session' } elseif (-not $IsWindows) { 'skipped: non-Windows platform' } else { 'skipped by flag' }
         Add-GateResult @{ name='gui_smoke'; status='skipped'; details=@{ reason=$skipReason } }
     } else {
-        $guiCmd = 'dotnet run --project src/gui/MarketApp.Gui/MarketApp.Gui.csproj --no-build -- --smoke'
+        $guiBuildCmd = 'dotnet build src/gui/MarketApp.Gui/MarketApp.Gui.csproj -c Release -p:Platform=x64 --no-restore'
+        $guiBuildRes = Invoke-LoggedCommand -Name 'gui_smoke_build' -Command $guiBuildCmd
+        if ($guiBuildRes.ExitCode -ne 0) {
+            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ step='build'; command=$guiBuildCmd } }
+            throw "GUI smoke build failed (see $($guiBuildRes.Log))"
+        }
+
+        $guiExeCandidates = @(
+            (Join-Path $repoRoot 'src/gui/MarketApp.Gui/bin/Release/net8.0-windows10.0.19041.0/win10-x64/MarketApp.Gui.exe'),
+            (Join-Path $repoRoot 'src/gui/MarketApp.Gui/bin/x64/Release/net8.0-windows10.0.19041.0/win10-x64/MarketApp.Gui.exe')
+        )
+        $guiExe = $guiExeCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+        if (-not $guiExe) {
+            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ step='locate_exe'; candidates=$guiExeCandidates } }
+            throw 'GUI smoke failed: built executable not found in expected output paths.'
+        }
+
+        $guiCmd = "& '$guiExe' --smoke"
         $guiRes = Invoke-LoggedCommand -Name 'gui_smoke' -Command $guiCmd
         if ($guiRes.ExitCode -ne 0) {
-            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ command=$guiCmd } }
+            Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ step='run'; command=$guiCmd; exe=$guiExe } }
             throw "GUI smoke failed (see $($guiRes.Log))"
         }
-        Add-GateResult @{ name='gui_smoke'; status='pass'; details=@{ command=$guiCmd } }
+        Add-GateResult @{ name='gui_smoke'; status='pass'; details=@{ command=$guiCmd; exe=$guiExe } }
     }
-
     # Gate: sbom
     if ($SkipSbom) {
         Add-GateResult @{ name='sbom'; status='skipped'; artifacts=@(); details=@{ reason='skipped by flag' } }

@@ -7,12 +7,14 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import yaml
 
 from market_monitor.config_schema import ConfigError, load_config, write_default_config
 from market_monitor.corpus import (
     build_corpus_daily_store,
     build_corpus_index,
     build_corpus_manifest,
+    build_market_gdelt_linkage,
     discover_corpus_sources,
     run_corpus_pipeline,
     validate_corpus_sources,
@@ -101,6 +103,94 @@ def _emit_progress_event(
     print(json.dumps(payload, ensure_ascii=False))
 
 
+def _resolve_asof_frontier_date(run_dir: Path) -> pd.Timestamp:
+    results_path = run_dir / "results.csv"
+    if results_path.exists():
+        results_df = pd.read_csv(results_path)
+        if "asof_date" in results_df.columns and not results_df.empty:
+            return pd.to_datetime(str(results_df["asof_date"].iloc[0]), errors="raise")
+
+    manifest_path = run_dir / "run_manifest.json"
+    if manifest_path.exists():
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        asof = payload.get("asof_date")
+        if asof:
+            return pd.to_datetime(str(asof), errors="raise")
+
+    raise RuntimeError("Unable to derive as-of frontier for last_date/lag_days backfill.")
+
+
+def _resolve_ohlcv_daily_dir(run_dir: Path) -> Path:
+    snapshot_path = run_dir / "config_snapshot.yaml"
+    if not snapshot_path.exists():
+        raise RuntimeError("Missing config_snapshot.yaml; cannot derive per-symbol last_date/lag_days.")
+
+    payload = yaml.safe_load(snapshot_path.read_text(encoding="utf-8")) or {}
+    paths_cfg = payload.get("paths") or {}
+    ohlcv_value = paths_cfg.get("ohlcv_daily_dir")
+    if not ohlcv_value:
+        raise RuntimeError("Config snapshot is missing paths.ohlcv_daily_dir.")
+
+    ohlcv_dir = Path(str(ohlcv_value)).expanduser()
+    if not ohlcv_dir.is_absolute():
+        repo_root = find_repo_root(run_dir)
+        ohlcv_dir = (repo_root / ohlcv_dir).resolve()
+
+    if not ohlcv_dir.exists():
+        raise RuntimeError(f"Configured ohlcv_daily_dir not found: {ohlcv_dir}")
+
+    return ohlcv_dir
+
+
+def _derive_quality_from_ohlcv(run_dir: Path, scored_df: pd.DataFrame) -> pd.DataFrame:
+    frontier_date = _resolve_asof_frontier_date(run_dir).date()
+    ohlcv_daily_dir = _resolve_ohlcv_daily_dir(run_dir)
+
+    symbols = (
+        scored_df.get("symbol", pd.Series(dtype=str))
+        .astype(str)
+        .str.upper()
+        .str.strip()
+    )
+    if symbols.empty:
+        raise RuntimeError("Unable to derive freshness: scored.csv has no symbols.")
+
+    rows: list[dict[str, Any]] = []
+    for symbol in symbols:
+        if not symbol:
+            continue
+        file_path = ohlcv_daily_dir / f"{symbol}.csv"
+        if not file_path.exists():
+            raise RuntimeError(f"Missing OHLCV file for symbol {symbol}: {file_path}")
+
+        df = read_ohlcv(file_path)
+        if df.empty or "date" not in df.columns:
+            raise RuntimeError(f"OHLCV file has no usable date column for symbol {symbol}: {file_path}")
+
+        dates = pd.to_datetime(df["date"], errors="coerce").dropna().dt.date
+        dates = dates[dates <= frontier_date]
+        if dates.empty:
+            raise RuntimeError(
+                f"No OHLCV rows on/before as-of frontier ({frontier_date}) for symbol {symbol}."
+            )
+
+        last_date = dates.max()
+        lag_days = int((frontier_date - last_date).days)
+        rows.append(
+            {
+                "symbol": symbol,
+                "last_date": last_date.isoformat(),
+                "lag_days": lag_days,
+            }
+        )
+
+    quality_df = pd.DataFrame(rows)
+    if quality_df.empty:
+        raise RuntimeError("Derived freshness dataframe is empty.")
+
+    return quality_df
+
+
 def _ensure_scored_freshness_columns(run_dir: Path) -> None:
     scored_path = run_dir / "scored.csv"
     if not scored_path.exists():
@@ -109,32 +199,20 @@ def _ensure_scored_freshness_columns(run_dir: Path) -> None:
     if {"last_date", "lag_days"}.issubset(scored_df.columns):
         return
 
-    data_quality_path = run_dir / "data_quality.csv"
-    if not data_quality_path.exists():
-        fallback_last_date = ""
-        results_path = run_dir / "results.csv"
-        if results_path.exists():
-            results_df = pd.read_csv(results_path)
-            if "asof_date" in results_df.columns and not results_df.empty:
-                fallback_last_date = str(results_df["asof_date"].iloc[0])
-        if not fallback_last_date:
-            manifest_path = run_dir / "run_manifest.json"
-            if manifest_path.exists():
-                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-                fallback_last_date = str(manifest.get("asof_date", ""))
-        if not fallback_last_date:
-            raise RuntimeError("Unable to derive last_date/lag_days for scored.csv.")
-        if "last_date" not in scored_df.columns:
-            scored_df["last_date"] = fallback_last_date
-        if "lag_days" not in scored_df.columns:
-            scored_df["lag_days"] = 0
-        scored_df.to_csv(scored_path, index=False, lineterminator="\n")
-        return
+    scored_df["symbol"] = scored_df.get("symbol", pd.Series(dtype=str)).astype(str).str.upper().str.strip()
 
-    quality_df = pd.read_csv(data_quality_path)
+    data_quality_path = run_dir / "data_quality.csv"
+    if data_quality_path.exists():
+        quality_df = pd.read_csv(data_quality_path)
+    else:
+        quality_df = _derive_quality_from_ohlcv(run_dir, scored_df)
+
     required_quality_cols = {"symbol", "last_date", "lag_days"}
     if not required_quality_cols.issubset(quality_df.columns):
         raise RuntimeError("data_quality.csv is missing symbol/last_date/lag_days for deterministic merge.")
+
+    quality_df = quality_df.copy()
+    quality_df["symbol"] = quality_df["symbol"].astype(str).str.upper().str.strip()
 
     merged = scored_df.merge(
         quality_df[["symbol", "last_date", "lag_days"]],
@@ -143,14 +221,18 @@ def _ensure_scored_freshness_columns(run_dir: Path) -> None:
         suffixes=("", "_dq"),
     )
     if "last_date" not in scored_df.columns:
-        merged["last_date"] = merged["last_date_dq"]
+        source_last_date = "last_date_dq" if "last_date_dq" in merged.columns else "last_date"
+        merged["last_date"] = merged[source_last_date]
     if "lag_days" not in scored_df.columns:
-        merged["lag_days"] = merged["lag_days_dq"]
+        source_lag_days = "lag_days_dq" if "lag_days_dq" in merged.columns else "lag_days"
+        merged["lag_days"] = merged[source_lag_days]
     merged = merged.drop(columns=["last_date_dq", "lag_days_dq"], errors="ignore")
     if merged["last_date"].isna().any() or merged["lag_days"].isna().any():
         raise RuntimeError("Deterministic merge failed: scored.csv still has missing last_date/lag_days.")
-    merged.to_csv(scored_path, index=False, lineterminator="\n")
 
+    merged["last_date"] = pd.to_datetime(merged["last_date"], errors="raise").dt.date.astype(str)
+    merged["lag_days"] = pd.to_numeric(merged["lag_days"], errors="raise").astype(int)
+    merged.to_csv(scored_path, index=False, lineterminator="\n")
 
 
 
@@ -1020,6 +1102,103 @@ def run_corpus_build(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def _parse_lag_values(raw: str) -> list[int]:
+    values: list[int] = []
+    for item in raw.split(","):
+        token = item.strip()
+        if not token:
+            continue
+        try:
+            lag = int(token)
+        except ValueError as exc:
+            raise ValueError(f"Invalid lag value '{token}'.") from exc
+        if lag <= 0:
+            raise ValueError(f"Lag values must be positive integers: '{token}'.")
+        values.append(lag)
+    return sorted(set(values))
+
+
+def run_corpus_build_linked(args: argparse.Namespace) -> int:
+    try:
+        config_path, base_dir, _ = _resolve_config_paths(args.config)
+        config, _ = _load_config_for_command(config_path)
+    except ConfigError as exc:
+        print(f"[error] {exc}")
+        return 2
+
+    logger = get_console_logger(args.log_level)
+    if not bool(config["data"].get("offline_mode", False)):
+        logger.error("Offline mode is required for linked corpus builds. Set data.offline_mode=true.")
+        return 3
+    set_offline_mode(True)
+
+    try:
+        lags = _parse_lag_values(args.lags)
+    except ValueError as exc:
+        print(f"[error] {exc}")
+        return 2
+
+    has_rolling = bool(args.rolling_window and (args.rolling_mean or args.rolling_sum))
+    if not lags and not has_rolling and not args.include_raw_gdelt:
+        print("[error] No GDELT feature selection set. Provide --lags/rolling flags or --include-raw-gdelt.")
+        return 2
+
+    watchlist_setting = args.watchlist or config.get("paths", {}).get("watchlist_file")
+    if not watchlist_setting:
+        print("[error] Missing watchlist path in args/config.")
+        return 2
+    watchlist_path = resolve_path(base_dir, watchlist_setting)
+    watchlist_df = read_watchlist(watchlist_path)
+    if watchlist_df.empty:
+        logger.error(f"Watchlist is empty or missing at {watchlist_path}.")
+        return 3
+
+    data_roots_cfg = config.setdefault("data_roots", {})
+    data_paths_cfg = config.setdefault("data", {}).setdefault("paths", {})
+    ohlcv_daily_setting = config.get("paths", {}).get("ohlcv_daily_dir")
+    if ohlcv_daily_setting and not data_roots_cfg.get("ohlcv_dir") and not data_paths_cfg.get("nasdaq_daily_dir"):
+        data_roots_cfg["ohlcv_dir"] = ohlcv_daily_setting
+        data_paths_cfg["nasdaq_daily_dir"] = ohlcv_daily_setting
+
+    outputs_root = resolve_path(base_dir, config.get("paths", {}).get("outputs_dir", "outputs"))
+    out_dir = resolve_path(base_dir, args.outdir) if args.outdir else outputs_root / "corpus_linked"
+
+    try:
+        provider = build_provider(config, logger, base_dir)
+        result = build_market_gdelt_linkage(
+            config=config,
+            base_dir=base_dir,
+            provider=provider,
+            watchlist_symbols=watchlist_df["symbol"].astype(str).str.upper().tolist(),
+            output_dir=out_dir,
+            lags=lags,
+            rolling_window=args.rolling_window,
+            rolling_mean=args.rolling_mean,
+            rolling_sum=args.rolling_sum,
+            rolling_min_periods=args.rolling_min_periods,
+            include_raw_gdelt=args.include_raw_gdelt,
+            output_format=args.output_format,
+            logger=logger,
+        )
+    except (ProviderError, FileNotFoundError, ValueError, RuntimeError) as exc:
+        print(f"[error] {exc}")
+        return 3
+
+    payload = {
+        "output_dir": str(result.output_dir),
+        "manifest_path": str(result.manifest_path),
+        "summary_path": str(result.summary_path),
+        "joined_manifest_path": str(result.joined_manifest_path),
+        "counts": {
+            "market_rows": result.market_rows,
+            "gdelt_rows": result.gdelt_rows,
+            "joined_rows": result.joined_rows,
+            "event_impact_rows": result.event_impact_rows,
+        },
+    }
+    print(json.dumps(payload, indent=2))
+    return 0
 def run_corpus_validate(args: argparse.Namespace) -> int:
     try:
         config_path, base_dir, _ = _resolve_config_paths(args.config)
@@ -1275,6 +1454,22 @@ def build_parser() -> argparse.ArgumentParser:
     corpus_validate_parser.add_argument("--outdir")
     corpus_validate_parser.add_argument("--log-level", default="INFO")
 
+    corpus_linked_parser = corpus_sub.add_parser(
+        "build-linked",
+        help="Build deterministic linked market+GDELT cause/effect artifacts",
+    )
+    corpus_linked_parser.add_argument("--config", default="config.yaml")
+    corpus_linked_parser.add_argument("--watchlist")
+    corpus_linked_parser.add_argument("--outdir")
+    corpus_linked_parser.add_argument("--lags", default="1,3,7")
+    corpus_linked_parser.add_argument("--rolling-window", type=int, default=None)
+    corpus_linked_parser.add_argument("--rolling-mean", action="store_true", default=False)
+    corpus_linked_parser.add_argument("--rolling-sum", action="store_true", default=False)
+    corpus_linked_parser.add_argument("--rolling-min-periods", type=int, default=None)
+    corpus_linked_parser.add_argument("--include-raw-gdelt", action="store_true", default=False)
+    corpus_linked_parser.add_argument("--output-format", choices=["csv", "parquet"], default="csv")
+    corpus_linked_parser.add_argument("--log-level", default="INFO")
+
     evaluate_parser = sub.add_parser("evaluate", help="Run offline evaluation harness")
     evaluate_parser.add_argument("--config", default="config.yaml")
     evaluate_parser.add_argument("--outdir")
@@ -1390,6 +1585,8 @@ def main(argv: list[str] | None = None) -> int:
             return run_corpus_build(args)
         if args.corpus_command == "validate":
             return run_corpus_validate(args)
+        if args.corpus_command == "build-linked":
+            return run_corpus_build_linked(args)
         return 2
 
     if args.command == "bulk-plan":
@@ -1456,3 +1653,7 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
+

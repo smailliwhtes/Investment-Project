@@ -43,6 +43,7 @@ def test_evaluation_deterministic_metrics() -> None:
         test_start=pd.Timestamp("2020-01-05"),
         test_end=pd.Timestamp("2020-01-06"),
     )
-    first = _evaluate_split(panel, split, include_corpus=False, mode="both")
-    second = _evaluate_split(panel, split, include_corpus=False, mode="both")
+    first = _evaluate_split(panel, split, include_corpus=False, mode="both", risk_free_rate_annual=0.0)
+    second = _evaluate_split(panel, split, include_corpus=False, mode="both", risk_free_rate_annual=0.0)
     assert first == second
+
