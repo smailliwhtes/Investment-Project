@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="8b7dc75a-8c7d-4dd2-aaf6-013b7e8b57ef" name="micha@LORD-CHUNGUS 2026-03-07 14:04:27" runUser="Lord-Chungus\CodexSandboxOffline" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-03-07T14:04:27.1965566-05:00" queuing="2026-03-07T14:04:27.1965568-05:00" start="2026-03-07T14:04:25.1388638-05:00" finish="2026-03-07T14:04:27.3796326-05:00" />
+  <TestSettings name="default" id="e9572520-8afe-41ad-adf3-9e256060d29f">
+    <Deployment runDeploymentRoot="micha_LORD-CHUNGUS_2026-03-07_14_04_27" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="799bbf31-4ede-4f2f-a095-429c46a44baf" testId="162d4ea6-8774-8ef4-3477-39244ab0b6d2" testName="MarketApp.Gui.Tests.EngineBridgeServiceTests.ResolvePythonPath_PrefersConfiguredPath" computerName="LORD-CHUNGUS" duration="00:00:00.0009842" startTime="2026-03-07T14:04:27.1446466-05:00" endTime="2026-03-07T14:04:27.1446477-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="799bbf31-4ede-4f2f-a095-429c46a44baf" />
+    <UnitTestResult executionId="f7ceaa7e-04b5-4704-a057-14d939b727e6" testId="5a337304-eba9-362a-a72f-9e0a06898d88" testName="MarketApp.Gui.Tests.SampleDataServiceTests.RunViewModel_UsesEngineBridgeProgressEvents" computerName="LORD-CHUNGUS" duration="00:00:00.1607947" startTime="2026-03-07T14:04:27.3398093-05:00" endTime="2026-03-07T14:04:27.3398097-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f7ceaa7e-04b5-4704-a057-14d939b727e6" />
+    <UnitTestResult executionId="b706fbd7-97b8-4e0d-a34c-d8ae018bedd9" testId="5a3ef11c-61d8-be54-3c55-fecda2dae1f2" testName="MarketApp.Gui.Tests.EngineBridgeServiceTests.TryParseProgressEvent_RejectsMalformedLine" computerName="LORD-CHUNGUS" duration="00:00:00.0013829" startTime="2026-03-07T14:04:27.1460964-05:00" endTime="2026-03-07T14:04:27.1460967-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b706fbd7-97b8-4e0d-a34c-d8ae018bedd9" />
+    <UnitTestResult executionId="b0a7fe36-7c4d-49ae-97ca-7f2a58d86c8f" testId="2c76865f-48f6-29d3-f662-65ade539a020" testName="MarketApp.Gui.Tests.EngineBridgeServiceTests.BuildRunArguments_IncludesOfflineWatchlistAndRawGdelt" computerName="LORD-CHUNGUS" duration="00:00:00.0047852" startTime="2026-03-07T14:04:27.1350749-05:00" endTime="2026-03-07T14:04:27.1350749-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b0a7fe36-7c4d-49ae-97ca-7f2a58d86c8f" />
+    <UnitTestResult executionId="915eacf4-862b-426d-887f-a2600924a455" testId="f62a42fd-b277-634e-d1c7-820a86bdae8c" testName="MarketApp.Gui.Tests.SampleDataServiceTests.Dashboard_IncludesLastDateAndLag" computerName="LORD-CHUNGUS" duration="00:00:00.0175956" startTime="2026-03-07T14:04:27.1438033-05:00" endTime="2026-03-07T14:04:27.1438034-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="915eacf4-862b-426d-887f-a2600924a455" />
+    <UnitTestResult executionId="484207cb-86f8-4b1e-bab3-b7326f0bd531" testId="51f52fe1-0712-60f9-034e-b546893ce0a4" testName="MarketApp.Gui.Tests.ContractsTests.ForecastOverlayModel_StoresContractFields" computerName="LORD-CHUNGUS" duration="00:00:00.0047862" startTime="2026-03-07T14:04:27.1335718-05:00" endTime="2026-03-07T14:04:27.1335842-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="484207cb-86f8-4b1e-bab3-b7326f0bd531" />
+    <UnitTestResult executionId="f0dfc8d3-5a3a-4d52-a188-15f3300caefc" testId="9584ffd1-2836-8a6b-c42c-6cce38134988" testName="MarketApp.Gui.Tests.EngineBridgeServiceTests.TryParseProgressEvent_ParsesContractJsonl" computerName="LORD-CHUNGUS" duration="00:00:00.0063522" startTime="2026-03-07T14:04:27.1390178-05:00" endTime="2026-03-07T14:04:27.1390179-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f0dfc8d3-5a3a-4d52-a188-15f3300caefc" />
+    <UnitTestResult executionId="baf4c4f9-3eb0-469c-b789-fbc0002fc0da" testId="2d36ab30-7a40-eb1e-f52d-dc290d98c8a9" testName="MarketApp.Gui.Tests.SampleDataServiceTests.Dashboard_LoadsCauseEffectAndBacktestArtifacts" computerName="LORD-CHUNGUS" duration="00:00:00.0333197" startTime="2026-03-07T14:04:27.1772092-05:00" endTime="2026-03-07T14:04:27.1772094-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="baf4c4f9-3eb0-469c-b789-fbc0002fc0da" />
+    <UnitTestResult executionId="fb023241-ccc5-4752-a088-c0f69f903db3" testId="321f64fe-ce87-b2ad-5d3c-2a68745d723f" testName="MarketApp.Gui.Tests.EngineBridgeServiceTests.ResolvePythonPath_UsesRepoVenvThenMarketAppVenv" computerName="LORD-CHUNGUS" duration="00:00:00.0039915" startTime="2026-03-07T14:04:27.1436158-05:00" endTime="2026-03-07T14:04:27.1436159-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fb023241-ccc5-4752-a088-c0f69f903db3" />
+    <UnitTestResult executionId="91d5f600-daf5-4fdd-b9b7-383cebd00f7a" testId="b7226d41-33ef-e5c7-c9aa-6baf5aeef9fa" testName="MarketApp.Gui.Tests.EngineBridgeServiceTests.BuildStartInfo_SetsPythonUtf8Environment" computerName="LORD-CHUNGUS" duration="00:00:00.0004858" startTime="2026-03-07T14:04:27.1395637-05:00" endTime="2026-03-07T14:04:27.1395638-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="91d5f600-daf5-4fdd-b9b7-383cebd00f7a" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="MarketApp.Gui.Tests.EngineBridgeServiceTests.ResolvePythonPath_PrefersConfiguredPath" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="162d4ea6-8774-8ef4-3477-39244ab0b6d2">
+      <Execution id="799bbf31-4ede-4f2f-a095-429c46a44baf" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.EngineBridgeServiceTests" name="ResolvePythonPath_PrefersConfiguredPath" />
+    </UnitTest>
+    <UnitTest name="MarketApp.Gui.Tests.EngineBridgeServiceTests.TryParseProgressEvent_RejectsMalformedLine" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="5a3ef11c-61d8-be54-3c55-fecda2dae1f2">
+      <Execution id="b706fbd7-97b8-4e0d-a34c-d8ae018bedd9" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.EngineBridgeServiceTests" name="TryParseProgressEvent_RejectsMalformedLine" />
+    </UnitTest>
+    <UnitTest name="MarketApp.Gui.Tests.SampleDataServiceTests.Dashboard_IncludesLastDateAndLag" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="f62a42fd-b277-634e-d1c7-820a86bdae8c">
+      <Execution id="915eacf4-862b-426d-887f-a2600924a455" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.SampleDataServiceTests" name="Dashboard_IncludesLastDateAndLag" />
+    </UnitTest>
+    <UnitTest name="MarketApp.Gui.Tests.EngineBridgeServiceTests.TryParseProgressEvent_ParsesContractJsonl" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="9584ffd1-2836-8a6b-c42c-6cce38134988">
+      <Execution id="f0dfc8d3-5a3a-4d52-a188-15f3300caefc" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.EngineBridgeServiceTests" name="TryParseProgressEvent_ParsesContractJsonl" />
+    </UnitTest>
+    <UnitTest name="MarketApp.Gui.Tests.EngineBridgeServiceTests.BuildRunArguments_IncludesOfflineWatchlistAndRawGdelt" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="2c76865f-48f6-29d3-f662-65ade539a020">
+      <Execution id="b0a7fe36-7c4d-49ae-97ca-7f2a58d86c8f" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.EngineBridgeServiceTests" name="BuildRunArguments_IncludesOfflineWatchlistAndRawGdelt" />
+    </UnitTest>
+    <UnitTest name="MarketApp.Gui.Tests.EngineBridgeServiceTests.BuildStartInfo_SetsPythonUtf8Environment" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="b7226d41-33ef-e5c7-c9aa-6baf5aeef9fa">
+      <Execution id="91d5f600-daf5-4fdd-b9b7-383cebd00f7a" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.EngineBridgeServiceTests" name="BuildStartInfo_SetsPythonUtf8Environment" />
+    </UnitTest>
+    <UnitTest name="MarketApp.Gui.Tests.EngineBridgeServiceTests.ResolvePythonPath_UsesRepoVenvThenMarketAppVenv" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="321f64fe-ce87-b2ad-5d3c-2a68745d723f">
+      <Execution id="fb023241-ccc5-4752-a088-c0f69f903db3" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.EngineBridgeServiceTests" name="ResolvePythonPath_UsesRepoVenvThenMarketAppVenv" />
+    </UnitTest>
+    <UnitTest name="MarketApp.Gui.Tests.ContractsTests.ForecastOverlayModel_StoresContractFields" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="51f52fe1-0712-60f9-034e-b546893ce0a4">
+      <Execution id="484207cb-86f8-4b1e-bab3-b7326f0bd531" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.ContractsTests" name="ForecastOverlayModel_StoresContractFields" />
+    </UnitTest>
+    <UnitTest name="MarketApp.Gui.Tests.SampleDataServiceTests.RunViewModel_UsesEngineBridgeProgressEvents" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="5a337304-eba9-362a-a72f-9e0a06898d88">
+      <Execution id="f7ceaa7e-04b5-4704-a057-14d939b727e6" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.SampleDataServiceTests" name="RunViewModel_UsesEngineBridgeProgressEvents" />
+    </UnitTest>
+    <UnitTest name="MarketApp.Gui.Tests.SampleDataServiceTests.Dashboard_LoadsCauseEffectAndBacktestArtifacts" storage="c:\users\micha\onedrive\desktop\investment-project\src\gui\marketapp.gui.tests\bin\release\net8.0\marketapp.gui.tests.dll" id="2d36ab30-7a40-eb1e-f52d-dc290d98c8a9">
+      <Execution id="baf4c4f9-3eb0-469c-b789-fbc0002fc0da" />
+      <TestMethod codeBase="C:\Users\micha\OneDrive\Desktop\Investment-Project\src\gui\MarketApp.Gui.Tests\bin\Release\net8.0\MarketApp.Gui.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="MarketApp.Gui.Tests.SampleDataServiceTests" name="Dashboard_LoadsCauseEffectAndBacktestArtifacts" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="162d4ea6-8774-8ef4-3477-39244ab0b6d2" executionId="799bbf31-4ede-4f2f-a095-429c46a44baf" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="5a337304-eba9-362a-a72f-9e0a06898d88" executionId="f7ceaa7e-04b5-4704-a057-14d939b727e6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="5a3ef11c-61d8-be54-3c55-fecda2dae1f2" executionId="b706fbd7-97b8-4e0d-a34c-d8ae018bedd9" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2c76865f-48f6-29d3-f662-65ade539a020" executionId="b0a7fe36-7c4d-49ae-97ca-7f2a58d86c8f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f62a42fd-b277-634e-d1c7-820a86bdae8c" executionId="915eacf4-862b-426d-887f-a2600924a455" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="51f52fe1-0712-60f9-034e-b546893ce0a4" executionId="484207cb-86f8-4b1e-bab3-b7326f0bd531" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9584ffd1-2836-8a6b-c42c-6cce38134988" executionId="f0dfc8d3-5a3a-4d52-a188-15f3300caefc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2d36ab30-7a40-eb1e-f52d-dc290d98c8a9" executionId="baf4c4f9-3eb0-469c-b789-fbc0002fc0da" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="321f64fe-ce87-b2ad-5d3c-2a68745d723f" executionId="fb023241-ccc5-4752-a088-c0f69f903db3" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b7226d41-33ef-e5c7-c9aa-6baf5aeef9fa" executionId="91d5f600-daf5-4fdd-b9b7-383cebd00f7a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="10" executed="10" passed="10" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.8.2+699d445a1a (64-bit .NET 8.0.24)&#xD;
+[xUnit.net 00:00:01.65]   Discovering: MarketApp.Gui.Tests&#xD;
+[xUnit.net 00:00:01.67]   Discovered:  MarketApp.Gui.Tests&#xD;
+[xUnit.net 00:00:01.68]   Starting:    MarketApp.Gui.Tests&#xD;
+[xUnit.net 00:00:01.92]   Finished:    MarketApp.Gui.Tests&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>
