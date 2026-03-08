@@ -23,36 +23,72 @@
         <Setter Property="BorderWidth" Value="1" />
         <Setter Property="TextColor" Value="#FFFFFF" />
       </Style>
+
+      <Style x:Key="PageTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontAttributes" Value="Bold" />
+      </Style>
+
+      <Style x:Key="SectionTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontAttributes" Value="Bold" />
+      </Style>
+
+      <Style x:Key="BodyLabelStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+      </Style>
+
+      <Style x:Key="ActionButtonStyle" TargetType="Button">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinimumHeightRequest" Value="38" />
+        <Setter Property="Padding" Value="14,8" />
+      </Style>
+
+      <Style x:Key="PickerStyle" TargetType="Picker">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinimumHeightRequest" Value="40" />
+      </Style>
+
+      <Style x:Key="TableHeaderStyle" TargetType="Label">
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="FontSize" Value="13" />
+      </Style>
+
+      <Style x:Key="TableCellStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="LineBreakMode" Value="TailTruncation" />
+        <Setter Property="MaxLines" Value="1" />
+      </Style>
     </ResourceDictionary>
   </ContentPage.Resources>
 
   <ScrollView>
-    <VerticalStackLayout Padding="16" Spacing="12">
+    <VerticalStackLayout Padding="18" Spacing="14">
       <HorizontalStackLayout Spacing="6">
-        <Label Text="Run history" FontSize="22" FontAttributes="Bold" />
+        <Label Text="Run history" Style="{StaticResource PageTitleStyle}" />
         <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_history" Clicked="OnInfoClicked" />
       </HorizontalStackLayout>
 
-      <Frame>
-        <VerticalStackLayout Spacing="6">
-          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
-            <Label Text="Run id" FontAttributes="Bold" />
-            <Label Text="Started" Grid.Column="1" FontAttributes="Bold" />
-            <Label Text="Finished" Grid.Column="2" FontAttributes="Bold" />
-            <Label Text="Universe" Grid.Column="3" FontAttributes="Bold" />
-            <Label Text="Eligible" Grid.Column="4" FontAttributes="Bold" />
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="8">
+          <Grid ColumnDefinitions="2.2*,1.2*,1.2*,0.8*,0.8*" Padding="0,0,0,4" ColumnSpacing="8">
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Run id" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Started" Grid.Column="1" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Finished" Grid.Column="2" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Universe" Grid.Column="3" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Eligible" Grid.Column="4" />
           </Grid>
 
-          <ScrollView HeightRequest="180">
+          <ScrollView HeightRequest="190">
             <VerticalStackLayout BindableLayout.ItemsSource="{Binding Runs}" Spacing="2">
               <BindableLayout.ItemTemplate>
                 <DataTemplate>
-                  <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2" MinimumHeightRequest="24">
-                    <Label Text="{Binding RunId}" LineBreakMode="TailTruncation" MaxLines="1" />
-                    <Label Text="{Binding StartedAt, StringFormat='{}{0:MM-dd HH:mm}'}" Grid.Column="1" />
-                    <Label Text="{Binding FinishedAt, StringFormat='{}{0:MM-dd HH:mm}'}" Grid.Column="2" />
-                    <Label Text="{Binding UniverseCount}" Grid.Column="3" />
-                    <Label Text="{Binding EligibleCount}" Grid.Column="4" />
+                  <Grid ColumnDefinitions="2.2*,1.2*,1.2*,0.8*,0.8*" Padding="0,2" ColumnSpacing="8" MinimumHeightRequest="26">
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding RunId}" />
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding StartedAt, StringFormat='{}{0:MM-dd HH:mm}'}" Grid.Column="1" />
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding FinishedAt, StringFormat='{}{0:MM-dd HH:mm}'}" Grid.Column="2" />
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding UniverseCount}" Grid.Column="3" />
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding EligibleCount}" Grid.Column="4" />
                   </Grid>
                 </DataTemplate>
               </BindableLayout.ItemTemplate>
@@ -61,56 +97,56 @@
         </VerticalStackLayout>
       </Frame>
 
-      <Frame>
-        <VerticalStackLayout Spacing="8">
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="10">
           <HorizontalStackLayout Spacing="6">
-            <Label Text="Run comparison" FontAttributes="Bold" />
+            <Label Text="Run comparison" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_compare" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
 
-          <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-            <VerticalStackLayout>
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+            <VerticalStackLayout Spacing="6">
               <HorizontalStackLayout Spacing="6">
-                <Label Text="Run A" />
+                <Label Style="{StaticResource BodyLabelStyle}" Text="Run A" />
                 <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_a" Clicked="OnInfoClicked" />
               </HorizontalStackLayout>
-              <Picker ItemsSource="{Binding Runs}" SelectedItem="{Binding SelectedRunA}" ItemDisplayBinding="{Binding RunId}" />
+              <Picker Style="{StaticResource PickerStyle}" ItemsSource="{Binding Runs}" SelectedItem="{Binding SelectedRunA}" ItemDisplayBinding="{Binding RunId}" />
             </VerticalStackLayout>
-            <VerticalStackLayout Grid.Column="1">
+            <VerticalStackLayout Grid.Column="1" Spacing="6">
               <HorizontalStackLayout Spacing="6">
-                <Label Text="Run B" />
+                <Label Style="{StaticResource BodyLabelStyle}" Text="Run B" />
                 <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_b" Clicked="OnInfoClicked" />
               </HorizontalStackLayout>
-              <Picker ItemsSource="{Binding Runs}" SelectedItem="{Binding SelectedRunB}" ItemDisplayBinding="{Binding RunId}" />
+              <Picker Style="{StaticResource PickerStyle}" ItemsSource="{Binding Runs}" SelectedItem="{Binding SelectedRunB}" ItemDisplayBinding="{Binding RunId}" />
             </VerticalStackLayout>
           </Grid>
 
-          <HorizontalStackLayout Spacing="8">
-            <Button Text="Refresh" Command="{Binding RefreshCommand}" />
-            <Button Text="Compare" Command="{Binding CompareCommand}" />
-          </HorizontalStackLayout>
+          <FlexLayout Direction="Row" Wrap="Wrap" AlignItems="Start" JustifyContent="Start">
+            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Refresh" Command="{Binding RefreshCommand}" />
+            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Compare" Command="{Binding CompareCommand}" />
+          </FlexLayout>
 
-          <Label Text="{Binding Status}" />
-          <Label Text="{Binding DiffSummary}" />
+          <Label Style="{StaticResource BodyLabelStyle}" Text="{Binding Status}" />
+          <Label Style="{StaticResource BodyLabelStyle}" Text="{Binding DiffSummary}" />
 
-          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
-            <Label Text="Symbol" FontAttributes="Bold" />
-            <Label Text="Delta score" Grid.Column="1" FontAttributes="Bold" />
-            <Label Text="Delta rank" Grid.Column="2" FontAttributes="Bold" />
-            <Label Text="Flags A" Grid.Column="3" FontAttributes="Bold" />
-            <Label Text="Flags B" Grid.Column="4" FontAttributes="Bold" />
+          <Grid ColumnDefinitions="2.2*,1.1*,0.9*,0.8*,0.8*" Padding="0,0,0,4" ColumnSpacing="8">
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Symbol" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Delta score" Grid.Column="1" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Delta rank" Grid.Column="2" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Flags A" Grid.Column="3" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Flags B" Grid.Column="4" />
           </Grid>
 
           <ScrollView HeightRequest="220">
             <VerticalStackLayout BindableLayout.ItemsSource="{Binding DiffRows}" Spacing="2">
               <BindableLayout.ItemTemplate>
                 <DataTemplate>
-                  <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2" MinimumHeightRequest="24">
-                    <Label Text="{Binding Symbol}" />
-                    <Label Text="{Binding DeltaScore, StringFormat='{}{0:F4}'}" Grid.Column="1" />
-                    <Label Text="{Binding DeltaRank}" Grid.Column="2" />
-                    <Label Text="{Binding FlagsA}" Grid.Column="3" />
-                    <Label Text="{Binding FlagsB}" Grid.Column="4" />
+                  <Grid ColumnDefinitions="2.2*,1.1*,0.9*,0.8*,0.8*" Padding="0,2" ColumnSpacing="8" MinimumHeightRequest="26">
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding Symbol}" />
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding DeltaScore, StringFormat='{}{0:F4}'}" Grid.Column="1" />
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding DeltaRank}" Grid.Column="2" />
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding FlagsA}" Grid.Column="3" />
+                    <Label Style="{StaticResource TableCellStyle}" Text="{Binding FlagsB}" Grid.Column="4" />
                   </Grid>
                 </DataTemplate>
               </BindableLayout.ItemTemplate>
@@ -119,30 +155,30 @@
         </VerticalStackLayout>
       </Frame>
 
-      <Frame>
-        <VerticalStackLayout Spacing="6">
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="8">
           <HorizontalStackLayout Spacing="6">
-            <Label Text="Run A quality" FontAttributes="Bold" />
+            <Label Text="Run A quality" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_a_quality" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
 
-          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
-            <Label Text="Model" FontAttributes="Bold" />
-            <Label Text="MSE" Grid.Column="1" FontAttributes="Bold" />
-            <Label Text="MAE" Grid.Column="2" FontAttributes="Bold" />
-            <Label Text="Accuracy" Grid.Column="3" FontAttributes="Bold" />
-            <Label Text="F1" Grid.Column="4" FontAttributes="Bold" />
+          <Grid ColumnDefinitions="2.2*,0.9*,0.9*,0.9*,0.9*" Padding="0,0,0,4" ColumnSpacing="8">
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Model" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="MSE" Grid.Column="1" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="MAE" Grid.Column="2" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Accuracy" Grid.Column="3" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="F1" Grid.Column="4" />
           </Grid>
 
           <VerticalStackLayout BindableLayout.ItemsSource="{Binding SelectedRunMetrics}" Spacing="2">
             <BindableLayout.ItemTemplate>
               <DataTemplate>
-                <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2" MinimumHeightRequest="24">
-                  <Label Text="{Binding Model}" LineBreakMode="TailTruncation" MaxLines="1" />
-                  <Label Text="{Binding Mse, StringFormat='{}{0:F4}'}" Grid.Column="1" />
-                  <Label Text="{Binding Mae, StringFormat='{}{0:F4}'}" Grid.Column="2" />
-                  <Label Text="{Binding Accuracy, StringFormat='{}{0:P1}'}" Grid.Column="3" />
-                  <Label Text="{Binding F1, StringFormat='{}{0:P1}'}" Grid.Column="4" />
+                <Grid ColumnDefinitions="2.2*,0.9*,0.9*,0.9*,0.9*" Padding="0,2" ColumnSpacing="8" MinimumHeightRequest="26">
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding Model}" />
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding Mse, StringFormat='{}{0:F4}'}" Grid.Column="1" />
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding Mae, StringFormat='{}{0:F4}'}" Grid.Column="2" />
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding Accuracy, StringFormat='{}{0:P1}'}" Grid.Column="3" />
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding F1, StringFormat='{}{0:P1}'}" Grid.Column="4" />
                 </Grid>
               </DataTemplate>
             </BindableLayout.ItemTemplate>

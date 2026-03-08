@@ -23,14 +23,26 @@
         <Setter Property="BorderWidth" Value="1" />
         <Setter Property="TextColor" Value="#FFFFFF" />
       </Style>
+
+      <Style x:Key="PageTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontAttributes" Value="Bold" />
+      </Style>
     </ResourceDictionary>
   </ContentPage.Resources>
 
-  <VerticalStackLayout Padding="16" Spacing="12">
+  <VerticalStackLayout Padding="18" Spacing="14">
     <HorizontalStackLayout Spacing="6">
-      <Label Text="Engine &amp; UI logs" FontSize="22" FontAttributes="Bold" />
+      <Label Text="Engine &amp; UI logs" Style="{StaticResource PageTitleStyle}" />
       <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="logs" Clicked="OnInfoClicked" />
     </HorizontalStackLayout>
-    <Editor Text="{Binding CombinedLog}" AutoSize="TextChanges" IsReadOnly="True" HeightRequest="300" />
+
+    <Frame Padding="12">
+      <Editor Text="{Binding CombinedLog}"
+              FontSize="13"
+              AutoSize="TextChanges"
+              IsReadOnly="True"
+              HeightRequest="480" />
+    </Frame>
   </VerticalStackLayout>
 </ContentPage>

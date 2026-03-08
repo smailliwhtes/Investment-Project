@@ -23,75 +23,115 @@
         <Setter Property="BorderWidth" Value="1" />
         <Setter Property="TextColor" Value="#FFFFFF" />
       </Style>
+
+      <Style x:Key="PageTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontAttributes" Value="Bold" />
+      </Style>
+
+      <Style x:Key="SectionTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontAttributes" Value="Bold" />
+      </Style>
+
+      <Style x:Key="BodyLabelStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+      </Style>
+
+      <Style x:Key="TableHeaderStyle" TargetType="Label">
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="FontSize" Value="13" />
+      </Style>
+
+      <Style x:Key="TableCellStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="LineBreakMode" Value="TailTruncation" />
+        <Setter Property="MaxLines" Value="1" />
+      </Style>
+
+      <Style x:Key="InputEntryStyle" TargetType="Entry">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinimumHeightRequest" Value="40" />
+      </Style>
+
+      <Style x:Key="PickerStyle" TargetType="Picker">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinimumHeightRequest" Value="40" />
+      </Style>
     </ResourceDictionary>
   </ContentPage.Resources>
 
-  <VerticalStackLayout Padding="16" Spacing="12">
-    <HorizontalStackLayout Spacing="6">
-      <Label Text="Universe and scored symbols" FontSize="22" FontAttributes="Bold" />
-      <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="universe_symbols" Clicked="OnInfoClicked" />
-    </HorizontalStackLayout>
+  <ScrollView>
+    <VerticalStackLayout Padding="18" Spacing="14">
+      <HorizontalStackLayout Spacing="6">
+        <Label Text="Universe and scored symbols" Style="{StaticResource PageTitleStyle}" />
+        <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="universe_symbols" Clicked="OnInfoClicked" />
+      </HorizontalStackLayout>
 
-    <Entry Placeholder="Filter by symbol or theme" Text="{Binding FilterText}" />
+      <Entry Style="{StaticResource InputEntryStyle}" Placeholder="Filter by symbol or theme" Text="{Binding FilterText}" />
 
-    <CollectionView ItemsSource="{Binding FilteredScores}"
-                    SelectionMode="Single"
-                    SelectedItem="{Binding SelectedScore}"
-                    ItemSizingStrategy="MeasureAllItems"
-                    HeightRequest="280">
-      <CollectionView.ItemsLayout>
-        <LinearItemsLayout Orientation="Vertical" ItemSpacing="2" />
-      </CollectionView.ItemsLayout>
-      <CollectionView.Header>
-        <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
-          <Label Text="Symbol" FontAttributes="Bold" />
-          <Label Text="Score" Grid.Column="1" FontAttributes="Bold" />
-          <Label Text="Lag days" Grid.Column="2" FontAttributes="Bold" />
-          <Label Text="Themes" Grid.Column="3" FontAttributes="Bold" />
-          <Label Text="Flags" Grid.Column="4" FontAttributes="Bold" />
-        </Grid>
-      </CollectionView.Header>
-      <CollectionView.ItemTemplate>
-        <DataTemplate>
-          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2" MinimumHeightRequest="24">
-            <Label Text="{Binding Symbol}" />
-            <Label Text="{Binding Score, StringFormat='{}{0:F2}'}" Grid.Column="1" />
-            <Label Text="{Binding LagDays}" Grid.Column="2" />
-            <Label Text="{Binding ThemeLabels}" Grid.Column="3" LineBreakMode="TailTruncation" MaxLines="1" />
-            <Label Text="{Binding FlagsCount}" Grid.Column="4" />
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="8">
+          <Grid ColumnDefinitions="1.4*,0.8*,0.8*,2.2*,0.8*" Padding="0,0,0,4" ColumnSpacing="8">
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Symbol" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Score" Grid.Column="1" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Lag days" Grid.Column="2" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Themes" Grid.Column="3" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Flags" Grid.Column="4" />
           </Grid>
-        </DataTemplate>
-      </CollectionView.ItemTemplate>
-    </CollectionView>
 
-    <Frame>
-      <VerticalStackLayout Spacing="8">
-        <HorizontalStackLayout Spacing="6">
-          <Label Text="Symbol detail" FontAttributes="Bold" />
-          <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="symbol_detail" Clicked="OnInfoClicked" />
-        </HorizontalStackLayout>
-        <Picker ItemsSource="{Binding DetailTabs}" SelectedItem="{Binding SelectedDetailTab}" />
-
-        <VerticalStackLayout IsVisible="{Binding IsOverviewTab}" Spacing="8">
-          <Label Text="{Binding SelectedScore.Symbol}" FontAttributes="Bold" FontSize="18" />
-          <Label Text="{Binding SelectedScore.LastDate, StringFormat='Last date: {0}'}" />
-          <Label Text="{Binding SelectedScore.GatesPassed, StringFormat='Gates: {0}'}" />
-          <Label Text="{Binding SelectedScore.ThemeLabels, StringFormat='Themes: {0}'}" />
-
-          <ContentView Content="{Binding PriceChart}" HeightRequest="280" />
-          <ContentView Content="{Binding IndicatorChart}" HeightRequest="200" />
+          <CollectionView ItemsSource="{Binding FilteredScores}"
+                          SelectionMode="Single"
+                          SelectedItem="{Binding SelectedScore}"
+                          ItemSizingStrategy="MeasureAllItems"
+                          HeightRequest="300">
+            <CollectionView.ItemsLayout>
+              <LinearItemsLayout Orientation="Vertical" ItemSpacing="2" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="1.4*,0.8*,0.8*,2.2*,0.8*" Padding="0,2" ColumnSpacing="8" MinimumHeightRequest="26">
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding Symbol}" />
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding Score, StringFormat='{}{0:F2}'}" Grid.Column="1" />
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding LagDays}" Grid.Column="2" />
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding ThemeLabels}" Grid.Column="3" />
+                  <Label Style="{StaticResource TableCellStyle}" Text="{Binding FlagsCount}" Grid.Column="4" />
+                </Grid>
+              </DataTemplate>
+            </CollectionView.ItemTemplate>
+          </CollectionView>
         </VerticalStackLayout>
+      </Frame>
 
-        <VerticalStackLayout IsVisible="{Binding IsExplainTab}" Spacing="6">
-          <Label Text="Explain" FontAttributes="Bold" />
-          <Label Text="{Binding ExplainSummary}" />
-        </VerticalStackLayout>
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="10">
+          <HorizontalStackLayout Spacing="6">
+            <Label Text="Symbol detail" Style="{StaticResource SectionTitleStyle}" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="symbol_detail" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+          <Picker Style="{StaticResource PickerStyle}" ItemsSource="{Binding DetailTabs}" SelectedItem="{Binding SelectedDetailTab}" />
 
-        <VerticalStackLayout IsVisible="{Binding IsQualityTab}" Spacing="6">
-          <Label Text="Quality" FontAttributes="Bold" />
-          <Label Text="{Binding QualitySummary}" />
+          <VerticalStackLayout IsVisible="{Binding IsOverviewTab}" Spacing="8">
+            <Label Text="{Binding SelectedScore.Symbol}" FontAttributes="Bold" FontSize="18" />
+            <Label Style="{StaticResource BodyLabelStyle}" Text="{Binding SelectedScore.LastDate, StringFormat='Last date: {0}'}" />
+            <Label Style="{StaticResource BodyLabelStyle}" Text="{Binding SelectedScore.GatesPassed, StringFormat='Gates: {0}'}" />
+            <Label Style="{StaticResource BodyLabelStyle}" Text="{Binding SelectedScore.ThemeLabels, StringFormat='Themes: {0}'}" />
+
+            <ContentView Content="{Binding PriceChart}" HeightRequest="300" />
+            <ContentView Content="{Binding IndicatorChart}" HeightRequest="220" />
+          </VerticalStackLayout>
+
+          <VerticalStackLayout IsVisible="{Binding IsExplainTab}" Spacing="6">
+            <Label Text="Explain" Style="{StaticResource SectionTitleStyle}" />
+            <Label Style="{StaticResource BodyLabelStyle}" Text="{Binding ExplainSummary}" />
+          </VerticalStackLayout>
+
+          <VerticalStackLayout IsVisible="{Binding IsQualityTab}" Spacing="6">
+            <Label Text="Quality" Style="{StaticResource SectionTitleStyle}" />
+            <Label Style="{StaticResource BodyLabelStyle}" Text="{Binding QualitySummary}" />
+          </VerticalStackLayout>
         </VerticalStackLayout>
-      </VerticalStackLayout>
-    </Frame>
-  </VerticalStackLayout>
+      </Frame>
+    </VerticalStackLayout>
+  </ScrollView>
 </ContentPage>
