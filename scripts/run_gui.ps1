@@ -1,3 +1,7 @@
+param(
+  [switch]$Rebuild
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -26,28 +30,88 @@ if (-not $gui) { throw "GUI .csproj not found under $repoRoot" }
 
 Write-Host "GUI project: $gui"
 
-# Ensure MAUI workloads exist
-# Keep workload install as best-effort in case components are already present.
-try {
-  dotnet workload install maui maui-windows | Out-Host
-} catch {
-  Write-Host "workload install warning: $($_.Exception.Message)"
+$configuration = "Release"
+$platform = "x64"
+$buildSucceeded = $false
+
+if ($Rebuild) {
+  try {
+    dotnet workload restore --project "$gui" | Out-Host
+    dotnet restore "$gui" | Out-Host
+    dotnet build "$gui" -c $configuration -p:Platform=$platform | Out-Host
+    $buildSucceeded = $true
+  } catch {
+    Write-Host "build warning: $($_.Exception.Message)"
+    Write-Host "Continuing with most recent existing GUI executable..."
+  }
+} else {
+  Write-Host "Skipping build (use -Rebuild to restore/build before launch)."
 }
 
-# Restore/build with x64 so runtime layout matches verified smoke path.
-dotnet workload restore --project "$gui" | Out-Host
-dotnet restore "$gui" | Out-Host
-dotnet build "$gui" -c Debug -p:Platform=x64 | Out-Host
-
 $projectDir = Split-Path -Parent $gui
-$exe = Get-ChildItem -Path (Join-Path $projectDir 'bin') -Recurse -Filter 'MarketApp.Gui.exe' -ErrorAction SilentlyContinue |
-  Where-Object { $_.FullName -match '\\Debug\\' -and $_.FullName -match '\\win10-x64\\' } |
-  Sort-Object LastWriteTime -Descending |
-  Select-Object -First 1
+$exeCandidates = Get-ChildItem -Path (Join-Path $projectDir 'bin') -Recurse -Filter 'MarketApp.Gui.exe' -ErrorAction SilentlyContinue |
+  Where-Object { $_.FullName -like '*\win10-x64\*' }
+
+if ($buildSucceeded) {
+  $exe = $exeCandidates |
+    Where-Object { $_.FullName -like "*\$configuration\*" -and $_.FullName -like "*\$platform\*" } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+} else {
+  $exe = $exeCandidates |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+}
 
 if (-not $exe) {
-  throw "Built GUI executable not found under $projectDir/bin"
+  throw "GUI executable not found under $projectDir/bin. Build once with 'dotnet build src/gui/MarketApp.Gui/MarketApp.Gui.csproj -c Release -p:Platform=x64' then rerun this script."
 }
 
 Write-Host "Launching GUI: $($exe.FullName)"
-& $exe.FullName | Out-Host
+
+# Ensure local shell variables from smoke checks do not force an immediate auto-exit.
+Remove-Item Env:MARKETAPP_SMOKE_MODE -ErrorAction SilentlyContinue
+Remove-Item Env:MARKETAPP_SMOKE_READY_FILE -ErrorAction SilentlyContinue
+Remove-Item Env:MARKETAPP_SMOKE_HOLD_SECONDS -ErrorAction SilentlyContinue
+
+$proc = Start-Process -FilePath $exe.FullName -PassThru
+Start-Sleep -Seconds 3
+$proc.Refresh()
+if ($proc.HasExited) {
+  Write-Error "GUI exited during startup (exit code: $($proc.ExitCode))."
+
+  try {
+    $since = (Get-Date).AddMinutes(-2)
+    $events = Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $since } |
+      Where-Object { $_.Message -like '*MarketApp.Gui.exe*' } |
+      Sort-Object TimeCreated -Descending |
+      Select-Object -First 3
+
+    if ($events) {
+      Write-Host "Recent Application log events:"
+      $events | ForEach-Object {
+        Write-Host "[$($_.TimeCreated)] Provider=$($_.ProviderName) Id=$($_.Id)"
+      }
+    }
+  } catch {
+    Write-Host "Unable to read Application event logs in this session."
+  }
+
+  $winuiLog = Join-Path $env:TEMP 'marketapp_winui_startup_error.log'
+  if (Test-Path -LiteralPath $winuiLog) {
+    Write-Host "Recent WinUI startup errors (tail):"
+    Get-Content -Path $winuiLog -Tail 30 | ForEach-Object { Write-Host $_ }
+  }
+
+  exit 1
+}
+
+# Catch the specific WinUI startup failure state where process survives but app window is broken.
+$procDetails = Get-Process -Id $proc.Id -ErrorAction SilentlyContinue
+if ($procDetails -and $procDetails.MainWindowTitle -like '*could not be started*') {
+  Write-Error "GUI process started but WinUI failed to initialize (window title: '$($procDetails.MainWindowTitle)')."
+  exit 1
+}
+
+Write-Host "GUI launched (PID $($proc.Id)). This shell is free to use while the app remains open."
+

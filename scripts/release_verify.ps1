@@ -202,8 +202,8 @@ try {
         }
 
         $guiExeCandidates = @(
-            (Join-Path $repoRoot 'src/gui/MarketApp.Gui/bin/Release/net8.0-windows10.0.19041.0/win10-x64/MarketApp.Gui.exe'),
-            (Join-Path $repoRoot 'src/gui/MarketApp.Gui/bin/x64/Release/net8.0-windows10.0.19041.0/win10-x64/MarketApp.Gui.exe')
+            (Join-Path $repoRoot 'src/gui/MarketApp.Gui/bin/x64/Release/net8.0-windows10.0.19041.0/win10-x64/MarketApp.Gui.exe'),
+            (Join-Path $repoRoot 'src/gui/MarketApp.Gui/bin/Release/net8.0-windows10.0.19041.0/win10-x64/MarketApp.Gui.exe')
         )
         $guiExe = $guiExeCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
         if (-not $guiExe) {
@@ -211,13 +211,24 @@ try {
             throw 'GUI smoke failed: built executable not found in expected output paths.'
         }
 
-        $guiCmd = "& '$guiExe' --smoke"
+        $guiCmd = @"
+`$proc = Start-Process -FilePath '$guiExe' -PassThru
+Start-Sleep -Seconds 5
+`$proc.Refresh()
+if (`$proc.HasExited) {
+    Write-Output "GuiExitedEarly=`$(`$proc.ExitCode)"
+    exit 1
+}
+Stop-Process -Id `$proc.Id -Force
+Write-Output 'GuiLaunchAliveThenStopped'
+exit 0
+"@
         $guiRes = Invoke-LoggedCommand -Name 'gui_smoke' -Command $guiCmd
         if ($guiRes.ExitCode -ne 0) {
             Add-GateResult @{ name='gui_smoke'; status='fail'; details=@{ step='run'; command=$guiCmd; exe=$guiExe } }
             throw "GUI smoke failed (see $($guiRes.Log))"
         }
-        Add-GateResult @{ name='gui_smoke'; status='pass'; details=@{ command=$guiCmd; exe=$guiExe } }
+        Add-GateResult @{ name='gui_smoke'; status='pass'; details=@{ command='Start-Process liveness check (5s)'; exe=$guiExe } }
     }
     # Gate: sbom
     if ($SkipSbom) {
