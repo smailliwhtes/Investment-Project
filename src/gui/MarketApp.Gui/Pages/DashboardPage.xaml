@@ -3,6 +3,38 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="MarketApp.Gui.Pages.DashboardPage"
              Title="Dashboard">
+  <ContentPage.Resources>
+    <Style x:Key="InfoIconButtonStyle" TargetType="Button">
+      <Setter Property="Text" Value="i" />
+      <Setter Property="FontAttributes" Value="Bold" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="WidthRequest" Value="22" />
+      <Setter Property="MinimumWidthRequest" Value="22" />
+      <Setter Property="HeightRequest" Value="22" />
+      <Setter Property="MinimumHeightRequest" Value="22" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="HorizontalOptions" Value="Start" />
+      <Setter Property="VerticalOptions" Value="Center" />
+      <Setter Property="BackgroundColor" Value="#2F2F2F" />
+      <Setter Property="BorderColor" Value="#4E6FA4" />
+      <Setter Property="BorderWidth" Value="1" />
+      <Setter Property="TextColor" Value="#FFFFFF" />
+    </Style>
+  </ContentPage.Resources>
+
+  <Shell.TitleView>
+    <Grid ColumnDefinitions="40,*,40">
+      <Label Grid.Column="1"
+             Text="Dashboard"
+             HorizontalOptions="Center"
+             VerticalOptions="Center"
+             FontAttributes="Bold"
+             FontSize="20" />
+    </Grid>
+  </Shell.TitleView>
+
   <ScrollView>
     <VerticalStackLayout Padding="16" Spacing="12">
       <Label Text="Market Monitor Dashboard"
@@ -11,16 +43,30 @@
 
       <Frame>
         <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
-          <Label Text="Last run" Grid.ColumnSpan="3" FontAttributes="Bold" />
+          <HorizontalStackLayout Grid.Column="0" Spacing="6">
+            <Label Text="Last run" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="last_run" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+          <HorizontalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="6">
+            <Label Text="Universe" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="universe" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+          <HorizontalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="6">
+            <Label Text="Eligible" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="eligible" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
           <Label Text="{Binding LastRun.RunId}" Grid.Row="1" />
-          <Label Text="{Binding LastRun.UniverseCount, StringFormat='Universe: {0}'}" Grid.Row="1" Grid.Column="1" />
-          <Label Text="{Binding LastRun.EligibleCount, StringFormat='Eligible: {0}'}" Grid.Row="1" Grid.Column="2" />
+          <Label Text="{Binding LastRun.UniverseCount}" Grid.Row="1" Grid.Column="1" HorizontalTextAlignment="Center" />
+          <Label Text="{Binding LastRun.EligibleCount}" Grid.Row="1" Grid.Column="2" HorizontalTextAlignment="Center" />
         </Grid>
       </Frame>
 
       <Frame>
         <VerticalStackLayout Spacing="4">
-          <Label Text="Cause/effect linkage" FontAttributes="Bold" />
+          <HorizontalStackLayout Spacing="6">
+            <Label Text="Cause/effect linkage" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="cause_effect" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
           <Label Text="{Binding CauseEffect.JoinedRows, StringFormat='Joined rows: {0}'}" />
           <Label Text="{Binding CauseEffect.EventImpactRows, StringFormat='Event impact rows: {0}'}" />
           <Label Text="{Binding CauseEffect.TopContextDay, StringFormat='Top context day: {0}'}" />
@@ -29,78 +75,110 @@
       </Frame>
 
       <Frame>
-        <VerticalStackLayout Spacing="4">
-          <Label Text="Backtest quality" FontAttributes="Bold" />
+        <VerticalStackLayout Spacing="6">
+          <HorizontalStackLayout Spacing="6">
+            <Label Text="Backtest quality" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="backtest_quality" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
           <Label Text="{Binding QualitySnapshot.RunId, StringFormat='Run: {0}'}" />
           <Label Text="{Binding QualitySnapshot.EvaluatedAtUtc, StringFormat='Evaluated (UTC): {0:yyyy-MM-dd HH:mm:ss}'}" />
-          <CollectionView ItemsSource="{Binding BacktestMetrics}" HeightRequest="140">
-            <CollectionView.Header>
-              <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
-                <Label Text="Model" />
-                <Label Text="MSE" />
-                <Label Text="MAE" />
-                <Label Text="Accuracy" />
-                <Label Text="F1" />
-              </Grid>
-            </CollectionView.Header>
-            <CollectionView.ItemTemplate>
+
+          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
+            <HorizontalStackLayout Grid.Column="0" Spacing="4">
+              <Label Text="Model" FontAttributes="Bold" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_model" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Grid.Column="1" Spacing="4">
+              <Label Text="MSE" FontAttributes="Bold" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_mse" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Grid.Column="2" Spacing="4">
+              <Label Text="MAE" FontAttributes="Bold" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_mae" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Grid.Column="3" Spacing="4">
+              <Label Text="Accuracy" FontAttributes="Bold" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_accuracy" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Grid.Column="4" Spacing="4">
+              <Label Text="F1" FontAttributes="Bold" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_f1" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+          </Grid>
+
+          <VerticalStackLayout BindableLayout.ItemsSource="{Binding BacktestMetrics}" Spacing="2">
+            <BindableLayout.ItemTemplate>
               <DataTemplate>
                 <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2">
-                  <Label Text="{Binding Model}" />
-                  <Label Text="{Binding Mse, StringFormat='{}{0:F4}'}" />
-                  <Label Text="{Binding Mae, StringFormat='{}{0:F4}'}" />
-                  <Label Text="{Binding Accuracy, StringFormat='{}{0:P1}'}" />
-                  <Label Text="{Binding F1, StringFormat='{}{0:P1}'}" />
+                  <Label Text="{Binding Model}" LineBreakMode="TailTruncation" MaxLines="1" />
+                  <Label Text="{Binding Mse, StringFormat='{}{0:F4}'}" Grid.Column="1" />
+                  <Label Text="{Binding Mae, StringFormat='{}{0:F4}'}" Grid.Column="2" />
+                  <Label Text="{Binding Accuracy, StringFormat='{}{0:P1}'}" Grid.Column="3" />
+                  <Label Text="{Binding F1, StringFormat='{}{0:P1}'}" Grid.Column="4" />
                 </Grid>
               </DataTemplate>
-            </CollectionView.ItemTemplate>
-          </CollectionView>
+            </BindableLayout.ItemTemplate>
+          </VerticalStackLayout>
         </VerticalStackLayout>
       </Frame>
 
       <Frame>
-        <VerticalStackLayout>
-          <Label Text="Top symbols" FontAttributes="Bold" />
-          <CollectionView ItemsSource="{Binding TopSymbols}" HeightRequest="200">
-            <CollectionView.Header>
-              <Grid ColumnDefinitions="2*,*,*,*" Padding="0,0,0,4">
-                <Label Text="Symbol" />
-                <Label Text="Score" />
-                <Label Text="Lag (d)" />
-                <Label Text="Themes" />
-              </Grid>
-            </CollectionView.Header>
-            <CollectionView.ItemTemplate>
+        <VerticalStackLayout Spacing="6">
+          <HorizontalStackLayout Spacing="6">
+            <Label Text="Top symbols" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbols" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+
+          <Grid ColumnDefinitions="2*,*,*,*" Padding="0,0,0,4">
+            <HorizontalStackLayout Grid.Column="0" Spacing="4">
+              <Label Text="Symbol" FontAttributes="Bold" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbol_symbol" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Grid.Column="1" Spacing="4">
+              <Label Text="Score" FontAttributes="Bold" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbol_score" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Grid.Column="2" Spacing="4">
+              <Label Text="Lag (d)" FontAttributes="Bold" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbol_lag" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Grid.Column="3" Spacing="4">
+              <Label Text="Themes" FontAttributes="Bold" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbol_theme" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+          </Grid>
+
+          <VerticalStackLayout BindableLayout.ItemsSource="{Binding TopSymbols}" Spacing="2">
+            <BindableLayout.ItemTemplate>
               <DataTemplate>
                 <Grid ColumnDefinitions="2*,*,*,*" Padding="0,2">
                   <Label Text="{Binding Symbol}" />
-                  <Label Text="{Binding Score, StringFormat='{}{0:F2}'}" />
-                  <Label Text="{Binding LagDays}" />
-                  <Label Text="{Binding ThemeLabels}" LineBreakMode="TailTruncation" />
+                  <Label Text="{Binding Score, StringFormat='{}{0:F2}'}" Grid.Column="1" />
+                  <Label Text="{Binding LagDays}" Grid.Column="2" />
+                  <Label Text="{Binding ThemeLabels}" Grid.Column="3" LineBreakMode="TailTruncation" MaxLines="1" />
                 </Grid>
               </DataTemplate>
-            </CollectionView.ItemTemplate>
-          </CollectionView>
+            </BindableLayout.ItemTemplate>
+          </VerticalStackLayout>
         </VerticalStackLayout>
       </Frame>
 
       <Frame>
-        <VerticalStackLayout>
+        <VerticalStackLayout Spacing="6">
           <Label Text="Recent logs" FontAttributes="Bold" />
-          <CollectionView ItemsSource="{Binding RecentLogs}" HeightRequest="150">
-            <CollectionView.ItemTemplate>
+          <VerticalStackLayout BindableLayout.ItemsSource="{Binding RecentLogs}" Spacing="2">
+            <BindableLayout.ItemTemplate>
               <DataTemplate>
-                <HorizontalStackLayout Spacing="8">
+                <Grid ColumnDefinitions="Auto,Auto,*" Padding="0,2" ColumnSpacing="8">
                   <Label Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" />
-                  <Label Text="{Binding Level}" FontAttributes="Bold" />
-                  <Label Text="{Binding Message}" LineBreakMode="TailTruncation" />
-                </HorizontalStackLayout>
+                  <Label Text="{Binding Level}" Grid.Column="1" FontAttributes="Bold" />
+                  <Label Text="{Binding Message}" Grid.Column="2" LineBreakMode="TailTruncation" MaxLines="1" />
+                </Grid>
               </DataTemplate>
-            </CollectionView.ItemTemplate>
-          </CollectionView>
+            </BindableLayout.ItemTemplate>
+          </VerticalStackLayout>
         </VerticalStackLayout>
       </Frame>
     </VerticalStackLayout>
   </ScrollView>
 </ContentPage>
-

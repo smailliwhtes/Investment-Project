@@ -14,46 +14,79 @@ public partial class AppShell : Shell
     {
         InitializeComponent();
 
-        Items.Add(new FlyoutItem
-        {
-            Route = "dashboard",
-            Title = "Dashboard",
-            Items = { new ShellContent { Route = "dashboard/home", Content = dashboardPage, Title = "Dashboard" } }
-        });
+        var dashboardItem = CreateFlyoutItem(
+            itemRoute: "dashboard_item",
+            itemTitle: "Dashboard",
+            contentRoute: "dashboard_home",
+            contentTitle: "Dashboard",
+            page: dashboardPage);
 
-        Items.Add(new FlyoutItem
-        {
-            Route = "run",
-            Title = "Run",
-            Items = { new ShellContent { Route = "run/orchestration", Content = runPage, Title = "Run Orchestration" } }
-        });
+        var runItem = CreateFlyoutItem(
+            itemRoute: "run_item",
+            itemTitle: "Run",
+            contentRoute: "run_orchestration",
+            contentTitle: "Run Orchestration",
+            page: runPage);
 
-        Items.Add(new FlyoutItem
-        {
-            Route = "runs",
-            Title = "Runs",
-            Items = { new ShellContent { Route = "runs/history", Content = runsPage, Title = "Runs History" } }
-        });
+        var runsItem = CreateFlyoutItem(
+            itemRoute: "runs_item",
+            itemTitle: "Runs",
+            contentRoute: "runs_history",
+            contentTitle: "Runs History",
+            page: runsPage);
 
-        Items.Add(new FlyoutItem
-        {
-            Route = "analysis",
-            Title = "Analysis",
-            Items = { new ShellContent { Route = "analysis/universe", Content = universePage, Title = "Universe" } }
-        });
+        var analysisItem = CreateFlyoutItem(
+            itemRoute: "analysis_item",
+            itemTitle: "Analysis",
+            contentRoute: "analysis_universe",
+            contentTitle: "Universe",
+            page: universePage);
 
-        Items.Add(new FlyoutItem
-        {
-            Route = "settings",
-            Title = "Settings",
-            Items = { new ShellContent { Route = "settings/home", Content = settingsPage, Title = "Settings" } }
-        });
+        var settingsItem = CreateFlyoutItem(
+            itemRoute: "settings_item",
+            itemTitle: "Settings",
+            contentRoute: "settings_home",
+            contentTitle: "Settings",
+            page: settingsPage);
 
-        Items.Add(new FlyoutItem
+        var logsItem = CreateFlyoutItem(
+            itemRoute: "logs_item",
+            itemTitle: "Logs",
+            contentRoute: "logs_home",
+            contentTitle: "Logs",
+            page: logsPage);
+
+        Items.Add(dashboardItem);
+        Items.Add(runItem);
+        Items.Add(runsItem);
+        Items.Add(analysisItem);
+        Items.Add(settingsItem);
+        Items.Add(logsItem);
+
+        CurrentItem = dashboardItem;
+        Navigated += OnShellNavigated;
+    }
+
+    private static FlyoutItem CreateFlyoutItem(string itemRoute, string itemTitle, string contentRoute, string contentTitle, Page page)
+    {
+        var content = new ShellContent
         {
-            Route = "logs",
-            Title = "Logs",
-            Items = { new ShellContent { Route = "logs/home", Content = logsPage, Title = "Logs" } }
-        });
+            Route = contentRoute,
+            Title = contentTitle,
+            Content = page,
+        };
+
+        return new FlyoutItem
+        {
+            Route = itemRoute,
+            Title = itemTitle,
+            Items = { content },
+        };
+    }
+
+    private void OnShellNavigated(object? sender, ShellNavigatedEventArgs e)
+    {
+        // Desktop QoL: close flyout after navigation so page changes are obvious.
+        FlyoutIsPresented = false;
     }
 }
