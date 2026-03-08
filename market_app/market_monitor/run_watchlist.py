@@ -85,17 +85,25 @@ def _latest_common_date(symbols: list[str], ohlcv_dir: Path) -> str:
 def _load_exogenous_features(
     exogenous_dir: Path, asof_date: str, include_raw: bool
 ) -> tuple[dict, dict]:
-    manifest_path = exogenous_dir / "features_manifest.json"
+    manifest_root = exogenous_dir if exogenous_dir.is_dir() else exogenous_dir.parent
+    manifest_path = manifest_root / "features_manifest.json"
     manifest_hash = hash_file(manifest_path) if manifest_path.exists() else None
 
-    day_partition = exogenous_dir / f"day={asof_date}" / "part-00000.csv"
     df = None
-    if day_partition.exists():
-        df = pd.read_csv(day_partition)
+    if exogenous_dir.is_file() and exogenous_dir.suffix.lower() == ".csv":
+        df = pd.read_csv(exogenous_dir)
     else:
-        candidates = list(exogenous_dir.glob("*.csv"))
-        if candidates:
-            df = pd.read_csv(candidates[0])
+        preferred_join_ready = exogenous_dir / "gdelt_daily_join_ready.csv"
+        day_partition = exogenous_dir / f"day={asof_date}" / "part-00000.csv"
+
+        if preferred_join_ready.exists():
+            df = pd.read_csv(preferred_join_ready)
+        elif day_partition.exists():
+            df = pd.read_csv(day_partition)
+        else:
+            candidates = sorted(exogenous_dir.glob("*.csv"))
+            if candidates:
+                df = pd.read_csv(candidates[0])
 
     if df is None or df.empty:
         return {}, {"manifest_hash": manifest_hash, "coverage": 0, "missing_dates": [asof_date]}
@@ -123,7 +131,6 @@ def _load_exogenous_features(
 
     coverage = 1 if row else 0
     return row, {"manifest_hash": manifest_hash, "coverage": coverage, "missing_dates": []}
-
 
 def _write_results_jsonl(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

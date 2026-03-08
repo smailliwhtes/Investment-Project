@@ -1,0 +1,633 @@
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import re
+import threading
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+
+# -----------------------------------------------------------------------------
+# HARDWIRED PATHS
+# Edit these three paths to your real local folders.
+# -----------------------------------------------------------------------------
+HARDCODED_PATHS = {
+    "new_daily_files": Path(r"C:\CHANGE_ME\New Daily Files"),
+    "gdelt_corpus": Path(r"C:\CHANGE_ME\GDELT Corpus"),
+    "working_csv_files": Path(r"C:\CHANGE_ME\Working CSV Files"),
+}
+
+APP_TITLE = "Daily Market Preprocessor"
+REGISTRY_DIRNAME = "_preprocessor_state"
+REGISTRY_FILENAME = "processed_registry.json"
+MANIFEST_PREFIX = "daily_market_preprocessor_manifest"
+REGISTRY_SCHEMA_VERSION = 1
+
+
+# -----------------------------------------------------------------------------
+# GENERIC HELPERS
+# -----------------------------------------------------------------------------
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _now_stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+
+def _safe_mkdir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8", newline="")
+    tmp.replace(path)
+
+
+def _atomic_write_json(path: Path, payload: dict) -> None:
+    _atomic_write_text(path, json.dumps(payload, indent=2, sort_keys=False))
+
+
+def _tail_last_nonempty_line(path: Path, max_bytes: int = 65536) -> Optional[str]:
+    if not path.exists() or path.stat().st_size == 0:
+        return None
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as f:
+            chunk_size = 8192
+            read_bytes = 0
+            data = b""
+            while read_bytes < max_bytes:
+                step = min(chunk_size, size - read_bytes)
+                if step <= 0:
+                    break
+                f.seek(size - read_bytes - step)
+                data = f.read(step) + data
+                read_bytes += step
+                if b"\n" in data:
+                    break
+            for line in reversed(data.splitlines()):
+                s = line.decode("utf-8", errors="ignore").strip()
+                if s:
+                    return s
+    except Exception:
+        return None
+    return None
+
+
+def _read_last_date_from_ohlcv_csv(csv_path: Path) -> Optional[str]:
+    last = _tail_last_nonempty_line(csv_path)
+    if not last or last.lower().startswith("date,"):
+        return None
+    parts = [p.strip() for p in last.split(",")]
+    return parts[0] if parts else None
+
+
+def _stooq_date_yyyymmdd_to_iso(d: str) -> Optional[str]:
+    d = (d or "").strip()
+    if len(d) != 8 or not d.isdigit():
+        return None
+    return f"{d[0:4]}-{d[4:6]}-{d[6:8]}"
+
+
+def _ticker_from_stooq_symbol(sym: str) -> str:
+    s = (sym or "").strip().upper()
+    return s.split(".", 1)[0] if "." in s else s
+
+
+def _metadata_file_category(path: Path) -> Optional[str]:
+    name = path.name.upper()
+    if name in {"MASTER", "EMASTER", "XMASTER"}:
+        return "metastock_index"
+    if re.fullmatch(r"F\d+\.DOP", name):
+        return "metastock_dop"
+    return None
+
+
+def _scan_new_daily_tree(root: Path) -> dict:
+    if not root.exists():
+        return {"candidates": [], "ignored_metadata": []}
+
+    candidates: list[Path] = []
+    ignored_metadata: list[dict] = []
+
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+
+        metadata_category = _metadata_file_category(path)
+        if metadata_category:
+            ignored_metadata.append({
+                "path": str(path),
+                "name": path.name,
+                "category": metadata_category,
+                "size_bytes": path.stat().st_size,
+            })
+            continue
+
+        name = path.name.lower()
+        if name.endswith(".us.txt") or name.endswith(".txt"):
+            candidates.append(path)
+
+    return {
+        "candidates": sorted(candidates),
+        "ignored_metadata": sorted(ignored_metadata, key=lambda x: (x["category"], x["name"], x["path"])),
+    }
+
+
+def _read_existing_rows(csv_path: Path) -> list[tuple[str, str, str, str, str, str]]:
+    if not csv_path.exists() or csv_path.stat().st_size == 0:
+        return []
+    rows: list[tuple[str, str, str, str, str, str]] = []
+    with csv_path.open("r", encoding="utf-8", errors="ignore", newline="") as f:
+        for row in csv.DictReader(f):
+            date = (row.get("date") or "").strip()
+            if not date:
+                continue
+            rows.append((
+                date,
+                str(row.get("open", "")).strip(),
+                str(row.get("high", "")).strip(),
+                str(row.get("low", "")).strip(),
+                str(row.get("close", "")).strip(),
+                str(row.get("volume", "")).strip(),
+            ))
+    return rows
+
+
+def _atomic_write_rows(csv_path: Path, rows: list[tuple[str, str, str, str, str, str]]) -> None:
+    tmp_path = csv_path.with_suffix(f"{csv_path.suffix}.tmp")
+    with tmp_path.open("w", encoding="utf-8", newline="") as out:
+        writer = csv.writer(out, lineterminator="\n")
+        writer.writerow(["date", "open", "high", "low", "close", "volume"])
+        writer.writerows(rows)
+    tmp_path.replace(csv_path)
+
+
+def _sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _sha256_text(text: str) -> str:
+    return _sha256_bytes(text.encode("utf-8", errors="ignore"))
+
+
+def _sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _relpath_or_name(path: Path, root: Path) -> str:
+    try:
+        return str(path.relative_to(root))
+    except Exception:
+        return path.name
+
+
+def _folder_snapshot(root: Path) -> dict:
+    if not root.exists():
+        return {
+            "path": str(root),
+            "exists": False,
+            "file_count": 0,
+            "total_bytes": 0,
+            "fingerprint": None,
+        }
+
+    files = sorted([p for p in root.rglob("*") if p.is_file()])
+    total_bytes = 0
+    digest = hashlib.sha256()
+    for file_path in files:
+        stat = file_path.stat()
+        total_bytes += stat.st_size
+        rel = _relpath_or_name(file_path, root)
+        digest.update(rel.encode("utf-8", errors="ignore"))
+        digest.update(str(stat.st_size).encode("utf-8"))
+        digest.update(str(stat.st_mtime_ns).encode("utf-8"))
+
+    return {
+        "path": str(root),
+        "exists": True,
+        "file_count": len(files),
+        "total_bytes": total_bytes,
+        "fingerprint": digest.hexdigest(),
+    }
+
+
+# -----------------------------------------------------------------------------
+# REGISTRY HELPERS
+# -----------------------------------------------------------------------------
+def _registry_path(working_csv_files_dir: Path) -> Path:
+    return working_csv_files_dir / REGISTRY_DIRNAME / REGISTRY_FILENAME
+
+
+def _load_registry(path: Path) -> dict:
+    if not path.exists() or path.stat().st_size == 0:
+        return {
+            "schema_version": REGISTRY_SCHEMA_VERSION,
+            "created_utc": _now_utc_iso(),
+            "updated_utc": _now_utc_iso(),
+            "entries": {},
+        }
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("Registry payload is not a dict.")
+        payload.setdefault("schema_version", REGISTRY_SCHEMA_VERSION)
+        payload.setdefault("created_utc", _now_utc_iso())
+        payload.setdefault("updated_utc", _now_utc_iso())
+        payload.setdefault("entries", {})
+        return payload
+    except Exception:
+        backup = path.with_suffix(path.suffix + f".corrupt_{_now_stamp()}")
+        try:
+            path.replace(backup)
+        except Exception:
+            pass
+        return {
+            "schema_version": REGISTRY_SCHEMA_VERSION,
+            "created_utc": _now_utc_iso(),
+            "updated_utc": _now_utc_iso(),
+            "entries": {},
+            "recovered_from_corrupt_registry": str(backup),
+        }
+
+
+def _save_registry(path: Path, registry: dict) -> None:
+    registry["updated_utc"] = _now_utc_iso()
+    _safe_mkdir(path.parent)
+    _atomic_write_json(path, registry)
+
+
+def _signature_for_processed_source(source_sha256: str, gdelt_fingerprint: Optional[str], ticker: str) -> str:
+    return _sha256_text(f"{source_sha256}|{gdelt_fingerprint or 'NO_GDELT'}|{ticker.upper()}")
+
+
+# -----------------------------------------------------------------------------
+# UPDATE / PREPROCESSING CORE
+# -----------------------------------------------------------------------------
+@dataclass
+class UpdateResult:
+    ticker: str
+    source: str
+    out_csv: str
+    last_existing_date: Optional[str]
+    rows_appended: int
+    status: str
+    source_sha256: Optional[str] = None
+    registry_signature: Optional[str] = None
+    error: Optional[str] = None
+
+
+# NOTE:
+# The GDELT Corpus is wired into this mini-app as a strict dependency fingerprint + registry guard.
+# That means the app remembers which daily file was already processed against which GDELT corpus
+# snapshot and skips exact duplicates later. It does NOT invent a fake row-level GDELT merge here,
+# because the actual market-to-event normalization rules were not defined in the original script.
+def preprocess_market_data(
+    new_daily_files_dir: Path,
+    gdelt_corpus_dir: Path,
+    working_csv_files_dir: Path,
+    dry_run: bool = False,
+    global_cutoff_date: Optional[str] = None,
+) -> dict:
+    t0 = time.time()
+    _safe_mkdir(working_csv_files_dir)
+
+    gdelt_snapshot = _folder_snapshot(gdelt_corpus_dir)
+    registry_file = _registry_path(working_csv_files_dir)
+    registry = _load_registry(registry_file)
+
+    scan = _scan_new_daily_tree(new_daily_files_dir)
+    files = scan["candidates"]
+    ignored_metadata = scan["ignored_metadata"]
+
+    results: list[UpdateResult] = []
+    errors: list[dict] = []
+    processed = 0
+    updated = 0
+    total_appended = 0
+    skipped_empty = 0
+    skipped_already_processed = 0
+    skipped_non_stooq = 0
+    skipped_metadata = len(ignored_metadata)
+
+    for src in files:
+        processed += 1
+        try:
+            if src.stat().st_size == 0:
+                skipped_empty += 1
+                results.append(UpdateResult("", str(src), "", None, 0, "skipped_empty"))
+                continue
+
+            source_sha256 = _sha256_file(src)
+            source_rel = _relpath_or_name(src, new_daily_files_dir)
+
+            with src.open("r", encoding="utf-8", errors="ignore", newline="") as f:
+                reader = csv.reader(f)
+                _ = next(reader, None)
+                rows = [r for r in reader if r and any(str(cell).strip() for cell in r) and len(r) >= 9]
+
+            if not rows:
+                skipped_non_stooq += 1
+                results.append(UpdateResult("", str(src), "", None, 0, "skipped_no_data", source_sha256=source_sha256))
+                continue
+
+            ticker = _ticker_from_stooq_symbol(rows[0][0])
+            if not ticker:
+                skipped_non_stooq += 1
+                results.append(UpdateResult("", str(src), "", None, 0, "skipped_bad_ticker", source_sha256=source_sha256))
+                continue
+
+            registry_signature = _signature_for_processed_source(
+                source_sha256=source_sha256,
+                gdelt_fingerprint=gdelt_snapshot.get("fingerprint"),
+                ticker=ticker,
+            )
+
+            existing_registry_entry = registry.get("entries", {}).get(registry_signature)
+            out_csv = working_csv_files_dir / f"{ticker}.csv"
+            if existing_registry_entry and out_csv.exists():
+                skipped_already_processed += 1
+                results.append(
+                    UpdateResult(
+                        ticker=ticker,
+                        source=str(src),
+                        out_csv=str(out_csv),
+                        last_existing_date=_read_last_date_from_ohlcv_csv(out_csv),
+                        rows_appended=0,
+                        status="skipped_already_processed",
+                        source_sha256=source_sha256,
+                        registry_signature=registry_signature,
+                    )
+                )
+                continue
+
+            if global_cutoff_date:
+                last_existing = global_cutoff_date
+            else:
+                last_existing = _read_last_date_from_ohlcv_csv(out_csv)
+
+            appended_rows: list[tuple[str, str, str, str, str, str]] = []
+            for r in rows:
+                period = (r[1] or "").strip().upper()
+                if period != "D":
+                    continue
+                iso = _stooq_date_yyyymmdd_to_iso(r[2])
+                if not iso:
+                    continue
+                if last_existing and iso <= last_existing:
+                    continue
+                appended_rows.append((
+                    iso,
+                    str(r[4]).strip(),
+                    str(r[5]).strip(),
+                    str(r[6]).strip(),
+                    str(r[7]).strip(),
+                    str(r[8]).strip(),
+                ))
+
+            status = "no_change"
+            if appended_rows:
+                status = "would_update" if dry_run else "updated"
+                if not dry_run:
+                    existing_rows = _read_existing_rows(out_csv)
+                    merged = existing_rows + appended_rows
+                    deduped = {row[0]: row for row in merged}
+                    ordered = [deduped[d] for d in sorted(deduped)]
+                    _safe_mkdir(out_csv.parent)
+                    _atomic_write_rows(out_csv, ordered)
+                updated += 1
+                total_appended += len(appended_rows)
+
+            results.append(
+                UpdateResult(
+                    ticker=ticker,
+                    source=str(src),
+                    out_csv=str(out_csv),
+                    last_existing_date=last_existing,
+                    rows_appended=len(appended_rows),
+                    status=status,
+                    source_sha256=source_sha256,
+                    registry_signature=registry_signature,
+                )
+            )
+
+            if not dry_run:
+                registry.setdefault("entries", {})[registry_signature] = {
+                    "signature": registry_signature,
+                    "ticker": ticker,
+                    "source_path": str(src),
+                    "source_rel_path": source_rel,
+                    "source_sha256": source_sha256,
+                    "source_size_bytes": src.stat().st_size,
+                    "source_mtime_ns": src.stat().st_mtime_ns,
+                    "gdelt_corpus_path": str(gdelt_corpus_dir),
+                    "gdelt_corpus_fingerprint": gdelt_snapshot.get("fingerprint"),
+                    "working_csv": str(out_csv),
+                    "status": status,
+                    "rows_appended": len(appended_rows),
+                    "last_existing_date": last_existing,
+                    "processed_utc": _now_utc_iso(),
+                }
+
+        except Exception as e:
+            errors.append({"source": str(src), "error": repr(e)})
+            results.append(UpdateResult("", str(src), "", None, 0, "error", error=repr(e)))
+
+    if not dry_run:
+        _save_registry(registry_file, registry)
+
+    return {
+        "timestamp_utc": _now_utc_iso(),
+        "new_daily_files_dir": str(new_daily_files_dir),
+        "gdelt_corpus_dir": str(gdelt_corpus_dir),
+        "working_csv_files_dir": str(working_csv_files_dir),
+        "dry_run": dry_run,
+        "global_cutoff_date": global_cutoff_date,
+        "gdelt_corpus_snapshot": gdelt_snapshot,
+        "registry_path": str(registry_file),
+        "counts": {
+            "files_found": len(files),
+            "processed": processed,
+            "updated_tickers": updated,
+            "total_rows_appended": total_appended,
+            "skipped_empty": skipped_empty,
+            "skipped_non_stooq": skipped_non_stooq,
+            "ignored_metadata_files": skipped_metadata,
+            "skipped_already_processed": skipped_already_processed,
+            "errors": len(errors),
+        },
+        "ignored_metadata_files": ignored_metadata,
+        "results": [r.__dict__ for r in results],
+        "errors": errors,
+        "elapsed_seconds": round(time.time() - t0, 3),
+    }
+
+
+# -----------------------------------------------------------------------------
+# GUI
+# -----------------------------------------------------------------------------
+def _run_gui() -> None:
+    import tkinter as tk
+    from tkinter import filedialog, messagebox, ttk
+
+    root = tk.Tk()
+    root.title(APP_TITLE)
+
+    new_daily_var = tk.StringVar(value=str(HARDCODED_PATHS["new_daily_files"]))
+    gdelt_var = tk.StringVar(value=str(HARDCODED_PATHS["gdelt_corpus"]))
+    working_csv_var = tk.StringVar(value=str(HARDCODED_PATHS["working_csv_files"]))
+    dryrun_var = tk.BooleanVar(value=False)
+    cutoff_var = tk.StringVar()
+    status_var = tk.StringVar(value="Idle.")
+
+    def browse_dir(var: tk.StringVar) -> None:
+        p = filedialog.askdirectory()
+        if p:
+            var.set(p)
+
+    def append_log(msg: str) -> None:
+        log.configure(state="normal")
+        log.insert("end", msg + "\n")
+        log.see("end")
+        log.configure(state="disabled")
+
+    def run_clicked() -> None:
+        new_daily = new_daily_var.get().strip()
+        gdelt = gdelt_var.get().strip()
+        working = working_csv_var.get().strip()
+
+        if not new_daily or not gdelt or not working:
+            messagebox.showerror("Missing paths", "Set New Daily Files, GDELT Corpus, and Working .CSV Files.")
+            return
+
+        btn_run.configure(state="disabled")
+        progress.start(10)
+        status_var.set("Running...")
+
+        def worker() -> None:
+            try:
+                manifest = preprocess_market_data(
+                    new_daily_files_dir=Path(new_daily),
+                    gdelt_corpus_dir=Path(gdelt),
+                    working_csv_files_dir=Path(working),
+                    dry_run=dryrun_var.get(),
+                    global_cutoff_date=cutoff_var.get().strip() or None,
+                )
+                man_path = Path(working) / f"{MANIFEST_PREFIX}_{_now_stamp()}.json"
+                _atomic_write_json(man_path, manifest)
+                counts = manifest["counts"]
+                append_log(
+                    "Done | "
+                    f"files_found={counts['files_found']} processed={counts['processed']} "
+                    f"updated_tickers={counts['updated_tickers']} rows_appended={counts['total_rows_appended']} "
+                    f"already_processed={counts['skipped_already_processed']} ignored_metadata={counts['ignored_metadata_files']} "
+                    f"errors={counts['errors']}"
+                )
+                append_log(f"Manifest: {man_path}")
+                append_log(f"Registry: {manifest['registry_path']}")
+                status_var.set("Complete")
+            except Exception as e:
+                append_log(f"ERROR: {e!r}")
+                status_var.set("Failed")
+            finally:
+                progress.stop()
+                btn_run.configure(state="normal")
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    frm = ttk.Frame(root, padding=12)
+    frm.grid(row=0, column=0, sticky="nsew")
+    frm.columnconfigure(1, weight=1)
+    frm.rowconfigure(6, weight=1)
+
+    ttk.Label(frm, text="New Daily Files:").grid(row=0, column=0, sticky="w")
+    ttk.Entry(frm, textvariable=new_daily_var, width=90).grid(row=0, column=1, sticky="ew")
+    ttk.Button(frm, text="Browse", command=lambda: browse_dir(new_daily_var)).grid(row=0, column=2)
+
+    ttk.Label(frm, text="GDELT Corpus:").grid(row=1, column=0, sticky="w")
+    ttk.Entry(frm, textvariable=gdelt_var, width=90).grid(row=1, column=1, sticky="ew")
+    ttk.Button(frm, text="Browse", command=lambda: browse_dir(gdelt_var)).grid(row=1, column=2)
+
+    ttk.Label(frm, text="Working .CSV Files:").grid(row=2, column=0, sticky="w")
+    ttk.Entry(frm, textvariable=working_csv_var, width=90).grid(row=2, column=1, sticky="ew")
+    ttk.Button(frm, text="Browse", command=lambda: browse_dir(working_csv_var)).grid(row=2, column=2)
+
+    opts = ttk.Frame(frm)
+    opts.grid(row=3, column=0, columnspan=3, sticky="w")
+    ttk.Checkbutton(opts, text="Dry run", variable=dryrun_var).grid(row=0, column=0, padx=(0, 12))
+    ttk.Label(opts, text="Cutoff YYYY-MM-DD:").grid(row=0, column=1)
+    ttk.Entry(opts, textvariable=cutoff_var, width=12).grid(row=0, column=2)
+
+    btn_run = ttk.Button(frm, text="Run preprocessing", command=run_clicked)
+    btn_run.grid(row=4, column=0, sticky="w")
+    progress = ttk.Progressbar(frm)
+    progress.grid(row=4, column=1, columnspan=2, sticky="ew")
+    ttk.Label(frm, textvariable=status_var).grid(row=5, column=0, columnspan=3, sticky="w")
+
+    log = tk.Text(frm, height=16, width=110, state="disabled")
+    log.grid(row=6, column=0, columnspan=3, sticky="nsew")
+    root.mainloop()
+
+
+# -----------------------------------------------------------------------------
+# CLI
+# -----------------------------------------------------------------------------
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Preprocess Stooq daily files into working OHLCV CSVs with GDELT-aware duplicate tracking and explicit MetaStock metadata ignore rules."
+    )
+    parser.add_argument("--gui", action="store_true")
+    parser.add_argument("--new-daily-files", default=str(HARDCODED_PATHS["new_daily_files"]))
+    parser.add_argument("--gdelt-corpus", default=str(HARDCODED_PATHS["gdelt_corpus"]))
+    parser.add_argument("--working-csv-files", default=str(HARDCODED_PATHS["working_csv_files"]))
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--cutoff", default="")
+    args = parser.parse_args()
+
+    if args.gui:
+        _run_gui()
+        return 0
+
+    new_daily = Path(args.new_daily_files)
+    gdelt = Path(args.gdelt_corpus)
+    working = Path(args.working_csv_files)
+
+    manifest = preprocess_market_data(
+        new_daily_files_dir=new_daily,
+        gdelt_corpus_dir=gdelt,
+        working_csv_files_dir=working,
+        dry_run=bool(args.dry_run),
+        global_cutoff_date=args.cutoff.strip() or None,
+    )
+    man_path = working / f"{MANIFEST_PREFIX}_{_now_stamp()}.json"
+    _safe_mkdir(working)
+    _atomic_write_json(man_path, manifest)
+
+    counts = manifest["counts"]
+    print(
+        f"[done] files_found={counts['files_found']} processed={counts['processed']} updated_tickers={counts['updated_tickers']} "
+        f"rows_appended={counts['total_rows_appended']} already_processed={counts['skipped_already_processed']} "
+        f"ignored_metadata={counts['ignored_metadata_files']} skipped_empty={counts['skipped_empty']} errors={counts['errors']}"
+    )
+    print(f"[done] manifest={man_path}")
+    print(f"[done] registry={manifest['registry_path']}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

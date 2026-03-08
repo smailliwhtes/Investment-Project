@@ -32,6 +32,21 @@ public partial class RunPage : ContentPage
             "python_path" => (
                 "Python Path",
                 "This points to the Python app runner. If left as python, the app uses your default Python install."),
+            "preprocessed_snapshot" => (
+                "Preprocessed Snapshot",
+                "This mode tells the app to use your already-cleaned market and GDELT files instead of guessing paths."),
+            "manifest_json" => (
+                "Manifest JSON",
+                "This file is a summary report from your preprocessor. The app reads it to find the right data folders."),
+            "market_registry_json" => (
+                "Market Registry JSON",
+                "This file tracks which market files were already processed, so work is repeatable and traceable."),
+            "gdelt_registry_json" => (
+                "GDELT Registry JSON",
+                "This file tracks which GDELT corpus files were already parsed by your preprocessor."),
+            "gdelt_join_ready_csv" => (
+                "GDELT Join-Ready CSV",
+                "This is the daily GDELT table ready to join with market dates. It is the main corpus file used in scoring."),
             "ingest_process" => (
                 "Ingest and Process",
                 "Use these buttons to copy in new raw files first, then build processed datasets the models use."),

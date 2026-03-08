@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 
 namespace MarketApp.Gui.Core;
 
@@ -17,6 +18,12 @@ public class RunViewModel : ViewModelBase
     private string _corpusDataSourceDirectory;
     private string _corpusDataDestinationDirectory = "market_app/data/exogenous/raw";
     private string _corpusNormalizedDirectory = "market_app/data/gdelt";
+    private string _preprocessorManifestPath;
+    private string _marketRegistryPath;
+    private string _gdeltRegistryPath;
+    private string _gdeltJoinReadyCsvPath;
+    private bool _usePreprocessedSnapshot = true;
+    private string _preprocessedStatus = "Preprocessed snapshot not applied yet.";
     private double _progress;
     private string _status = "Idle";
     private bool _isRunning;
@@ -38,12 +45,19 @@ public class RunViewModel : ViewModelBase
         _marketDataSourceDirectory = Path.Combine(desktop, "Market_Files");
         _corpusDataSourceDirectory = Path.Combine(desktop, "NLP Corpus");
 
+        var workingCsvDir = Path.Combine(desktop, "Working CSV Files");
+        _preprocessorManifestPath = ResolveLatestManifestPath(workingCsvDir);
+        _marketRegistryPath = Path.Combine(workingCsvDir, "_preprocessor_state", "market_processed_registry.json");
+        _gdeltRegistryPath = Path.Combine(workingCsvDir, "_preprocessor_state", "gdelt_processed_registry.json");
+        _gdeltJoinReadyCsvPath = Path.Combine(workingCsvDir, "_preprocessor_state", "gdelt_daily_join_ready.csv");
+
         Title = "Run Orchestration";
         StartCommand = new AsyncRelayCommand(StartRunAsync, () => !IsRunning);
         ValidateConfigCommand = new AsyncRelayCommand(ValidateConfigAsync, () => !IsRunning);
         IngestMarketDataCommand = new AsyncRelayCommand(IngestMarketDataAsync, () => !IsRunning);
         IngestCorpusDataCommand = new AsyncRelayCommand(IngestCorpusDataAsync, () => !IsRunning);
         ProcessLatestDataCommand = new AsyncRelayCommand(ProcessLatestDataAsync, () => !IsRunning);
+        ApplyPreprocessedSnapshotCommand = new AsyncRelayCommand(ApplyPreprocessedSnapshotAsync, () => !IsRunning);
         CancelCommand = new RelayCommand(CancelRun, () => IsRunning);
     }
 
@@ -103,6 +117,42 @@ public class RunViewModel : ViewModelBase
         set => SetProperty(ref _corpusNormalizedDirectory, value);
     }
 
+    public string PreprocessorManifestPath
+    {
+        get => _preprocessorManifestPath;
+        set => SetProperty(ref _preprocessorManifestPath, value);
+    }
+
+    public string MarketRegistryPath
+    {
+        get => _marketRegistryPath;
+        set => SetProperty(ref _marketRegistryPath, value);
+    }
+
+    public string GdeltRegistryPath
+    {
+        get => _gdeltRegistryPath;
+        set => SetProperty(ref _gdeltRegistryPath, value);
+    }
+
+    public string GdeltJoinReadyCsvPath
+    {
+        get => _gdeltJoinReadyCsvPath;
+        set => SetProperty(ref _gdeltJoinReadyCsvPath, value);
+    }
+
+    public bool UsePreprocessedSnapshot
+    {
+        get => _usePreprocessedSnapshot;
+        set => SetProperty(ref _usePreprocessedSnapshot, value);
+    }
+
+    public string PreprocessedStatus
+    {
+        get => _preprocessedStatus;
+        set => SetProperty(ref _preprocessedStatus, value);
+    }
+
     public bool RunBuildLinkedAfterRun
     {
         get => _runBuildLinkedAfterRun;
@@ -139,6 +189,7 @@ public class RunViewModel : ViewModelBase
                 IngestMarketDataCommand.RaiseCanExecuteChanged();
                 IngestCorpusDataCommand.RaiseCanExecuteChanged();
                 ProcessLatestDataCommand.RaiseCanExecuteChanged();
+                ApplyPreprocessedSnapshotCommand.RaiseCanExecuteChanged();
                 CancelCommand.RaiseCanExecuteChanged();
             }
         }
@@ -149,10 +200,16 @@ public class RunViewModel : ViewModelBase
     public AsyncRelayCommand IngestMarketDataCommand { get; }
     public AsyncRelayCommand IngestCorpusDataCommand { get; }
     public AsyncRelayCommand ProcessLatestDataCommand { get; }
+    public AsyncRelayCommand ApplyPreprocessedSnapshotCommand { get; }
     public RelayCommand CancelCommand { get; }
 
     private async Task StartRunAsync()
     {
+        if (UsePreprocessedSnapshot)
+        {
+            ApplyPreprocessedSnapshotEnvironment(emitProgressEvents: true);
+        }
+
         _cts = new CancellationTokenSource();
         ProgressEvents.Clear();
         Progress = 0;
@@ -213,6 +270,11 @@ public class RunViewModel : ViewModelBase
 
     private async Task ValidateConfigAsync()
     {
+        if (UsePreprocessedSnapshot)
+        {
+            ApplyPreprocessedSnapshotEnvironment(emitProgressEvents: true);
+        }
+
         Status = "Validating config";
         var validation = await _engineBridge.ValidateConfigAsync(
             ConfigPath,
@@ -314,6 +376,11 @@ public class RunViewModel : ViewModelBase
 
     private async Task ProcessLatestDataAsync()
     {
+        if (UsePreprocessedSnapshot)
+        {
+            ApplyPreprocessedSnapshotEnvironment(emitProgressEvents: true);
+        }
+
         if (!RunBuildLinkedAfterRun && !RunEvaluateAfterRun)
         {
             Status = "Enable at least one processing checkbox";
@@ -398,6 +465,179 @@ public class RunViewModel : ViewModelBase
         {
             IsRunning = false;
         }
+    }
+
+    private Task ApplyPreprocessedSnapshotAsync()
+    {
+        ApplyPreprocessedSnapshotEnvironment(emitProgressEvents: true);
+        return Task.CompletedTask;
+    }
+
+    private void ApplyPreprocessedSnapshotEnvironment(bool emitProgressEvents)
+    {
+        if (!UsePreprocessedSnapshot)
+        {
+            PreprocessedStatus = "Preprocessed snapshot disabled.";
+            return;
+        }
+
+        var snapshot = ResolveSnapshot();
+
+        if (!string.IsNullOrWhiteSpace(snapshot.ManifestPath))
+        {
+            Environment.SetEnvironmentVariable("MARKET_APP_PREPROCESSOR_MANIFEST_PATH", snapshot.ManifestPath);
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.MarketRegistryPath))
+        {
+            Environment.SetEnvironmentVariable("MARKET_APP_MARKET_REGISTRY_PATH", snapshot.MarketRegistryPath);
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.GdeltRegistryPath))
+        {
+            Environment.SetEnvironmentVariable("MARKET_APP_GDELT_REGISTRY_PATH", snapshot.GdeltRegistryPath);
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.GdeltJoinReadyCsvPath))
+        {
+            Environment.SetEnvironmentVariable("MARKET_APP_GDELT_JOIN_READY_CSV", snapshot.GdeltJoinReadyCsvPath);
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.OhlcvDirectory) && Directory.Exists(snapshot.OhlcvDirectory))
+        {
+            Environment.SetEnvironmentVariable("MARKET_APP_OHLCV_DIR", snapshot.OhlcvDirectory);
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.ExogenousDirectory) && Directory.Exists(snapshot.ExogenousDirectory))
+        {
+            Environment.SetEnvironmentVariable("MARKET_APP_EXOGENOUS_DAILY_DIR", snapshot.ExogenousDirectory);
+            Environment.SetEnvironmentVariable("MARKET_APP_GDELT_DIR", snapshot.ExogenousDirectory);
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.GdeltRawDirectory) && Directory.Exists(snapshot.GdeltRawDirectory))
+        {
+            Environment.SetEnvironmentVariable("MARKET_APP_GDELT_RAW_DIR", snapshot.GdeltRawDirectory);
+        }
+
+        var messages = new List<string>();
+        if (string.IsNullOrWhiteSpace(snapshot.OhlcvDirectory) || !Directory.Exists(snapshot.OhlcvDirectory))
+        {
+            messages.Add("OHLCV directory not found");
+        }
+        if (string.IsNullOrWhiteSpace(snapshot.GdeltJoinReadyCsvPath) || !File.Exists(snapshot.GdeltJoinReadyCsvPath))
+        {
+            messages.Add("GDELT join-ready CSV not found");
+        }
+
+        if (messages.Count == 0)
+        {
+            PreprocessedStatus = "Preprocessed snapshot applied (OHLCV + GDELT overrides active).";
+            if (emitProgressEvents)
+            {
+                AppendProgressEvent(new ProgressEvent(
+                    Type: "stage_end",
+                    Stage: "preprocessed_snapshot",
+                    Message: "Applied preprocessed snapshot paths",
+                    Pct: null,
+                    Timestamp: DateTime.UtcNow));
+            }
+        }
+        else
+        {
+            PreprocessedStatus = "Preprocessed snapshot applied with warnings: " + string.Join("; ", messages) + ".";
+            if (emitProgressEvents)
+            {
+                AppendProgressEvent(new ProgressEvent(
+                    Type: "warning",
+                    Stage: "preprocessed_snapshot",
+                    Message: PreprocessedStatus,
+                    Pct: null,
+                    Timestamp: DateTime.UtcNow));
+            }
+        }
+    }
+
+    private PreprocessedSnapshot ResolveSnapshot()
+    {
+        var snapshot = new PreprocessedSnapshot
+        {
+            ManifestPath = NormalizePath(PreprocessorManifestPath),
+            MarketRegistryPath = NormalizePath(MarketRegistryPath),
+            GdeltRegistryPath = NormalizePath(GdeltRegistryPath),
+            GdeltJoinReadyCsvPath = NormalizePath(GdeltJoinReadyCsvPath),
+        };
+
+        if (!string.IsNullOrWhiteSpace(snapshot.ManifestPath) && File.Exists(snapshot.ManifestPath))
+        {
+            try
+            {
+                using var stream = File.OpenRead(snapshot.ManifestPath);
+                using var doc = JsonDocument.Parse(stream);
+                var root = doc.RootElement;
+
+                if (TryGetString(root, "working_csv_files_dir", out var workingCsvDir) && !string.IsNullOrWhiteSpace(workingCsvDir))
+                {
+                    snapshot.OhlcvDirectory = workingCsvDir;
+                }
+
+                if (TryGetString(root, "market_registry_path", out var marketRegistry) && !string.IsNullOrWhiteSpace(marketRegistry))
+                {
+                    snapshot.MarketRegistryPath = marketRegistry;
+                }
+
+                if (TryGetString(root, "gdelt_corpus_dir", out var gdeltRawDir) && !string.IsNullOrWhiteSpace(gdeltRawDir))
+                {
+                    snapshot.GdeltRawDirectory = gdeltRawDir;
+                }
+
+                if (root.TryGetProperty("gdelt_cache", out var gdeltCache) && gdeltCache.ValueKind == JsonValueKind.Object)
+                {
+                    if (TryGetString(gdeltCache, "registry_path", out var gdeltRegistry) && !string.IsNullOrWhiteSpace(gdeltRegistry))
+                    {
+                        snapshot.GdeltRegistryPath = gdeltRegistry;
+                    }
+
+                    if (TryGetString(gdeltCache, "daily_join_ready_csv", out var joinReadyCsv) && !string.IsNullOrWhiteSpace(joinReadyCsv))
+                    {
+                        snapshot.GdeltJoinReadyCsvPath = joinReadyCsv;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendProgressEvent(new ProgressEvent(
+                    Type: "warning",
+                    Stage: "preprocessed_snapshot",
+                    Message: $"Failed to parse manifest: {ex.Message}",
+                    Pct: null,
+                    Timestamp: DateTime.UtcNow));
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(snapshot.OhlcvDirectory) && !string.IsNullOrWhiteSpace(snapshot.MarketRegistryPath))
+        {
+            var inferred = Path.GetDirectoryName(snapshot.MarketRegistryPath);
+            if (!string.IsNullOrWhiteSpace(inferred))
+            {
+                var stateDir = new DirectoryInfo(inferred);
+                if (stateDir.Exists && stateDir.Parent is not null)
+                {
+                    snapshot.OhlcvDirectory = stateDir.Parent.FullName;
+                }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.GdeltJoinReadyCsvPath))
+        {
+            snapshot.ExogenousDirectory = Path.GetDirectoryName(snapshot.GdeltJoinReadyCsvPath);
+        }
+
+        PreprocessorManifestPath = snapshot.ManifestPath ?? PreprocessorManifestPath;
+        MarketRegistryPath = snapshot.MarketRegistryPath ?? MarketRegistryPath;
+        GdeltRegistryPath = snapshot.GdeltRegistryPath ?? GdeltRegistryPath;
+        GdeltJoinReadyCsvPath = snapshot.GdeltJoinReadyCsvPath ?? GdeltJoinReadyCsvPath;
+
+        return snapshot;
     }
 
     private async Task ExecuteSingleCommandAsync(
@@ -525,5 +765,61 @@ public class RunViewModel : ViewModelBase
     {
         _cts?.Cancel();
     }
-}
 
+    private static bool TryGetString(JsonElement element, string name, out string? value)
+    {
+        value = null;
+        if (!element.TryGetProperty(name, out var node) || node.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        value = node.GetString();
+        return !string.IsNullOrWhiteSpace(value);
+    }
+
+    private static string? NormalizePath(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Path.GetFullPath(value.Trim());
+        }
+        catch
+        {
+            return value.Trim();
+        }
+    }
+
+    private static string ResolveLatestManifestPath(string workingCsvDir)
+    {
+        if (Directory.Exists(workingCsvDir))
+        {
+            var latest = Directory
+                .GetFiles(workingCsvDir, "daily_market_preprocessor_manifest_*.json")
+                .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(latest))
+            {
+                return latest;
+            }
+        }
+
+        return Path.Combine(workingCsvDir, "daily_market_preprocessor_manifest_latest.json");
+    }
+
+    private sealed class PreprocessedSnapshot
+    {
+        public string? ManifestPath { get; set; }
+        public string? MarketRegistryPath { get; set; }
+        public string? GdeltRegistryPath { get; set; }
+        public string? GdeltJoinReadyCsvPath { get; set; }
+        public string? OhlcvDirectory { get; set; }
+        public string? ExogenousDirectory { get; set; }
+        public string? GdeltRawDirectory { get; set; }
+    }
+}

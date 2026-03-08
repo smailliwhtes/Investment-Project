@@ -122,6 +122,49 @@
       <Frame Padding="14">
         <VerticalStackLayout Spacing="10">
           <HorizontalStackLayout Spacing="6">
+            <Label Text="Preprocessed snapshot inputs" Style="{StaticResource SectionTitleStyle}" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="preprocessed_snapshot" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+
+          <HorizontalStackLayout Spacing="6">
+            <CheckBox IsChecked="{Binding UsePreprocessedSnapshot}" />
+            <Label Text="Use preprocessed manifest + registries for run paths" Style="{StaticResource FieldLabelStyle}" />
+          </HorizontalStackLayout>
+
+          <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="10">
+            <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="6">
+              <Label Text="Manifest JSON" Style="{StaticResource FieldLabelStyle}" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="manifest_json" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="0" Grid.Column="1" Text="{Binding PreprocessorManifestPath}" />
+
+            <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="6">
+              <Label Text="Market registry JSON" Style="{StaticResource FieldLabelStyle}" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="market_registry_json" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="1" Grid.Column="1" Text="{Binding MarketRegistryPath}" />
+
+            <HorizontalStackLayout Grid.Row="2" Grid.Column="0" Spacing="6">
+              <Label Text="GDELT registry JSON" Style="{StaticResource FieldLabelStyle}" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="gdelt_registry_json" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="2" Grid.Column="1" Text="{Binding GdeltRegistryPath}" />
+
+            <HorizontalStackLayout Grid.Row="3" Grid.Column="0" Spacing="6">
+              <Label Text="GDELT join-ready CSV" Style="{StaticResource FieldLabelStyle}" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="gdelt_join_ready_csv" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="3" Grid.Column="1" Text="{Binding GdeltJoinReadyCsvPath}" />
+          </Grid>
+
+          <Button Style="{StaticResource ActionButtonStyle}" Text="Apply Preprocessed Snapshot" Command="{Binding ApplyPreprocessedSnapshotCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+          <Label Text="{Binding PreprocessedStatus}" FontSize="13" LineBreakMode="WordWrap" />
+        </VerticalStackLayout>
+      </Frame>
+
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="10">
+          <HorizontalStackLayout Spacing="6">
             <Label Text="Data ingestion and processing" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="ingest_process" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
