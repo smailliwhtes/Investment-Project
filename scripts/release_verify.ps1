@@ -7,6 +7,15 @@ param(
     [switch]$SkipPipAudit
 )
 
+if ($PSVersionTable.PSEdition -ne 'Core') {
+    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+    if ($null -eq $pwsh) {
+        throw 'PowerShell 7 (pwsh) is required to run scripts/release_verify.ps1.'
+    }
+
+    & $pwsh.Source -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath @args
+    exit $LASTEXITCODE
+}
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $isWindowsHost = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
@@ -82,12 +91,36 @@ function Get-MissingSbomArtifacts {
     return $missing
 }
 
+function Resolve-PythonCommand {
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -ne $python) {
+        try {
+            & python --version *> $null
+            if ($LASTEXITCODE -eq 0) { return 'python' }
+        } catch {}
+    }
+
+    $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+    if ($null -ne $pyLauncher) {
+        try {
+            & py -3 --version *> $null
+            if ($LASTEXITCODE -eq 0) { return 'py -3' }
+        } catch {}
+    }
+
+    $knownPython = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe'
+    if (Test-Path -LiteralPath $knownPython) { return "& '$knownPython'" }
+
+    throw 'Python interpreter not found. Install Python 3.x or add python/py to PATH.'
+}
 function Assert-RunStalenessContract {
     param([string]$RunDirectory)
 
-    $cmd = "python ../scripts/check_staleness_contract.py --run-dir '$RunDirectory'"
+    $cmd = "$script:pythonCmd ../scripts/check_staleness_contract.py --run-dir '$RunDirectory'"
     return (Invoke-LoggedCommand -Name 'contract_staleness' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $cmd)
 }
+
+$pythonCmd = Resolve-PythonCommand
 
 try {
     try {
@@ -96,12 +129,15 @@ try {
     } catch {}
 
     try {
-        $pyVersion = (& python --version 2>&1)
-        if ($LASTEXITCODE -eq 0) { $report.platform.python = $pyVersion.Trim() }
+        $pyVersionRes = Invoke-LoggedCommand -Name 'python_version' -Command "$pythonCmd --version"
+        if ($pyVersionRes.ExitCode -eq 0 -and (Test-Path -LiteralPath $pyVersionRes.Log)) {
+            $pyVersionLine = (Get-Content -Path $pyVersionRes.Log -TotalCount 1).Trim()
+            if ($pyVersionLine) { $report.platform.python = $pyVersionLine }
+        }
     } catch {}
 
     # Gate: tests_engine
-    $pyResult = Invoke-LoggedCommand -Name 'pytest' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command 'python -m pytest -q'
+    $pyResult = Invoke-LoggedCommand -Name 'pytest' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command "$pythonCmd -m pytest -q"
     if ($pyResult.ExitCode -ne 0) {
         Add-GateResult @{ name='tests_engine'; status='fail'; details=@{ pytest='fail'; dotnet_test='skipped' } }
         throw "pytest failed (see $($pyResult.Log))"
@@ -127,7 +163,7 @@ try {
         $e2eOut = Join-Path $runsRoot $runId
         New-Item -ItemType Directory -Path $e2eOut -Force | Out-Null
 
-        $e2eCmd = "python -m market_app.cli run --config tests/data/mini_dataset/config.yaml --output-dir '$runsRoot' --run-id '$runId' --offline --as-of-date 2025-01-31"
+        $e2eCmd = "$pythonCmd -m market_app.cli run --config tests/data/mini_dataset/config.yaml --output-dir '$runsRoot' --run-id '$runId' --offline --as-of-date 2025-01-31"
         $e2eResult = Invoke-LoggedCommand -Name 'e2e_offline' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $e2eCmd
         if ($e2eResult.ExitCode -ne 0) {
             Add-GateResult @{ name='e2e_offline'; status='fail'; details=@{ command=$e2eCmd; outputs_dir=$e2eOut } }
@@ -194,8 +230,8 @@ try {
         if (Test-Path -LiteralPath $dotnetSbomPath) { Remove-Item -LiteralPath $dotnetSbomPath -Force }
 
         $pySbomCmd = @"
-python -m pip install cyclonedx-bom
-python -c "import pathlib, tomllib; p=pathlib.Path('pyproject.toml'); deps=tomllib.loads(p.read_text(encoding='utf-8')).get('project', {}).get('dependencies', []); pathlib.Path('.sbom-requirements.txt').write_text('\\n'.join(deps)+'\\n', encoding='utf-8')"
+$pythonCmd -m pip install cyclonedx-bom
+$pythonCmd -c "import pathlib, tomllib; p=pathlib.Path('pyproject.toml'); deps=tomllib.loads(p.read_text(encoding='utf-8')).get('project', {}).get('dependencies', []); pathlib.Path('.sbom-requirements.txt').write_text('\\n'.join(deps)+'\\n', encoding='utf-8')"
 cyclonedx-py requirements --output-format JSON --output-file '$pythonSbomPath' '.sbom-requirements.txt'
 "@
 $pySbomCmd = $pySbomCmd + " 2>&1 | Tee-Object -FilePath `"$logsRoot/sbom_python.log`""
@@ -209,7 +245,7 @@ $pySbomCmd = $pySbomCmd + " 2>&1 | Tee-Object -FilePath `"$logsRoot/sbom_python.
 if (-not (Test-Path -LiteralPath '.config/dotnet-tools.json')) {
     dotnet new tool-manifest
 }
-dotnet tool restore --tool-manifest "$repoRoot/.config/dotnet-tools.json"${rest}
+dotnet tool restore --tool-manifest "$repoRoot/.config/dotnet-tools.json"
 dotnet tool run dotnet-CycloneDX src/gui/MarketApp.Gui.sln -o '$sbomRoot' -j
 if (Test-Path -LiteralPath '$sbomRoot/bom.json') {
     Copy-Item -LiteralPath '$sbomRoot/bom.json' -Destination '$dotnetSbomPath' -Force
@@ -237,7 +273,7 @@ if (@($missingSboms).Count -eq 0) {
     if ($SkipPipAudit) {
         Add-GateResult @{ name='pip_audit'; status='skipped'; details=@{ reason='skipped by flag' } }
     } else {
-        $pipAuditCmd = 'python -m pip install pip-audit && pip-audit --progress-spinner off --strict'
+        $pipAuditCmd = "$pythonCmd -m pip install pip-audit && pip-audit --progress-spinner off -r requirements.txt"
         $auditRes = Invoke-LoggedCommand -Name 'pip_audit' -WorkingDirectory (Join-Path $repoRoot 'market_app') -Command $pipAuditCmd
         if ($auditRes.ExitCode -ne 0) {
             Add-GateResult @{ name='pip_audit'; status='fail'; details=@{} }
