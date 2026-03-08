@@ -21,7 +21,11 @@ public sealed class EngineBridgeService : IEngineBridgeService
         using var logWriter = new StreamWriter(logStream) { AutoFlush = true };
 
         var python = ResolvePythonPath(request.PythonPath);
-        var runArgs = BuildRunArguments(request, runDir);
+        var marketAppRoot = ResolveMarketAppRoot();
+        var runArgs = BuildRunArguments(request, runDir, marketAppRoot);
+
+        var runCompleted = false;
+        var runHadError = false;
 
         await foreach (var evt in StreamCommandAsync(
             python,
@@ -30,10 +34,23 @@ public sealed class EngineBridgeService : IEngineBridgeService
             logWriter,
             cancellationToken))
         {
+            if (string.Equals(evt.Stage, "run", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.Equals(evt.Type, "error", StringComparison.OrdinalIgnoreCase))
+                {
+                    runHadError = true;
+                    runCompleted = true;
+                }
+                else if (string.Equals(evt.Type, "stage_end", StringComparison.OrdinalIgnoreCase))
+                {
+                    runCompleted = true;
+                }
+            }
+
             yield return evt;
         }
 
-        if (cancellationToken.IsCancellationRequested)
+        if (!ShouldRunPostRunActions(cancellationToken.IsCancellationRequested, runHadError, runCompleted))
         {
             yield break;
         }
@@ -96,16 +113,18 @@ public sealed class EngineBridgeService : IEngineBridgeService
         string? pythonPath,
         CancellationToken cancellationToken = default)
     {
+        var marketAppRoot = ResolveMarketAppRoot();
+        var resolvedConfigPath = ResolveConfigPath(configPath, marketAppRoot);
         var python = ResolvePythonPath(pythonPath);
         var result = await RunCommandCaptureAsync(
             python,
             new[]
             {
                 "-m", "market_monitor.cli", "validate-config",
-                "--config", Path.GetFullPath(configPath),
+                "--config", resolvedConfigPath,
                 "--format", "json"
             },
-            ResolveMarketAppRoot(),
+            marketAppRoot,
             cancellationToken).ConfigureAwait(false);
 
         var json = ExtractJsonPayload(result.Stdout) ?? "{\"valid\":false,\"errors\":[{\"path\":\"\",\"message\":\"Validation output missing JSON\",\"severity\":\"error\"}]}";
@@ -147,10 +166,11 @@ public sealed class EngineBridgeService : IEngineBridgeService
         bool includeRawGdelt,
         CancellationToken cancellationToken = default)
     {
+        var marketAppRoot = ResolveMarketAppRoot();
         var args = new List<string>
         {
             "-m", "market_monitor.cli", "corpus", "build-linked",
-            "--config", Path.GetFullPath(configPath),
+            "--config", ResolveConfigPath(configPath, marketAppRoot),
             "--outdir", Path.GetFullPath(outDirectory)
         };
         if (includeRawGdelt)
@@ -161,7 +181,7 @@ public sealed class EngineBridgeService : IEngineBridgeService
         return RunCommandCaptureAsync(
             ResolvePythonPath(pythonPath),
             args,
-            ResolveMarketAppRoot(),
+            marketAppRoot,
             cancellationToken);
     }
 
@@ -171,16 +191,17 @@ public sealed class EngineBridgeService : IEngineBridgeService
         string? pythonPath,
         CancellationToken cancellationToken = default)
     {
+        var marketAppRoot = ResolveMarketAppRoot();
         return RunCommandCaptureAsync(
             ResolvePythonPath(pythonPath),
             new[]
             {
                 "-m", "market_monitor.cli", "evaluate",
-                "--config", Path.GetFullPath(configPath),
+                "--config", ResolveConfigPath(configPath, marketAppRoot),
                 "--outdir", Path.GetFullPath(outDirectory),
                 "--offline"
             },
-            ResolveMarketAppRoot(),
+            marketAppRoot,
             cancellationToken);
     }
 
@@ -513,12 +534,13 @@ public sealed class EngineBridgeService : IEngineBridgeService
         }
     }
 
-    internal static IReadOnlyList<string> BuildRunArguments(EngineRunRequest request, string runDir)
+    internal static IReadOnlyList<string> BuildRunArguments(EngineRunRequest request, string runDir, string? marketAppRootOverride = null)
     {
+        var marketAppRoot = marketAppRootOverride ?? ResolveMarketAppRoot();
         var args = new List<string>
         {
             "-m", "market_monitor.cli", "run",
-            "--config", Path.GetFullPath(request.ConfigPath),
+            "--config", ResolveConfigPath(request.ConfigPath, marketAppRoot),
             "--out-dir", Path.GetFullPath(runDir),
             "--progress-jsonl"
         };
@@ -529,7 +551,7 @@ public sealed class EngineBridgeService : IEngineBridgeService
         if (!string.IsNullOrWhiteSpace(request.WatchlistPath))
         {
             args.Add("--watchlist");
-            args.Add(Path.GetFullPath(request.WatchlistPath));
+            args.Add(ResolveEnginePath(request.WatchlistPath, marketAppRoot));
         }
         if (request.IncludeRawGdelt)
         {
@@ -539,6 +561,10 @@ public sealed class EngineBridgeService : IEngineBridgeService
         return args;
     }
 
+    internal static bool ShouldRunPostRunActions(bool cancellationRequested, bool runHadError, bool runCompleted)
+    {
+        return !cancellationRequested && runCompleted && !runHadError;
+    }
     internal static ProcessStartInfo BuildStartInfo(string python, IReadOnlyList<string> args, string workingDirectory)
     {
         var startInfo = new ProcessStartInfo
@@ -726,6 +752,66 @@ public sealed class EngineBridgeService : IEngineBridgeService
         }
 
         return "python";
+    }
+
+    internal static string ResolveConfigPath(string configPath, string marketAppRoot, string? repoRootOverride = null)
+    {
+        if (string.IsNullOrWhiteSpace(configPath))
+        {
+            return configPath;
+        }
+
+        if (Path.IsPathRooted(configPath))
+        {
+            return Path.GetFullPath(configPath);
+        }
+
+        var repoRoot = repoRootOverride ?? ResolveRepoRoot();
+        var repoCandidate = Path.GetFullPath(configPath, repoRoot);
+        if (File.Exists(repoCandidate))
+        {
+            return repoCandidate;
+        }
+
+        var marketAppCandidate = ResolveEnginePath(configPath, marketAppRoot, repoRoot);
+        if (File.Exists(marketAppCandidate))
+        {
+            return marketAppCandidate;
+        }
+
+        if (!configPath.Contains(Path.DirectorySeparatorChar) &&
+            !configPath.Contains(Path.AltDirectorySeparatorChar))
+        {
+            var configDirCandidate = Path.GetFullPath(Path.Combine(marketAppRoot, "config", configPath));
+            if (File.Exists(configDirCandidate))
+            {
+                return configDirCandidate;
+            }
+        }
+
+        return marketAppCandidate;
+    }
+
+    internal static string ResolveEnginePath(string path, string marketAppRoot, string? repoRootOverride = null)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return path;
+        }
+
+        if (Path.IsPathRooted(path))
+        {
+            return Path.GetFullPath(path);
+        }
+
+        var repoRoot = repoRootOverride ?? ResolveRepoRoot();
+        var repoCandidate = Path.GetFullPath(path, repoRoot);
+        if (File.Exists(repoCandidate) || Directory.Exists(repoCandidate))
+        {
+            return repoCandidate;
+        }
+
+        return Path.GetFullPath(path, marketAppRoot);
     }
 
     private static string ResolveMarketAppRoot()

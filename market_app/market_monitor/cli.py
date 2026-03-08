@@ -127,19 +127,62 @@ def _resolve_ohlcv_daily_dir(run_dir: Path) -> Path:
 
     payload = yaml.safe_load(snapshot_path.read_text(encoding="utf-8")) or {}
     paths_cfg = payload.get("paths") or {}
-    ohlcv_value = paths_cfg.get("ohlcv_daily_dir")
-    if not ohlcv_value:
-        raise RuntimeError("Config snapshot is missing paths.ohlcv_daily_dir.")
+    data_roots_cfg = payload.get("data_roots") or {}
+    data_cfg = payload.get("data") or {}
+    data_paths_cfg = data_cfg.get("paths") if isinstance(data_cfg, dict) else {}
+    if not isinstance(data_paths_cfg, dict):
+        data_paths_cfg = {}
 
-    ohlcv_dir = Path(str(ohlcv_value)).expanduser()
-    if not ohlcv_dir.is_absolute():
-        repo_root = find_repo_root(run_dir)
-        ohlcv_dir = (repo_root / ohlcv_dir).resolve()
+    repo_root = find_repo_root(run_dir)
 
-    if not ohlcv_dir.exists():
-        raise RuntimeError(f"Configured ohlcv_daily_dir not found: {ohlcv_dir}")
+    candidates: list[tuple[str, str]] = []
 
-    return ohlcv_dir
+    env_ohlcv_daily = os.getenv("MARKET_APP_OHLCV_DAILY_DIR")
+    env_ohlcv = os.getenv("MARKET_APP_OHLCV_DIR")
+    if env_ohlcv_daily:
+        candidates.append(("env:MARKET_APP_OHLCV_DAILY_DIR", env_ohlcv_daily))
+    if env_ohlcv:
+        candidates.append(("env:MARKET_APP_OHLCV_DIR", env_ohlcv))
+
+    snapshot_candidates = [
+        ("paths.ohlcv_daily_dir", paths_cfg.get("ohlcv_daily_dir")),
+        ("paths.ohlcv_dir", paths_cfg.get("ohlcv_dir")),
+        ("data_roots.ohlcv_dir", data_roots_cfg.get("ohlcv_dir")),
+        ("data.paths.nasdaq_daily_dir", data_paths_cfg.get("nasdaq_daily_dir")),
+    ]
+    for source, value in snapshot_candidates:
+        if value:
+            candidates.append((source, str(value)))
+
+    # Deterministic fallback when snapshot/env did not provide an explicit location.
+    candidates.extend(
+        [
+            ("default:market_app/data/ohlcv_daily", str(repo_root / "market_app" / "data" / "ohlcv_daily")),
+            ("default:data/ohlcv_daily", str(repo_root / "data" / "ohlcv_daily")),
+        ]
+    )
+
+    checked: list[str] = []
+    for source, raw_value in candidates:
+        value = str(raw_value).strip()
+        if not value:
+            continue
+
+        ohlcv_dir = Path(value).expanduser()
+        if not ohlcv_dir.is_absolute():
+            ohlcv_dir = (repo_root / ohlcv_dir).resolve()
+
+        checked.append(f"{source}={ohlcv_dir}")
+        if ohlcv_dir.exists() and ohlcv_dir.is_dir():
+            return ohlcv_dir
+
+    details = "; ".join(checked) if checked else "none"
+    raise RuntimeError(
+        "Unable to resolve OHLCV directory for freshness backfill. "
+        "Expected one of paths.ohlcv_daily_dir / paths.ohlcv_dir / data_roots.ohlcv_dir "
+        "or MARKET_APP_OHLCV_DIR to point to an existing folder. "
+        f"Checked: {details}"
+    )
 
 
 def _derive_quality_from_ohlcv(run_dir: Path, scored_df: pd.DataFrame) -> pd.DataFrame:
@@ -1653,7 +1696,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-
 

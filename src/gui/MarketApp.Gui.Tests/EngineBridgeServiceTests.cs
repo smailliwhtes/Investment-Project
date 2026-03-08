@@ -117,6 +117,77 @@ public class EngineBridgeServiceTests
     }
 
     [Fact]
+    public void ResolveConfigPath_UsesMarketAppRelativePathWhenRepoRelativeMissing()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "engine_bridge_cfg_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var marketAppRoot = Path.Combine(tempDir, "market_app");
+            var configDir = Path.Combine(marketAppRoot, "config");
+            Directory.CreateDirectory(configDir);
+
+            var expected = Path.Combine(configDir, "config.yaml");
+            File.WriteAllText(expected, "app: market_monitor");
+
+            var resolved = EngineBridgeService.ResolveConfigPath("config/config.yaml", marketAppRoot, tempDir);
+
+            Assert.Equal(expected, resolved);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void ResolveEnginePath_UsesMarketAppRelativePathWhenRepoRelativeMissing()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "engine_bridge_path_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var marketAppRoot = Path.Combine(tempDir, "market_app");
+            var watchlistDir = Path.Combine(marketAppRoot, "watchlists");
+            Directory.CreateDirectory(watchlistDir);
+
+            var expected = Path.Combine(watchlistDir, "watchlist.csv");
+            File.WriteAllText(expected, "symbol\nAAPL");
+
+            var resolved = EngineBridgeService.ResolveEnginePath("watchlists/watchlist.csv", marketAppRoot, tempDir);
+
+            Assert.Equal(expected, resolved);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false, true, true)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, true, false)]
+    [InlineData(false, false, false, false)]
+    public void ShouldRunPostRunActions_RequiresCompletedSuccessfulRun(
+        bool canceled,
+        bool runHadError,
+        bool runCompleted,
+        bool expected)
+    {
+        var actual = EngineBridgeService.ShouldRunPostRunActions(canceled, runHadError, runCompleted);
+
+        Assert.Equal(expected, actual);
+    }
+    [Fact]
     public void BuildStartInfo_SetsPythonUtf8Environment()
     {
         var info = EngineBridgeService.BuildStartInfo(
@@ -128,3 +199,4 @@ public class EngineBridgeServiceTests
         Assert.Equal("utf-8", info.Environment["PYTHONIOENCODING"]);
     }
 }
+
