@@ -184,6 +184,85 @@ public sealed class EngineBridgeService : IEngineBridgeService
             cancellationToken);
     }
 
+
+    public Task<EngineCommandResult> ImportOhlcvAsync(
+        string sourceDirectory,
+        string destinationDirectory,
+        string? pythonPath,
+        bool normalize = true,
+        string? dateColumn = null,
+        string? delimiter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var args = new List<string>
+        {
+            "-m", "market_monitor.cli", "provision", "import-ohlcv",
+            "--src", Path.GetFullPath(sourceDirectory),
+            "--dest", Path.GetFullPath(destinationDirectory)
+        };
+
+        if (normalize)
+        {
+            args.Add("--normalize");
+        }
+
+        if (!string.IsNullOrWhiteSpace(dateColumn))
+        {
+            args.Add("--date-col");
+            args.Add(dateColumn);
+        }
+
+        if (!string.IsNullOrWhiteSpace(delimiter))
+        {
+            args.Add("--delimiter");
+            args.Add(delimiter);
+        }
+
+        return RunCommandCaptureAsync(
+            ResolvePythonPath(pythonPath),
+            args,
+            ResolveMarketAppRoot(),
+            cancellationToken);
+    }
+
+    public Task<EngineCommandResult> ImportExogenousAsync(
+        string sourceDirectory,
+        string destinationDirectory,
+        string? pythonPath,
+        bool normalize = true,
+        string? normalizedDestinationDirectory = null,
+        string fileGlob = "*.csv",
+        string formatHint = "auto",
+        string writeFormat = "csv",
+        CancellationToken cancellationToken = default)
+    {
+        var args = new List<string>
+        {
+            "-m", "market_monitor.cli", "provision", "import-exogenous",
+            "--src", Path.GetFullPath(sourceDirectory),
+            "--dest", Path.GetFullPath(destinationDirectory),
+            "--glob", string.IsNullOrWhiteSpace(fileGlob) ? "*.csv" : fileGlob,
+            "--format", string.IsNullOrWhiteSpace(formatHint) ? "auto" : formatHint,
+            "--write", string.IsNullOrWhiteSpace(writeFormat) ? "csv" : writeFormat,
+        };
+
+        if (normalize)
+        {
+            args.Add("--normalize");
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedDestinationDirectory))
+        {
+            args.Add("--normalized-dest");
+            args.Add(Path.GetFullPath(normalizedDestinationDirectory));
+        }
+
+        return RunCommandCaptureAsync(
+            ResolvePythonPath(pythonPath),
+            args,
+            ResolveMarketAppRoot(),
+            cancellationToken);
+    }
     public async Task<RunDiffResult> DiffRunsAsync(
         string runA,
         string runB,
@@ -755,6 +834,4 @@ public sealed class EngineBridgeService : IEngineBridgeService
         return null;
     }
 }
-
-
 

@@ -3,43 +3,84 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="MarketApp.Gui.Pages.RunsPage"
              Title="Runs">
+  <ContentPage.Resources>
+    <ResourceDictionary>
+      <Style x:Key="InfoIconButtonStyle" TargetType="Button">
+        <Setter Property="Text" Value="i" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="WidthRequest" Value="22" />
+        <Setter Property="MinimumWidthRequest" Value="22" />
+        <Setter Property="HeightRequest" Value="22" />
+        <Setter Property="MinimumHeightRequest" Value="22" />
+        <Setter Property="CornerRadius" Value="11" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="HorizontalOptions" Value="Start" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="BackgroundColor" Value="#2F2F2F" />
+        <Setter Property="BorderColor" Value="#4E6FA4" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="TextColor" Value="#FFFFFF" />
+      </Style>
+    </ResourceDictionary>
+  </ContentPage.Resources>
+
   <ScrollView>
     <VerticalStackLayout Padding="16" Spacing="12">
-      <Label Text="Run history" FontSize="22" FontAttributes="Bold" />
+      <HorizontalStackLayout Spacing="6">
+        <Label Text="Run history" FontSize="22" FontAttributes="Bold" />
+        <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_history" Clicked="OnInfoClicked" />
+      </HorizontalStackLayout>
 
-      <CollectionView ItemsSource="{Binding Runs}" HeightRequest="260">
-        <CollectionView.Header>
+      <Frame>
+        <VerticalStackLayout Spacing="6">
           <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
-            <Label Text="Run id" />
-            <Label Text="Started" />
-            <Label Text="Finished" />
-            <Label Text="Universe" />
-            <Label Text="Eligible" />
+            <Label Text="Run id" FontAttributes="Bold" />
+            <Label Text="Started" Grid.Column="1" FontAttributes="Bold" />
+            <Label Text="Finished" Grid.Column="2" FontAttributes="Bold" />
+            <Label Text="Universe" Grid.Column="3" FontAttributes="Bold" />
+            <Label Text="Eligible" Grid.Column="4" FontAttributes="Bold" />
           </Grid>
-        </CollectionView.Header>
-        <CollectionView.ItemTemplate>
-          <DataTemplate>
-            <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2">
-              <Label Text="{Binding RunId}" />
-              <Label Text="{Binding StartedAt, StringFormat='{}{0:MM-dd HH:mm}'}" />
-              <Label Text="{Binding FinishedAt, StringFormat='{}{0:MM-dd HH:mm}'}" />
-              <Label Text="{Binding UniverseCount}" />
-              <Label Text="{Binding EligibleCount}" />
-            </Grid>
-          </DataTemplate>
-        </CollectionView.ItemTemplate>
-      </CollectionView>
+
+          <ScrollView HeightRequest="180">
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Runs}" Spacing="2">
+              <BindableLayout.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2" MinimumHeightRequest="24">
+                    <Label Text="{Binding RunId}" LineBreakMode="TailTruncation" MaxLines="1" />
+                    <Label Text="{Binding StartedAt, StringFormat='{}{0:MM-dd HH:mm}'}" Grid.Column="1" />
+                    <Label Text="{Binding FinishedAt, StringFormat='{}{0:MM-dd HH:mm}'}" Grid.Column="2" />
+                    <Label Text="{Binding UniverseCount}" Grid.Column="3" />
+                    <Label Text="{Binding EligibleCount}" Grid.Column="4" />
+                  </Grid>
+                </DataTemplate>
+              </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+          </ScrollView>
+        </VerticalStackLayout>
+      </Frame>
 
       <Frame>
         <VerticalStackLayout Spacing="8">
-          <Label Text="Run comparison" FontAttributes="Bold" />
+          <HorizontalStackLayout Spacing="6">
+            <Label Text="Run comparison" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_compare" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+
           <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
             <VerticalStackLayout>
-              <Label Text="Run A" />
+              <HorizontalStackLayout Spacing="6">
+                <Label Text="Run A" />
+                <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_a" Clicked="OnInfoClicked" />
+              </HorizontalStackLayout>
               <Picker ItemsSource="{Binding Runs}" SelectedItem="{Binding SelectedRunA}" ItemDisplayBinding="{Binding RunId}" />
             </VerticalStackLayout>
             <VerticalStackLayout Grid.Column="1">
-              <Label Text="Run B" />
+              <HorizontalStackLayout Spacing="6">
+                <Label Text="Run B" />
+                <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_b" Clicked="OnInfoClicked" />
+              </HorizontalStackLayout>
               <Picker ItemsSource="{Binding Runs}" SelectedItem="{Binding SelectedRunB}" ItemDisplayBinding="{Binding RunId}" />
             </VerticalStackLayout>
           </Grid>
@@ -52,56 +93,60 @@
           <Label Text="{Binding Status}" />
           <Label Text="{Binding DiffSummary}" />
 
-          <CollectionView ItemsSource="{Binding DiffRows}" HeightRequest="260">
-            <CollectionView.Header>
-              <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
-                <Label Text="Symbol" />
-                <Label Text="Delta score" />
-                <Label Text="Delta rank" />
-                <Label Text="Flags A" />
-                <Label Text="Flags B" />
-              </Grid>
-            </CollectionView.Header>
-            <CollectionView.ItemTemplate>
-              <DataTemplate>
-                <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2">
-                  <Label Text="{Binding Symbol}" />
-                  <Label Text="{Binding DeltaScore, StringFormat='{}{0:F4}'}" />
-                  <Label Text="{Binding DeltaRank}" />
-                  <Label Text="{Binding FlagsA}" />
-                  <Label Text="{Binding FlagsB}" />
-                </Grid>
-              </DataTemplate>
-            </CollectionView.ItemTemplate>
-          </CollectionView>
+          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
+            <Label Text="Symbol" FontAttributes="Bold" />
+            <Label Text="Delta score" Grid.Column="1" FontAttributes="Bold" />
+            <Label Text="Delta rank" Grid.Column="2" FontAttributes="Bold" />
+            <Label Text="Flags A" Grid.Column="3" FontAttributes="Bold" />
+            <Label Text="Flags B" Grid.Column="4" FontAttributes="Bold" />
+          </Grid>
+
+          <ScrollView HeightRequest="220">
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding DiffRows}" Spacing="2">
+              <BindableLayout.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2" MinimumHeightRequest="24">
+                    <Label Text="{Binding Symbol}" />
+                    <Label Text="{Binding DeltaScore, StringFormat='{}{0:F4}'}" Grid.Column="1" />
+                    <Label Text="{Binding DeltaRank}" Grid.Column="2" />
+                    <Label Text="{Binding FlagsA}" Grid.Column="3" />
+                    <Label Text="{Binding FlagsB}" Grid.Column="4" />
+                  </Grid>
+                </DataTemplate>
+              </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+          </ScrollView>
         </VerticalStackLayout>
       </Frame>
 
       <Frame>
-        <VerticalStackLayout Spacing="4">
-          <Label Text="Run A quality" FontAttributes="Bold" />
-          <CollectionView ItemsSource="{Binding SelectedRunMetrics}" HeightRequest="140">
-            <CollectionView.Header>
-              <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
-                <Label Text="Model" />
-                <Label Text="MSE" />
-                <Label Text="MAE" />
-                <Label Text="Accuracy" />
-                <Label Text="F1" />
-              </Grid>
-            </CollectionView.Header>
-            <CollectionView.ItemTemplate>
+        <VerticalStackLayout Spacing="6">
+          <HorizontalStackLayout Spacing="6">
+            <Label Text="Run A quality" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_a_quality" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+
+          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
+            <Label Text="Model" FontAttributes="Bold" />
+            <Label Text="MSE" Grid.Column="1" FontAttributes="Bold" />
+            <Label Text="MAE" Grid.Column="2" FontAttributes="Bold" />
+            <Label Text="Accuracy" Grid.Column="3" FontAttributes="Bold" />
+            <Label Text="F1" Grid.Column="4" FontAttributes="Bold" />
+          </Grid>
+
+          <VerticalStackLayout BindableLayout.ItemsSource="{Binding SelectedRunMetrics}" Spacing="2">
+            <BindableLayout.ItemTemplate>
               <DataTemplate>
-                <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2">
-                  <Label Text="{Binding Model}" />
-                  <Label Text="{Binding Mse, StringFormat='{}{0:F4}'}" />
-                  <Label Text="{Binding Mae, StringFormat='{}{0:F4}'}" />
-                  <Label Text="{Binding Accuracy, StringFormat='{}{0:P1}'}" />
-                  <Label Text="{Binding F1, StringFormat='{}{0:P1}'}" />
+                <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2" MinimumHeightRequest="24">
+                  <Label Text="{Binding Model}" LineBreakMode="TailTruncation" MaxLines="1" />
+                  <Label Text="{Binding Mse, StringFormat='{}{0:F4}'}" Grid.Column="1" />
+                  <Label Text="{Binding Mae, StringFormat='{}{0:F4}'}" Grid.Column="2" />
+                  <Label Text="{Binding Accuracy, StringFormat='{}{0:P1}'}" Grid.Column="3" />
+                  <Label Text="{Binding F1, StringFormat='{}{0:P1}'}" Grid.Column="4" />
                 </Grid>
               </DataTemplate>
-            </CollectionView.ItemTemplate>
-          </CollectionView>
+            </BindableLayout.ItemTemplate>
+          </VerticalStackLayout>
         </VerticalStackLayout>
       </Frame>
     </VerticalStackLayout>

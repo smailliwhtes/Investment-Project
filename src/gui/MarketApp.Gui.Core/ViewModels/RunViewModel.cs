@@ -4,12 +4,19 @@ namespace MarketApp.Gui.Core;
 
 public class RunViewModel : ViewModelBase
 {
+    private const int MaxProgressEvents = 500;
+
     private readonly IEngineBridgeService _engineBridge;
     private readonly IUserSettingsService _settings;
     private CancellationTokenSource? _cts;
     private string _configPath = "config/config.yaml";
     private string _outputDirectory = "outputs/runs/local";
     private string _pythonPath = "python";
+    private string _marketDataSourceDirectory;
+    private string _marketDataDestinationDirectory = "market_app/data/ohlcv_raw";
+    private string _corpusDataSourceDirectory;
+    private string _corpusDataDestinationDirectory = "market_app/data/exogenous/raw";
+    private string _corpusNormalizedDirectory = "market_app/data/gdelt";
     private double _progress;
     private string _status = "Idle";
     private bool _isRunning;
@@ -22,9 +29,21 @@ public class RunViewModel : ViewModelBase
         _settings = settings;
         _pythonPath = _settings.GetPythonPath() ?? "python";
 
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        if (string.IsNullOrWhiteSpace(desktop))
+        {
+            desktop = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Desktop");
+        }
+
+        _marketDataSourceDirectory = Path.Combine(desktop, "Market_Files");
+        _corpusDataSourceDirectory = Path.Combine(desktop, "NLP Corpus");
+
         Title = "Run Orchestration";
         StartCommand = new AsyncRelayCommand(StartRunAsync, () => !IsRunning);
         ValidateConfigCommand = new AsyncRelayCommand(ValidateConfigAsync, () => !IsRunning);
+        IngestMarketDataCommand = new AsyncRelayCommand(IngestMarketDataAsync, () => !IsRunning);
+        IngestCorpusDataCommand = new AsyncRelayCommand(IngestCorpusDataAsync, () => !IsRunning);
+        ProcessLatestDataCommand = new AsyncRelayCommand(ProcessLatestDataAsync, () => !IsRunning);
         CancelCommand = new RelayCommand(CancelRun, () => IsRunning);
     }
 
@@ -52,6 +71,36 @@ public class RunViewModel : ViewModelBase
                 _settings.SetPythonPath(value);
             }
         }
+    }
+
+    public string MarketDataSourceDirectory
+    {
+        get => _marketDataSourceDirectory;
+        set => SetProperty(ref _marketDataSourceDirectory, value);
+    }
+
+    public string MarketDataDestinationDirectory
+    {
+        get => _marketDataDestinationDirectory;
+        set => SetProperty(ref _marketDataDestinationDirectory, value);
+    }
+
+    public string CorpusDataSourceDirectory
+    {
+        get => _corpusDataSourceDirectory;
+        set => SetProperty(ref _corpusDataSourceDirectory, value);
+    }
+
+    public string CorpusDataDestinationDirectory
+    {
+        get => _corpusDataDestinationDirectory;
+        set => SetProperty(ref _corpusDataDestinationDirectory, value);
+    }
+
+    public string CorpusNormalizedDirectory
+    {
+        get => _corpusNormalizedDirectory;
+        set => SetProperty(ref _corpusNormalizedDirectory, value);
     }
 
     public bool RunBuildLinkedAfterRun
@@ -87,6 +136,9 @@ public class RunViewModel : ViewModelBase
             {
                 StartCommand.RaiseCanExecuteChanged();
                 ValidateConfigCommand.RaiseCanExecuteChanged();
+                IngestMarketDataCommand.RaiseCanExecuteChanged();
+                IngestCorpusDataCommand.RaiseCanExecuteChanged();
+                ProcessLatestDataCommand.RaiseCanExecuteChanged();
                 CancelCommand.RaiseCanExecuteChanged();
             }
         }
@@ -94,6 +146,9 @@ public class RunViewModel : ViewModelBase
 
     public AsyncRelayCommand StartCommand { get; }
     public AsyncRelayCommand ValidateConfigCommand { get; }
+    public AsyncRelayCommand IngestMarketDataCommand { get; }
+    public AsyncRelayCommand IngestCorpusDataCommand { get; }
+    public AsyncRelayCommand ProcessLatestDataCommand { get; }
     public RelayCommand CancelCommand { get; }
 
     private async Task StartRunAsync()
@@ -130,11 +185,7 @@ public class RunViewModel : ViewModelBase
                     sawError = true;
                 }
 
-                ProgressEvents.Add(evt);
-                if (ProgressEvents.Count > 500)
-                {
-                    ProgressEvents.RemoveAt(0);
-                }
+                AppendProgressEvent(evt);
             }
 
             if (!sawError)
@@ -146,7 +197,7 @@ public class RunViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             Status = "Canceled";
-            ProgressEvents.Add(new ProgressEvent(
+            AppendProgressEvent(new ProgressEvent(
                 Type: "error",
                 Stage: "run",
                 Message: "Run canceled",
@@ -170,7 +221,7 @@ public class RunViewModel : ViewModelBase
         if (validation.Valid)
         {
             Status = "Config is valid";
-            ProgressEvents.Add(new ProgressEvent(
+            AppendProgressEvent(new ProgressEvent(
                 Type: "stage_end",
                 Stage: "validate_config",
                 Message: "Config valid",
@@ -182,7 +233,7 @@ public class RunViewModel : ViewModelBase
         Status = $"Config invalid ({validation.Errors.Count} issue(s))";
         foreach (var issue in validation.Errors)
         {
-            ProgressEvents.Add(new ProgressEvent(
+            AppendProgressEvent(new ProgressEvent(
                 Type: issue.Severity.Equals("warning", StringComparison.OrdinalIgnoreCase) ? "warning" : "error",
                 Stage: "validate_config",
                 Message: $"[{issue.Path}] {issue.Message}",
@@ -194,8 +245,285 @@ public class RunViewModel : ViewModelBase
         }
     }
 
+    private async Task IngestMarketDataAsync()
+    {
+        if (string.IsNullOrWhiteSpace(MarketDataSourceDirectory) || !Directory.Exists(Path.GetFullPath(MarketDataSourceDirectory)))
+        {
+            Status = "Market source folder not found";
+            AppendProgressEvent(new ProgressEvent(
+                Type: "error",
+                Stage: "ingest_market",
+                Message: $"Source folder missing: {MarketDataSourceDirectory}",
+                Pct: null,
+                Timestamp: DateTime.UtcNow,
+                Error: new ProgressError("MISSING_INPUT", "Market source folder was not found", null)));
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(MarketDataDestinationDirectory))
+        {
+            Status = "Market destination folder is required";
+            return;
+        }
+
+        await ExecuteSingleCommandAsync(
+            stage: "ingest_market",
+            startMessage: "Ingesting market data",
+            successMessage: "Market data ingestion complete",
+            command: token => _engineBridge.ImportOhlcvAsync(
+                sourceDirectory: MarketDataSourceDirectory,
+                destinationDirectory: MarketDataDestinationDirectory,
+                pythonPath: string.IsNullOrWhiteSpace(PythonPath) ? null : PythonPath,
+                normalize: true,
+                cancellationToken: token)).ConfigureAwait(false);
+    }
+
+    private async Task IngestCorpusDataAsync()
+    {
+        if (string.IsNullOrWhiteSpace(CorpusDataSourceDirectory) || !Directory.Exists(Path.GetFullPath(CorpusDataSourceDirectory)))
+        {
+            Status = "Corpus source folder not found";
+            AppendProgressEvent(new ProgressEvent(
+                Type: "error",
+                Stage: "ingest_corpus",
+                Message: $"Source folder missing: {CorpusDataSourceDirectory}",
+                Pct: null,
+                Timestamp: DateTime.UtcNow,
+                Error: new ProgressError("MISSING_INPUT", "Corpus source folder was not found", null)));
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(CorpusDataDestinationDirectory))
+        {
+            Status = "Corpus destination folder is required";
+            return;
+        }
+
+        await ExecuteSingleCommandAsync(
+            stage: "ingest_corpus",
+            startMessage: "Ingesting corpus data",
+            successMessage: "Corpus ingestion complete",
+            command: token => _engineBridge.ImportExogenousAsync(
+                sourceDirectory: CorpusDataSourceDirectory,
+                destinationDirectory: CorpusDataDestinationDirectory,
+                pythonPath: string.IsNullOrWhiteSpace(PythonPath) ? null : PythonPath,
+                normalize: true,
+                normalizedDestinationDirectory: CorpusNormalizedDirectory,
+                cancellationToken: token)).ConfigureAwait(false);
+    }
+
+    private async Task ProcessLatestDataAsync()
+    {
+        if (!RunBuildLinkedAfterRun && !RunEvaluateAfterRun)
+        {
+            Status = "Enable at least one processing checkbox";
+            AppendProgressEvent(new ProgressEvent(
+                Type: "warning",
+                Stage: "process_latest",
+                Message: "Nothing selected. Enable 'Run linked corpus' and/or 'Run evaluate'.",
+                Pct: null,
+                Timestamp: DateTime.UtcNow));
+            return;
+        }
+
+        _cts = new CancellationTokenSource();
+        IsRunning = true;
+        Progress = 0;
+        Status = "Processing latest ingested data";
+
+        var python = string.IsNullOrWhiteSpace(PythonPath) ? null : PythonPath;
+        var runDir = Path.GetFullPath(OutputDirectory);
+        Directory.CreateDirectory(runDir);
+
+        try
+        {
+            if (RunBuildLinkedAfterRun)
+            {
+                AppendProgressEvent(new ProgressEvent(
+                    Type: "stage_start",
+                    Stage: "corpus_build_linked",
+                    Message: "Building linked market + corpus features",
+                    Pct: 0.1,
+                    Timestamp: DateTime.UtcNow));
+
+                var linkedResult = await _engineBridge.BuildLinkedAsync(
+                    configPath: ConfigPath,
+                    outDirectory: Path.Combine(runDir, "corpus_linked"),
+                    pythonPath: python,
+                    includeRawGdelt: false,
+                    cancellationToken: _cts.Token).ConfigureAwait(false);
+
+                if (!HandleCommandResult("corpus_build_linked", linkedResult, "Linked corpus build complete", 0.55))
+                {
+                    return;
+                }
+            }
+
+            if (RunEvaluateAfterRun)
+            {
+                AppendProgressEvent(new ProgressEvent(
+                    Type: "stage_start",
+                    Stage: "evaluate",
+                    Message: "Running evaluation artifacts",
+                    Pct: 0.65,
+                    Timestamp: DateTime.UtcNow));
+
+                var evalResult = await _engineBridge.EvaluateAsync(
+                    configPath: ConfigPath,
+                    outDirectory: runDir,
+                    pythonPath: python,
+                    cancellationToken: _cts.Token).ConfigureAwait(false);
+
+                if (!HandleCommandResult("evaluate", evalResult, "Evaluation complete", 1.0))
+                {
+                    return;
+                }
+            }
+
+            Status = "Processing complete";
+            Progress = 1.0;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "Canceled";
+            AppendProgressEvent(new ProgressEvent(
+                Type: "error",
+                Stage: "process_latest",
+                Message: "Processing canceled",
+                Pct: null,
+                Timestamp: DateTime.UtcNow,
+                Error: new ProgressError("INTERRUPTED", "Canceled by user", null)));
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+    }
+
+    private async Task ExecuteSingleCommandAsync(
+        string stage,
+        string startMessage,
+        string successMessage,
+        Func<CancellationToken, Task<EngineCommandResult>> command)
+    {
+        _cts = new CancellationTokenSource();
+        IsRunning = true;
+        Progress = 0;
+        Status = startMessage;
+
+        AppendProgressEvent(new ProgressEvent(
+            Type: "stage_start",
+            Stage: stage,
+            Message: startMessage,
+            Pct: 0,
+            Timestamp: DateTime.UtcNow));
+
+        try
+        {
+            var result = await command(_cts.Token).ConfigureAwait(false);
+            HandleCommandResult(stage, result, successMessage, 1.0);
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "Canceled";
+            AppendProgressEvent(new ProgressEvent(
+                Type: "error",
+                Stage: stage,
+                Message: "Operation canceled",
+                Pct: null,
+                Timestamp: DateTime.UtcNow,
+                Error: new ProgressError("INTERRUPTED", "Canceled by user", null)));
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+    }
+
+    private bool HandleCommandResult(string stage, EngineCommandResult result, string successMessage, double successProgress)
+    {
+        AppendCommandOutputEvents(stage, result);
+
+        if (result.ExitCode == 0)
+        {
+            Status = successMessage;
+            Progress = successProgress;
+            AppendProgressEvent(new ProgressEvent(
+                Type: "stage_end",
+                Stage: stage,
+                Message: successMessage,
+                Pct: successProgress,
+                Timestamp: DateTime.UtcNow));
+            return true;
+        }
+
+        var detail = string.IsNullOrWhiteSpace(result.Stderr)
+            ? $"Command failed with exit code {result.ExitCode}."
+            : result.Stderr.Trim();
+
+        Status = $"{stage} failed";
+        AppendProgressEvent(new ProgressEvent(
+            Type: "error",
+            Stage: stage,
+            Message: $"{stage} failed (exit {result.ExitCode})",
+            Pct: null,
+            Timestamp: DateTime.UtcNow,
+            Error: new ProgressError("RUNTIME_FAILURE", detail, null)));
+        return false;
+    }
+
+    private void AppendCommandOutputEvents(string stage, EngineCommandResult result)
+    {
+        var stdoutLines = SplitLines(result.Stdout).Take(8);
+        foreach (var line in stdoutLines)
+        {
+            AppendProgressEvent(new ProgressEvent(
+                Type: "warning",
+                Stage: stage,
+                Message: line,
+                Pct: null,
+                Timestamp: DateTime.UtcNow,
+                RawLine: line));
+        }
+
+        var stderrLines = SplitLines(result.Stderr).Take(8);
+        foreach (var line in stderrLines)
+        {
+            AppendProgressEvent(new ProgressEvent(
+                Type: "warning",
+                Stage: stage,
+                Message: line,
+                Pct: null,
+                Timestamp: DateTime.UtcNow,
+                RawLine: line));
+        }
+    }
+
+    private static IEnumerable<string> SplitLines(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return Array.Empty<string>();
+        }
+
+        return text
+            .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => !string.IsNullOrWhiteSpace(line));
+    }
+
+    private void AppendProgressEvent(ProgressEvent evt)
+    {
+        ProgressEvents.Add(evt);
+        if (ProgressEvents.Count > MaxProgressEvents)
+        {
+            ProgressEvents.RemoveAt(0);
+        }
+    }
+
     private void CancelRun()
     {
         _cts?.Cancel();
     }
 }
+

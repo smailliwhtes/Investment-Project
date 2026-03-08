@@ -7,58 +7,144 @@
   <ContentPage.Resources>
     <ResourceDictionary>
       <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+      <Style x:Key="InfoIconButtonStyle" TargetType="Button">
+        <Setter Property="Text" Value="i" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="WidthRequest" Value="22" />
+        <Setter Property="MinimumWidthRequest" Value="22" />
+        <Setter Property="HeightRequest" Value="22" />
+        <Setter Property="MinimumHeightRequest" Value="22" />
+        <Setter Property="CornerRadius" Value="11" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="HorizontalOptions" Value="Start" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="BackgroundColor" Value="#2F2F2F" />
+        <Setter Property="BorderColor" Value="#4E6FA4" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="TextColor" Value="#FFFFFF" />
+      </Style>
     </ResourceDictionary>
   </ContentPage.Resources>
-  <VerticalStackLayout Padding="16" Spacing="12">
-    <Label Text="Run orchestration" FontSize="22" FontAttributes="Bold" />
 
-    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
-      <Label Text="Config path" Grid.Row="0" Grid.Column="0" />
-      <Entry Text="{Binding ConfigPath}" Grid.Row="0" Grid.Column="1" />
-
-      <Label Text="Output directory" Grid.Row="1" Grid.Column="0" />
-      <Entry Text="{Binding OutputDirectory}" Grid.Row="1" Grid.Column="1" />
-
-      <Label Text="Python path" Grid.Row="2" Grid.Column="0" />
-      <Entry Text="{Binding PythonPath}" Grid.Row="2" Grid.Column="1" />
-
-      <HorizontalStackLayout Grid.Row="3" Grid.ColumnSpan="2" Spacing="16">
-        <HorizontalStackLayout Spacing="6">
-          <CheckBox IsChecked="{Binding RunBuildLinkedAfterRun}" />
-          <Label Text="Run linked corpus" VerticalTextAlignment="Center" />
-        </HorizontalStackLayout>
-        <HorizontalStackLayout Spacing="6">
-          <CheckBox IsChecked="{Binding RunEvaluateAfterRun}" />
-          <Label Text="Run evaluate" VerticalTextAlignment="Center" />
-        </HorizontalStackLayout>
+  <ScrollView>
+    <VerticalStackLayout Padding="16" Spacing="12">
+      <HorizontalStackLayout Spacing="6">
+        <Label Text="Run orchestration" FontSize="22" FontAttributes="Bold" />
+        <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_orchestration" Clicked="OnInfoClicked" />
       </HorizontalStackLayout>
 
-      <HorizontalStackLayout Grid.Row="4" Grid.ColumnSpan="2" Spacing="8">
-        <Button Text="Validate" Command="{Binding ValidateConfigCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
-        <Button Text="Start" Command="{Binding StartCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
-        <Button Text="Cancel" Command="{Binding CancelCommand}" IsEnabled="{Binding IsRunning}" />
-      </HorizontalStackLayout>
-    </Grid>
+      <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+        <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="6">
+          <Label Text="Config path" VerticalTextAlignment="Center" />
+          <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="config_path" Clicked="OnInfoClicked" />
+        </HorizontalStackLayout>
+        <Entry Text="{Binding ConfigPath}" Grid.Row="0" Grid.Column="1" />
 
-    <ProgressBar Progress="{Binding Progress}" />
-    <Label Text="{Binding Status}" />
+        <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="6">
+          <Label Text="Output directory" VerticalTextAlignment="Center" />
+          <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="output_directory" Clicked="OnInfoClicked" />
+        </HorizontalStackLayout>
+        <Entry Text="{Binding OutputDirectory}" Grid.Row="1" Grid.Column="1" />
 
-    <Frame>
-      <VerticalStackLayout>
-        <Label Text="Progress events" FontAttributes="Bold" />
-        <CollectionView ItemsSource="{Binding ProgressEvents}" HeightRequest="280">
-          <CollectionView.ItemTemplate>
-            <DataTemplate>
-              <Grid ColumnDefinitions="Auto,Auto,*,Auto" Padding="0,2" ColumnSpacing="8">
-                <Label Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" />
-                <Label Text="{Binding Type}" FontAttributes="Bold" />
-                <Label Text="{Binding Message}" LineBreakMode="TailTruncation" />
-                <Label Text="{Binding Pct, StringFormat='{}{0:P0}'}" />
-              </Grid>
-            </DataTemplate>
-          </CollectionView.ItemTemplate>
-        </CollectionView>
-      </VerticalStackLayout>
-    </Frame>
-  </VerticalStackLayout>
+        <HorizontalStackLayout Grid.Row="2" Grid.Column="0" Spacing="6">
+          <Label Text="Python path" VerticalTextAlignment="Center" />
+          <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="python_path" Clicked="OnInfoClicked" />
+        </HorizontalStackLayout>
+        <Entry Text="{Binding PythonPath}" Grid.Row="2" Grid.Column="1" />
+
+        <HorizontalStackLayout Grid.Row="3" Grid.ColumnSpan="2" Spacing="16">
+          <HorizontalStackLayout Spacing="6">
+            <CheckBox IsChecked="{Binding RunBuildLinkedAfterRun}" />
+            <Label Text="Run linked corpus" VerticalTextAlignment="Center" />
+          </HorizontalStackLayout>
+          <HorizontalStackLayout Spacing="6">
+            <CheckBox IsChecked="{Binding RunEvaluateAfterRun}" />
+            <Label Text="Run evaluate" VerticalTextAlignment="Center" />
+          </HorizontalStackLayout>
+        </HorizontalStackLayout>
+
+        <HorizontalStackLayout Grid.Row="4" Grid.ColumnSpan="2" Spacing="8">
+          <Button Text="Validate" Command="{Binding ValidateConfigCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+          <Button Text="Start" Command="{Binding StartCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+          <Button Text="Cancel" Command="{Binding CancelCommand}" IsEnabled="{Binding IsRunning}" />
+        </HorizontalStackLayout>
+      </Grid>
+
+      <Frame>
+        <VerticalStackLayout Spacing="10">
+          <HorizontalStackLayout Spacing="6">
+            <Label Text="Data ingestion and processing" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="ingest_process" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+            <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="6">
+              <Label Text="Market source folder" VerticalTextAlignment="Center" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="market_source" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <Entry Grid.Row="0" Grid.Column="1" Text="{Binding MarketDataSourceDirectory}" />
+
+            <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="6">
+              <Label Text="Market app folder" VerticalTextAlignment="Center" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="market_dest" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <Entry Grid.Row="1" Grid.Column="1" Text="{Binding MarketDataDestinationDirectory}" />
+
+            <HorizontalStackLayout Grid.Row="2" Grid.Column="0" Spacing="6">
+              <Label Text="Corpus source folder" VerticalTextAlignment="Center" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="corpus_source" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <Entry Grid.Row="2" Grid.Column="1" Text="{Binding CorpusDataSourceDirectory}" />
+
+            <HorizontalStackLayout Grid.Row="3" Grid.Column="0" Spacing="6">
+              <Label Text="Corpus app folder" VerticalTextAlignment="Center" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="corpus_dest" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <Entry Grid.Row="3" Grid.Column="1" Text="{Binding CorpusDataDestinationDirectory}" />
+
+            <HorizontalStackLayout Grid.Row="4" Grid.Column="0" Spacing="6">
+              <Label Text="Corpus normalized" VerticalTextAlignment="Center" />
+              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="corpus_normalized" Clicked="OnInfoClicked" />
+            </HorizontalStackLayout>
+            <Entry Grid.Row="4" Grid.Column="1" Text="{Binding CorpusNormalizedDirectory}" />
+          </Grid>
+
+          <HorizontalStackLayout Spacing="8">
+            <Button Text="Ingest Market Data" Command="{Binding IngestMarketDataCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+            <Button Text="Ingest Corpus Data" Command="{Binding IngestCorpusDataCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+            <Button Text="Process Latest Data" Command="{Binding ProcessLatestDataCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+          </HorizontalStackLayout>
+        </VerticalStackLayout>
+      </Frame>
+
+      <ProgressBar Progress="{Binding Progress}" />
+      <Label Text="{Binding Status}" />
+
+      <Frame>
+        <VerticalStackLayout Spacing="6">
+          <HorizontalStackLayout Spacing="6">
+            <Label Text="Progress events" FontAttributes="Bold" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="progress_events" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+
+          <ScrollView HeightRequest="280">
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding ProgressEvents}" Spacing="2">
+              <BindableLayout.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="Auto,Auto,*,Auto" Padding="0,2" ColumnSpacing="8" MinimumHeightRequest="24">
+                    <Label Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" />
+                    <Label Text="{Binding Type}" FontAttributes="Bold" />
+                    <Label Text="{Binding Message}" LineBreakMode="TailTruncation" MaxLines="1" />
+                    <Label Text="{Binding Pct, StringFormat='{}{0:P0}'}" />
+                  </Grid>
+                </DataTemplate>
+              </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+          </ScrollView>
+        </VerticalStackLayout>
+      </Frame>
+    </VerticalStackLayout>
+  </ScrollView>
 </ContentPage>

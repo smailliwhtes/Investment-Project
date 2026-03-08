@@ -39,6 +39,26 @@ public interface IEngineBridgeService
         string? pythonPath,
         CancellationToken cancellationToken = default);
 
+    Task<EngineCommandResult> ImportOhlcvAsync(
+        string sourceDirectory,
+        string destinationDirectory,
+        string? pythonPath,
+        bool normalize = true,
+        string? dateColumn = null,
+        string? delimiter = null,
+        CancellationToken cancellationToken = default);
+
+    Task<EngineCommandResult> ImportExogenousAsync(
+        string sourceDirectory,
+        string destinationDirectory,
+        string? pythonPath,
+        bool normalize = true,
+        string? normalizedDestinationDirectory = null,
+        string fileGlob = "*.csv",
+        string formatHint = "auto",
+        string writeFormat = "csv",
+        CancellationToken cancellationToken = default);
+
     Task<RunDiffResult> DiffRunsAsync(
         string runA,
         string runB,

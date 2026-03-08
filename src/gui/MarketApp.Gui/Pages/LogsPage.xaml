@@ -3,8 +3,34 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="MarketApp.Gui.Pages.LogsPage"
              Title="Logs">
+  <ContentPage.Resources>
+    <ResourceDictionary>
+      <Style x:Key="InfoIconButtonStyle" TargetType="Button">
+        <Setter Property="Text" Value="i" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="WidthRequest" Value="22" />
+        <Setter Property="MinimumWidthRequest" Value="22" />
+        <Setter Property="HeightRequest" Value="22" />
+        <Setter Property="MinimumHeightRequest" Value="22" />
+        <Setter Property="CornerRadius" Value="11" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="HorizontalOptions" Value="Start" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="BackgroundColor" Value="#2F2F2F" />
+        <Setter Property="BorderColor" Value="#4E6FA4" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="TextColor" Value="#FFFFFF" />
+      </Style>
+    </ResourceDictionary>
+  </ContentPage.Resources>
+
   <VerticalStackLayout Padding="16" Spacing="12">
-    <Label Text="Engine &amp; UI logs" FontSize="22" FontAttributes="Bold" />
+    <HorizontalStackLayout Spacing="6">
+      <Label Text="Engine &amp; UI logs" FontSize="22" FontAttributes="Bold" />
+      <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="logs" Clicked="OnInfoClicked" />
+    </HorizontalStackLayout>
     <Editor Text="{Binding CombinedLog}" AutoSize="TextChanges" IsReadOnly="True" HeightRequest="300" />
   </VerticalStackLayout>
 </ContentPage>

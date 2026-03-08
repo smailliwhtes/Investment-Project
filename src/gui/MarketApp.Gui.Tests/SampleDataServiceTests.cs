@@ -157,6 +157,32 @@ public class SampleDataServiceTests
             return Task.FromResult(new EngineCommandResult(0, string.Empty, string.Empty));
         }
 
+        public Task<EngineCommandResult> ImportOhlcvAsync(
+            string sourceDirectory,
+            string destinationDirectory,
+            string? pythonPath,
+            bool normalize = true,
+            string? dateColumn = null,
+            string? delimiter = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new EngineCommandResult(0, string.Empty, string.Empty));
+        }
+
+        public Task<EngineCommandResult> ImportExogenousAsync(
+            string sourceDirectory,
+            string destinationDirectory,
+            string? pythonPath,
+            bool normalize = true,
+            string? normalizedDestinationDirectory = null,
+            string fileGlob = "*.csv",
+            string formatHint = "auto",
+            string writeFormat = "csv",
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new EngineCommandResult(0, string.Empty, string.Empty));
+        }
+
         public Task<RunDiffResult> DiffRunsAsync(string runA, string runB, string? pythonPath, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new RunDiffResult("a", "b", new RunDiffSummary(0, 0, 0, 0), Array.Empty<RunDiffRow>()));
