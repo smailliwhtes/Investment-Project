@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows.Input;
 
 namespace MarketApp.Gui.Core;
@@ -29,7 +30,11 @@ public sealed class AsyncRelayCommand : ICommand
         {
             _isRunning = true;
             RaiseCanExecuteChanged();
-            await _execute().ConfigureAwait(false);
+            await _execute();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[AsyncRelayCommand] Unhandled command exception: {ex}");
         }
         finally
         {

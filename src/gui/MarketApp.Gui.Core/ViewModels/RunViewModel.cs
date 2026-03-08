@@ -276,34 +276,48 @@ public class RunViewModel : ViewModelBase
         }
 
         Status = "Validating config";
-        var validation = await _engineBridge.ValidateConfigAsync(
-            ConfigPath,
-            string.IsNullOrWhiteSpace(PythonPath) ? null : PythonPath).ConfigureAwait(false);
-
-        if (validation.Valid)
+        try
         {
-            Status = "Config is valid";
-            AppendProgressEvent(new ProgressEvent(
-                Type: "stage_end",
-                Stage: "validate_config",
-                Message: "Config valid",
-                Pct: null,
-                Timestamp: DateTime.UtcNow));
-            return;
+            var validation = await _engineBridge.ValidateConfigAsync(
+                ConfigPath,
+                string.IsNullOrWhiteSpace(PythonPath) ? null : PythonPath);
+
+            if (validation.Valid)
+            {
+                Status = "Config is valid";
+                AppendProgressEvent(new ProgressEvent(
+                    Type: "stage_end",
+                    Stage: "validate_config",
+                    Message: "Config valid",
+                    Pct: null,
+                    Timestamp: DateTime.UtcNow));
+                return;
+            }
+
+            Status = $"Config invalid ({validation.Errors.Count} issue(s))";
+            foreach (var issue in validation.Errors)
+            {
+                AppendProgressEvent(new ProgressEvent(
+                    Type: issue.Severity.Equals("warning", StringComparison.OrdinalIgnoreCase) ? "warning" : "error",
+                    Stage: "validate_config",
+                    Message: $"[{issue.Path}] {issue.Message}",
+                    Pct: null,
+                    Timestamp: DateTime.UtcNow,
+                    Error: issue.Severity.Equals("warning", StringComparison.OrdinalIgnoreCase)
+                        ? null
+                        : new ProgressError("INVALID_CONFIG", issue.Message, null)));
+            }
         }
-
-        Status = $"Config invalid ({validation.Errors.Count} issue(s))";
-        foreach (var issue in validation.Errors)
+        catch (Exception ex)
         {
+            Status = "Config validation failed";
             AppendProgressEvent(new ProgressEvent(
-                Type: issue.Severity.Equals("warning", StringComparison.OrdinalIgnoreCase) ? "warning" : "error",
+                Type: "error",
                 Stage: "validate_config",
-                Message: $"[{issue.Path}] {issue.Message}",
+                Message: "Validation command failed unexpectedly",
                 Pct: null,
                 Timestamp: DateTime.UtcNow,
-                Error: issue.Severity.Equals("warning", StringComparison.OrdinalIgnoreCase)
-                    ? null
-                    : new ProgressError("INVALID_CONFIG", issue.Message, null)));
+                Error: new ProgressError("RUNTIME_FAILURE", ex.Message, null)));
         }
     }
 
@@ -337,7 +351,7 @@ public class RunViewModel : ViewModelBase
                 destinationDirectory: MarketDataDestinationDirectory,
                 pythonPath: string.IsNullOrWhiteSpace(PythonPath) ? null : PythonPath,
                 normalize: true,
-                cancellationToken: token)).ConfigureAwait(false);
+                cancellationToken: token));
     }
 
     private async Task IngestCorpusDataAsync()
@@ -371,7 +385,7 @@ public class RunViewModel : ViewModelBase
                 pythonPath: string.IsNullOrWhiteSpace(PythonPath) ? null : PythonPath,
                 normalize: true,
                 normalizedDestinationDirectory: CorpusNormalizedDirectory,
-                cancellationToken: token)).ConfigureAwait(false);
+                cancellationToken: token));
     }
 
     private async Task ProcessLatestDataAsync()
@@ -418,7 +432,7 @@ public class RunViewModel : ViewModelBase
                     outDirectory: Path.Combine(runDir, "corpus_linked"),
                     pythonPath: python,
                     includeRawGdelt: false,
-                    cancellationToken: _cts.Token).ConfigureAwait(false);
+                    cancellationToken: _cts.Token);
 
                 if (!HandleCommandResult("corpus_build_linked", linkedResult, "Linked corpus build complete", 0.55))
                 {
@@ -439,7 +453,7 @@ public class RunViewModel : ViewModelBase
                     configPath: ConfigPath,
                     outDirectory: runDir,
                     pythonPath: python,
-                    cancellationToken: _cts.Token).ConfigureAwait(false);
+                    cancellationToken: _cts.Token);
 
                 if (!HandleCommandResult("evaluate", evalResult, "Evaluation complete", 1.0))
                 {
@@ -660,7 +674,7 @@ public class RunViewModel : ViewModelBase
 
         try
         {
-            var result = await command(_cts.Token).ConfigureAwait(false);
+            var result = await command(_cts.Token);
             HandleCommandResult(stage, result, successMessage, 1.0);
         }
         catch (OperationCanceledException)
@@ -673,6 +687,17 @@ public class RunViewModel : ViewModelBase
                 Pct: null,
                 Timestamp: DateTime.UtcNow,
                 Error: new ProgressError("INTERRUPTED", "Canceled by user", null)));
+        }
+        catch (Exception ex)
+        {
+            Status = $"{stage} failed";
+            AppendProgressEvent(new ProgressEvent(
+                Type: "error",
+                Stage: stage,
+                Message: "Command failed unexpectedly",
+                Pct: null,
+                Timestamp: DateTime.UtcNow,
+                Error: new ProgressError("RUNTIME_FAILURE", ex.Message, null)));
         }
         finally
         {
@@ -823,3 +848,4 @@ public class RunViewModel : ViewModelBase
         public string? GdeltRawDirectory { get; set; }
     }
 }
+
