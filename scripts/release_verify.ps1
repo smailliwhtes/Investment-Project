@@ -9,6 +9,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$isWindowsHost = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $repoRoot
@@ -107,7 +108,7 @@ try {
     }
 
     $dotnetStatus = 'skipped'
-    if (-not $SkipDotnetTests -and $IsWindows -and (Test-Path -LiteralPath (Join-Path $repoRoot 'src/gui/MarketApp.Gui.sln'))) {
+    if (-not $SkipDotnetTests -and $isWindowsHost -and (Test-Path -LiteralPath (Join-Path $repoRoot 'src/gui/MarketApp.Gui.sln'))) {
         $dnResult = Invoke-LoggedCommand -Name 'dotnet_test' -Command 'dotnet test src/gui/MarketApp.Gui.Tests/MarketApp.Gui.Tests.csproj -c Release'
         if ($dnResult.ExitCode -ne 0) {
             Add-GateResult @{ name='tests_engine'; status='fail'; details=@{ pytest='pass'; dotnet_test='fail' } }
@@ -153,8 +154,8 @@ try {
     }
 
     # Gate: gui_smoke
-    if ($SkipGuiSmoke -or -not $IsWindows -or $env:GITHUB_ACTIONS -eq 'true') {
-        $skipReason = if ($env:GITHUB_ACTIONS -eq 'true') { 'skipped: MAUI WinUI requires desktop session' } elseif (-not $IsWindows) { 'skipped: non-Windows platform' } else { 'skipped by flag' }
+    if ($SkipGuiSmoke -or -not $isWindowsHost -or $env:GITHUB_ACTIONS -eq 'true') {
+        $skipReason = if ($env:GITHUB_ACTIONS -eq 'true') { 'skipped: MAUI WinUI requires desktop session' } elseif (-not $isWindowsHost) { 'skipped: non-Windows platform' } else { 'skipped by flag' }
         Add-GateResult @{ name='gui_smoke'; status='skipped'; details=@{ reason=$skipReason } }
     } else {
         $guiBuildCmd = 'dotnet build src/gui/MarketApp.Gui/MarketApp.Gui.csproj -c Release -p:Platform=x64 --no-restore'
