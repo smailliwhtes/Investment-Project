@@ -74,7 +74,45 @@ Remove-Item Env:MARKETAPP_SMOKE_MODE -ErrorAction SilentlyContinue
 Remove-Item Env:MARKETAPP_SMOKE_READY_FILE -ErrorAction SilentlyContinue
 Remove-Item Env:MARKETAPP_SMOKE_HOLD_SECONDS -ErrorAction SilentlyContinue
 
-$proc = Start-Process -FilePath $exe.FullName -PassThru
+function Start-GuiProcess {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ExePath
+  )
+
+  try {
+    $proc = Start-Process -FilePath $ExePath -PassThru
+    return [pscustomobject]@{
+      Process      = $proc
+      Mode         = "exe"
+      EventPattern = "*MarketApp.Gui.exe*"
+      Display      = $ExePath
+    }
+  } catch {
+    $message = $_.Exception.Message
+    if ($message -notmatch "Application Control policy has blocked this file") {
+      throw
+    }
+
+    $dllPath = Join-Path (Split-Path -Parent $ExePath) "MarketApp.Gui.dll"
+    if (-not (Test-Path -LiteralPath $dllPath)) {
+      throw "Application Control blocked '$ExePath' and fallback DLL launch target was not found at '$dllPath'."
+    }
+
+    Write-Warning "Direct executable launch was blocked by Application Control. Falling back to dotnet-hosted launch."
+    $proc = Start-Process -FilePath "dotnet" -ArgumentList @("`"$dllPath`"") -WorkingDirectory (Split-Path -Parent $dllPath) -PassThru
+    return [pscustomobject]@{
+      Process      = $proc
+      Mode         = "dotnet"
+      EventPattern = "*MarketApp.Gui*"
+      Display      = "dotnet $dllPath"
+    }
+  }
+}
+
+$launch = Start-GuiProcess -ExePath $exe.FullName
+$proc = $launch.Process
+Write-Host "Launch mode: $($launch.Mode) [$($launch.Display)]"
 Start-Sleep -Seconds 3
 $proc.Refresh()
 if ($proc.HasExited) {
@@ -83,7 +121,7 @@ if ($proc.HasExited) {
   try {
     $since = (Get-Date).AddMinutes(-2)
     $events = Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $since } |
-      Where-Object { $_.Message -like '*MarketApp.Gui.exe*' } |
+      Where-Object { $_.Message -like $launch.EventPattern -or $_.Message -like '*MarketApp.Gui.exe*' } |
       Sort-Object TimeCreated -Descending |
       Select-Object -First 3
 
@@ -114,4 +152,5 @@ if ($procDetails -and $procDetails.MainWindowTitle -like '*could not be started*
 }
 
 Write-Host "GUI launched (PID $($proc.Id)). This shell is free to use while the app remains open."
+
 
