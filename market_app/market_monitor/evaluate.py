@@ -48,14 +48,21 @@ def _build_market_panel(
     lookback_days: int,
     forward_return_days: int,
     min_history_days: int,
+    max_samples_per_symbol: int,
     logger,
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
-    for symbol in symbols:
+    missing_history_count = 0
+    missing_history_warn_limit = 25
+    total_symbols = len(symbols)
+
+    for symbol_index, symbol in enumerate(symbols, start=1):
         try:
             history = provider.get_history(symbol, 0)
         except Exception as exc:  # noqa: BLE001
-            logger.warning(f"[eval] {symbol} history unavailable: {exc}")
+            missing_history_count += 1
+            if missing_history_count <= missing_history_warn_limit:
+                logger.warning(f"[eval] {symbol} history unavailable: {exc}")
             continue
         if history.empty:
             continue
@@ -67,7 +74,12 @@ def _build_market_panel(
 
         close = history["Close"].to_numpy(dtype=float)
         dates = history["Date"].to_numpy()
-        for idx in range(min_history_days, len(history) - forward_return_days):
+        start_idx = min_history_days
+        end_idx = len(history) - forward_return_days
+        if max_samples_per_symbol > 0:
+            start_idx = max(start_idx, end_idx - max_samples_per_symbol)
+
+        for idx in range(start_idx, end_idx):
             window_start = max(0, idx - lookback_days)
             window = history.iloc[window_start : idx + 1]
             features = compute_features(window)
@@ -80,8 +92,45 @@ def _build_market_panel(
                     **features,
                 }
             )
+        if symbol_index % 5 == 0 or symbol_index == total_symbols:
+            logger.info("[eval] Processed %s/%s symbols", symbol_index, total_symbols)
+
+    if missing_history_count > missing_history_warn_limit:
+        logger.warning(
+            "[eval] %s additional symbols skipped due missing history.",
+            missing_history_count - missing_history_warn_limit,
+        )
+
     return pd.DataFrame(rows)
 
+
+
+def _normalize_symbol(value: Any) -> str:
+    symbol = str(value or "").strip().upper().lstrip("\ufeff")
+    if not symbol:
+        return ""
+    if "," in symbol:
+        symbol = symbol.split(",", 1)[0].strip()
+    if symbol in {"SYMBOL", "TICKER"}:
+        return ""
+
+    allowed = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_")
+    if any(char not in allowed for char in symbol):
+        return ""
+
+    return symbol
+
+
+def _sanitize_symbols(values: list[Any]) -> list[str]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        symbol = _normalize_symbol(value)
+        if not symbol or symbol in seen:
+            continue
+        seen.add(symbol)
+        ordered.append(symbol)
+    return ordered
 
 def _join_corpus(panel: pd.DataFrame, corpus_features: pd.DataFrame | None) -> pd.DataFrame:
     if panel.empty or corpus_features is None or corpus_features.empty:
@@ -271,10 +320,20 @@ def run_evaluation(
     logger,
 ) -> int:
     eval_cfg = config.get("evaluation", {})
-    symbols = eval_cfg.get("symbols") or []
+    symbols = _sanitize_symbols(list(eval_cfg.get("symbols") or []))
+
+    if not symbols:
+        scored_path = outputs_dir.parent / "scored.csv"
+        if scored_path.exists():
+            scored_df = pd.read_csv(scored_path)
+            symbols = _sanitize_symbols(scored_df.get("symbol", pd.Series(dtype=str)).tolist())
+            if symbols:
+                logger.info("[eval] Using %s symbols from %s", len(symbols), scored_path)
+
     if not symbols:
         watchlist_path = resolve_path(base_dir, config["paths"]["watchlist_file"])
-        symbols = read_watchlist(watchlist_path)["symbol"].tolist()
+        symbols = _sanitize_symbols(read_watchlist(watchlist_path)["symbol"].tolist())
+
     if not symbols:
         logger.error("[eval] No symbols available for evaluation.")
         return 2
@@ -285,6 +344,7 @@ def run_evaluation(
         lookback_days=int(eval_cfg.get("lookback_days", 252)),
         forward_return_days=int(eval_cfg.get("forward_return_days", 5)),
         min_history_days=int(eval_cfg.get("min_history_days", 252)),
+        max_samples_per_symbol=int(eval_cfg.get("max_samples_per_symbol", 750)),
         logger=logger,
     )
     if panel.empty:
@@ -384,4 +444,5 @@ def run_evaluation(
     logger.info(f"[eval] metrics written to {metrics_path}")
     logger.info(f"[eval] report written to {report_path}")
     return 0
+
 

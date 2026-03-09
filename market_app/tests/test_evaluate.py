@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from market_monitor.evaluate import EvaluationSplit, _evaluate_split, enforce_no_lookahead
+from market_monitor.evaluate import EvaluationSplit, _build_market_panel, _evaluate_split, _sanitize_symbols, enforce_no_lookahead
 
 
 def test_enforce_no_lookahead_flags_future_corpus() -> None:
@@ -47,3 +47,55 @@ def test_evaluation_deterministic_metrics() -> None:
     second = _evaluate_split(panel, split, include_corpus=False, mode="both", risk_free_rate_annual=0.0)
     assert first == second
 
+
+
+def test_sanitize_symbols_handles_headers_and_comma_rows() -> None:
+    symbols = _sanitize_symbols([
+        "\ufeffSYMBOL",
+        "A,,equity",
+        " aapl ",
+        "BRK.B",
+        "",
+        None,
+        "A,,EQUITY",
+    ])
+
+    assert symbols == ["A", "AAPL", "BRK.B"]
+
+
+
+def test_build_market_panel_respects_max_samples_per_symbol() -> None:
+    history = pd.DataFrame(
+        {
+            "Date": pd.date_range("2024-01-01", periods=20, freq="D"),
+            "Open": [100 + i for i in range(20)],
+            "High": [101 + i for i in range(20)],
+            "Low": [99 + i for i in range(20)],
+            "Close": [100 + i for i in range(20)],
+            "Volume": [1_000_000 for _ in range(20)],
+        }
+    )
+
+    class _Provider:
+        def get_history(self, symbol: str, days: int) -> pd.DataFrame:  # noqa: ARG002
+            return history
+
+    class _Logger:
+        def warning(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            return
+
+        def info(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+            return
+
+    panel = _build_market_panel(
+        ["AAA"],
+        _Provider(),
+        lookback_days=5,
+        forward_return_days=1,
+        min_history_days=5,
+        max_samples_per_symbol=4,
+        logger=_Logger(),
+    )
+
+    assert len(panel) == 4
+    assert panel["symbol"].nunique() == 1

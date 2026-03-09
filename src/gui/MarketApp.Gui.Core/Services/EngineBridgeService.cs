@@ -9,6 +9,7 @@ namespace MarketApp.Gui.Core;
 public sealed class EngineBridgeService : IEngineBridgeService
 {
     private static readonly TimeSpan ProgressThrottleInterval = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan PostStageHeartbeatInterval = TimeSpan.FromSeconds(5);
 
     public async IAsyncEnumerable<ProgressEvent> RunAsync(
         EngineRunRequest request,
@@ -65,12 +66,29 @@ public sealed class EngineBridgeService : IEngineBridgeService
                 Timestamp: DateTime.UtcNow);
 
             var linkedOutDir = Path.Combine(runDir, "corpus_linked");
-            var linked = await BuildLinkedAsync(
+            var linkedTask = BuildLinkedAsync(
                 request.ConfigPath,
                 linkedOutDir,
                 request.PythonPath,
                 request.IncludeRawGdelt,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken);
+
+            while (!linkedTask.IsCompleted)
+            {
+                var heartbeatTask = Task.Delay(PostStageHeartbeatInterval, cancellationToken);
+                var completed = await Task.WhenAny(linkedTask, heartbeatTask).ConfigureAwait(false);
+                if (completed != linkedTask)
+                {
+                    yield return new ProgressEvent(
+                        Type: "stage_progress",
+                        Stage: "corpus_build_linked",
+                        Message: "Corpus build-linked still running...",
+                        Pct: null,
+                        Timestamp: DateTime.UtcNow);
+                }
+            }
+
+            var linked = await linkedTask.ConfigureAwait(false);
 
             var linkedType = linked.ExitCode == 0 ? "stage_end" : "error";
             yield return new ProgressEvent(
@@ -80,6 +98,17 @@ public sealed class EngineBridgeService : IEngineBridgeService
                 Pct: null,
                 Timestamp: DateTime.UtcNow,
                 Error: linked.ExitCode == 0 ? null : new ProgressError("RUNTIME_FAILURE", linked.Stderr.Trim(), null));
+
+            if (linked.ExitCode != 0)
+            {
+                yield return new ProgressEvent(
+                    Type: "warning",
+                    Stage: "evaluate",
+                    Message: "Skipping evaluation because corpus build-linked failed.",
+                    Pct: null,
+                    Timestamp: DateTime.UtcNow);
+                yield break;
+            }
         }
 
         if (request.RunEvaluate)
@@ -91,11 +120,28 @@ public sealed class EngineBridgeService : IEngineBridgeService
                 Pct: null,
                 Timestamp: DateTime.UtcNow);
 
-            var eval = await EvaluateAsync(
+            var evalTask = EvaluateAsync(
                 request.ConfigPath,
                 runDir,
                 request.PythonPath,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken);
+
+            while (!evalTask.IsCompleted)
+            {
+                var heartbeatTask = Task.Delay(PostStageHeartbeatInterval, cancellationToken);
+                var completed = await Task.WhenAny(evalTask, heartbeatTask).ConfigureAwait(false);
+                if (completed != evalTask)
+                {
+                    yield return new ProgressEvent(
+                        Type: "stage_progress",
+                        Stage: "evaluate",
+                        Message: "Evaluation still running...",
+                        Pct: null,
+                        Timestamp: DateTime.UtcNow);
+                }
+            }
+
+            var eval = await evalTask.ConfigureAwait(false);
 
             var evalType = eval.ExitCode == 0 ? "stage_end" : "error";
             yield return new ProgressEvent(
