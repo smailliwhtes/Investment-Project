@@ -40,6 +40,7 @@ from market_monitor.features.io import read_ohlcv
 from market_monitor.gdelt.doctor import normalize_corpus
 from market_monitor.hash_utils import hash_file
 from market_monitor.logging_utils import get_console_logger
+from market_monitor.ml.benchmark import run_benchmark
 from market_monitor.paths import find_repo_root, resolve_path
 from market_monitor.providers.base import ProviderError
 from market_monitor.timebase import utcnow
@@ -1481,6 +1482,34 @@ def run_policy_simulate(args: argparse.Namespace) -> int:
         return 4
 
 
+def run_ml_benchmark_command(args: argparse.Namespace) -> int:
+    try:
+        summary = run_benchmark(
+            joined_path=Path(args.joined_path),
+            output_dir=Path(args.output_dir),
+            model_types=[item.strip() for item in args.model_types.split(",") if item.strip()],
+            horizon_days=args.horizon_days,
+            folds=args.folds,
+            gap=args.gap,
+            seed=args.seed,
+            allow_exogenous=[item.strip() for item in args.allow_exogenous.split(",") if item.strip()],
+            min_rmse_improvement=args.min_rmse_improvement,
+            max_mae_regression=args.max_mae_regression,
+        )
+    except FileNotFoundError as exc:
+        print(f"[error] {exc}")
+        return 3
+    except ValueError as exc:
+        print(f"[error] {exc}")
+        return 2
+    except RuntimeError as exc:
+        print(f"[error] {exc}")
+        return 4
+
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
+
+
 def _load_bulk_symbols(config: dict[str, Any], base_dir: Path, args: argparse.Namespace) -> pd.Series:
     mode = args.mode or "watchlist"
     if mode == "universe":
@@ -1672,6 +1701,23 @@ def build_parser() -> argparse.ArgumentParser:
     policy_simulate_parser.add_argument("--progress-jsonl", action="store_true", default=False)
     policy_simulate_parser.add_argument("--log-level", default="INFO")
 
+    ml_parser = sub.add_parser("ml", help="Machine-learning utilities")
+    ml_sub = ml_parser.add_subparsers(dest="ml_command")
+    ml_benchmark_parser = ml_sub.add_parser(
+        "benchmark",
+        help="Benchmark deterministic ML backends without changing promoted ml/ artifacts",
+    )
+    ml_benchmark_parser.add_argument("--joined-path", required=True)
+    ml_benchmark_parser.add_argument("--output-dir", required=True)
+    ml_benchmark_parser.add_argument("--model-types", default="sklearn_gb,numpy_mlp")
+    ml_benchmark_parser.add_argument("--horizon-days", type=int, default=5)
+    ml_benchmark_parser.add_argument("--folds", type=int, default=3)
+    ml_benchmark_parser.add_argument("--gap", type=int, default=0)
+    ml_benchmark_parser.add_argument("--seed", type=int, default=42)
+    ml_benchmark_parser.add_argument("--allow-exogenous", default="")
+    ml_benchmark_parser.add_argument("--min-rmse-improvement", type=float, default=0.01)
+    ml_benchmark_parser.add_argument("--max-mae-regression", type=float, default=0.005)
+
     evaluate_parser = sub.add_parser("evaluate", help="Run offline evaluation harness")
     evaluate_parser.add_argument("--config", default="config.yaml")
     evaluate_parser.add_argument("--outdir")
@@ -1794,6 +1840,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "policy":
         if args.policy_command == "simulate":
             return run_policy_simulate(args)
+        return 2
+
+    if args.command == "ml":
+        if args.ml_command == "benchmark":
+            return run_ml_benchmark_command(args)
         return 2
 
     if args.command == "bulk-plan":

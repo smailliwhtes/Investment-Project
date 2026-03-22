@@ -1,7 +1,16 @@
 import pandas as pd
 import pytest
 
-from market_monitor.evaluate import EvaluationSplit, _build_market_panel, _evaluate_split, _sanitize_symbols, enforce_no_lookahead
+from market_monitor.evaluate import (
+    EvaluationSplit,
+    _build_market_panel,
+    _evaluate_split,
+    _portfolio_vs_benchmark_metrics,
+    _purge_overlapping_train_rows,
+    _sanitize_symbols,
+    enforce_no_lookahead,
+)
+from market_monitor.quant_math import annualized_volatility, beta
 
 
 def test_enforce_no_lookahead_flags_future_corpus() -> None:
@@ -46,6 +55,40 @@ def test_evaluation_deterministic_metrics() -> None:
     first = _evaluate_split(panel, split, include_corpus=False, mode="both", risk_free_rate_annual=0.0)
     second = _evaluate_split(panel, split, include_corpus=False, mode="both", risk_free_rate_annual=0.0)
     assert first == second
+
+
+def test_evaluation_purges_overlapping_forward_labels() -> None:
+    train = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2020-01-01", "2020-01-02", "2020-01-03"]),
+            "label_end_date": pd.to_datetime(["2020-01-02", "2020-01-04", "2020-01-05"]),
+            "forward_return": [0.01, 0.02, -0.03],
+            "label": [1, 1, 0],
+            "feature_a": [0.1, 0.2, 0.3],
+        }
+    )
+
+    purged = _purge_overlapping_train_rows(train, test_start=pd.Timestamp("2020-01-04"))
+
+    assert purged["Date"].dt.strftime("%Y-%m-%d").tolist() == ["2020-01-01"]
+
+
+def test_portfolio_metrics_use_model_conditioned_signal() -> None:
+    test = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(["2020-01-05", "2020-01-05", "2020-01-06", "2020-01-06"]),
+            "symbol": ["AAA", "SPY", "AAA", "SPY"],
+            "forward_return": [0.10, 0.02, -0.05, 0.01],
+        }
+    )
+    signal = pd.Series([0.9, 0.1, 0.8, 0.2]).to_numpy(dtype=float)
+
+    metrics = _portfolio_vs_benchmark_metrics(test, signal=signal, risk_free_rate_annual=0.0)
+
+    portfolio_returns = pd.Series([0.10, -0.05]).to_numpy(dtype=float)
+    benchmark_returns = pd.Series([0.02, 0.01]).to_numpy(dtype=float)
+    assert metrics["volatility_ann"] == pytest.approx(annualized_volatility(portfolio_returns))
+    assert metrics["beta_spy"] == pytest.approx(beta(portfolio_returns, benchmark_returns))
 
 
 

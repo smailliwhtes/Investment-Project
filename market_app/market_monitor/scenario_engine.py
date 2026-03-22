@@ -323,15 +323,20 @@ def _summarize_simulations(
     rng = np.random.default_rng(seed)
     rows: list[dict[str, Any]] = []
     for symbol in symbols:
-        summary: dict[str, Any] = {"symbol": symbol, "analog_count": len(analog_ids)}
+        summary: dict[str, Any] = {"symbol": symbol}
         symbol_rows = event_study[
             (event_study["symbol"].astype(str).str.upper() == symbol.upper())
             & (event_study["event_id"].astype(str).isin(analog_ids))
         ]
+        symbol_analog_count = int(symbol_rows["event_id"].astype(str).nunique())
+        summary["analog_count"] = symbol_analog_count
+        summary["simulation_basis"] = "empirical" if symbol_analog_count > 0 else "synthetic_fallback"
         for horizon_days in horizons:
             horizon_rows = symbol_rows[symbol_rows["horizon_days"] == int(horizon_days)]
             base = horizon_rows["cumulative_abnormal_return"].dropna().to_numpy(dtype=float)
-            if base.size == 0:
+            effective_sample_count = int(base.size)
+            summary[f"effective_sample_count_{horizon_days}d"] = effective_sample_count
+            if effective_sample_count == 0:
                 base = np.array([0.0], dtype=float)
             scale = max(float(base.std(ddof=0) or 0.0), 0.005)
             draws = rng.choice(base, size=max(path_count, 1), replace=True)

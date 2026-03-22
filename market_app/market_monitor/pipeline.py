@@ -191,7 +191,12 @@ def _build_contract_scored(scored: pd.DataFrame, universe_df: pd.DataFrame) -> p
     return output
 
 
-def _attach_ml_predictions(scored: pd.DataFrame, output_dir: Path) -> pd.DataFrame:
+def _attach_ml_predictions(
+    scored: pd.DataFrame,
+    output_dir: Path,
+    *,
+    frontier_day: str | None = None,
+) -> pd.DataFrame:
     ml_columns = ["ml_signal", "ml_model_id", "ml_featureset_id"]
     if scored.empty:
         return scored.assign(**{col: pd.Series(dtype=object) for col in ml_columns})
@@ -203,8 +208,7 @@ def _attach_ml_predictions(scored: pd.DataFrame, output_dir: Path) -> pd.DataFra
     predictions = pd.read_csv(predictions_path)
     if "symbol" not in predictions.columns or "yhat" not in predictions.columns:
         raise RuntimeError("ml/predictions_latest.csv missing required columns: symbol, yhat")
-    predictions = predictions.rename(columns={"yhat": "ml_signal"})
-    predictions = predictions[["symbol", "ml_signal"]]
+    manifest_frontier_day = None
 
     model_id = None
     featureset_id = None
@@ -213,6 +217,20 @@ def _attach_ml_predictions(scored: pd.DataFrame, output_dir: Path) -> pd.DataFra
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         model_id = manifest.get("model_id")
         featureset_id = manifest.get("featureset_id")
+        manifest_frontier_day = manifest.get("frontier_day")
+
+    effective_frontier_day = frontier_day or manifest_frontier_day
+    if not effective_frontier_day and "day" in predictions.columns and not predictions.empty:
+        max_prediction_day = pd.to_datetime(predictions["day"], errors="coerce").max()
+        if pd.notna(max_prediction_day):
+            effective_frontier_day = max_prediction_day.strftime("%Y-%m-%d")
+
+    predictions = predictions.rename(columns={"yhat": "ml_signal"})
+    if effective_frontier_day and "day" in predictions.columns:
+        prediction_days = pd.to_datetime(predictions["day"], errors="coerce")
+        stale_mask = prediction_days.dt.strftime("%Y-%m-%d") != effective_frontier_day
+        predictions = predictions.loc[~stale_mask].copy()
+    predictions = predictions[["symbol", "ml_signal"]]
 
     merged = scored.merge(predictions, on="symbol", how="left")
     merged["ml_model_id"] = model_id
@@ -384,7 +402,7 @@ def run_pipeline(
             how="left",
         ).drop(columns=["Date"])
 
-    scored = _attach_ml_predictions(scored, output_dir)
+    scored = _attach_ml_predictions(scored, output_dir, frontier_day=as_of_date)
 
     eligible = (
         scored[["symbol", "name", "eligible", "gate_fail_codes", "notes"]]

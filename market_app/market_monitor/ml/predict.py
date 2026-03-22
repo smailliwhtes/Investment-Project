@@ -11,15 +11,15 @@ from market_monitor.hash_utils import hash_manifest
 from market_monitor.ml.dataset import load_prediction_frame, update_run_manifest
 
 
-def _load_train_manifest(output_dir: Path) -> dict[str, Any]:
-    manifest_path = output_dir / "ml" / "train_manifest.json"
+def _load_train_manifest(output_dir: Path, artifact_root: Path | None = None) -> dict[str, Any]:
+    manifest_path = (artifact_root or (output_dir / "ml")) / "train_manifest.json"
     if not manifest_path.exists():
         raise FileNotFoundError(f"Training manifest not found at {manifest_path}")
     return json.loads(manifest_path.read_text(encoding="utf-8"))
 
 
-def _load_pipeline(output_dir: Path):
-    model_path = output_dir / "ml" / "model.joblib"
+def _load_pipeline(output_dir: Path, artifact_root: Path | None = None):
+    model_path = (artifact_root or (output_dir / "ml")) / "model.joblib"
     if not model_path.exists():
         raise FileNotFoundError(f"Model pipeline not found at {model_path}")
     import joblib
@@ -32,8 +32,10 @@ def _write_predictions(
     output_dir: Path,
     predictions: pd.DataFrame,
     predict_manifest: dict[str, Any],
+    artifact_root: Path | None = None,
+    update_manifest: bool = True,
 ) -> None:
-    ml_dir = output_dir / "ml"
+    ml_dir = artifact_root or (output_dir / "ml")
     ml_dir.mkdir(parents=True, exist_ok=True)
 
     predictions_path = ml_dir / "predictions_by_day.parquet"
@@ -49,18 +51,20 @@ def _write_predictions(
         json.dumps(predict_manifest, indent=2, sort_keys=True), encoding="utf-8"
     )
 
-    update_run_manifest(
-        output_dir,
-        {
-            "prediction": {
-                "predictions_by_day": "ml/predictions_by_day.parquet",
-                "predictions_latest": "ml/predictions_latest.csv",
-                "predict_manifest": "ml/predict_manifest.json",
-                "model_id": predict_manifest.get("model_id"),
-                "featureset_id": predict_manifest.get("featureset_id"),
-            }
-        },
-    )
+    if update_manifest:
+        relative_root = ml_dir.relative_to(output_dir).as_posix()
+        update_run_manifest(
+            output_dir,
+            {
+                "prediction": {
+                    "predictions_by_day": f"{relative_root}/predictions_by_day.parquet",
+                    "predictions_latest": f"{relative_root}/predictions_latest.csv",
+                    "predict_manifest": f"{relative_root}/predict_manifest.json",
+                    "model_id": predict_manifest.get("model_id"),
+                    "featureset_id": predict_manifest.get("featureset_id"),
+                }
+            },
+        )
 
 
 def run_prediction(
@@ -68,8 +72,10 @@ def run_prediction(
     joined_path: Path,
     output_dir: Path,
     allow_exogenous: list[str],
+    artifact_root: Path | None = None,
+    update_manifest: bool = True,
 ) -> dict[str, Any]:
-    train_manifest = _load_train_manifest(output_dir)
+    train_manifest = _load_train_manifest(output_dir, artifact_root=artifact_root)
     feature_columns = train_manifest["feature_columns"]
     schema = train_manifest.get("schema")
     if not schema:
@@ -81,7 +87,7 @@ def run_prediction(
         allow_exogenous=allow_exogenous,
     )
 
-    pipeline = _load_pipeline(output_dir)
+    pipeline = _load_pipeline(output_dir, artifact_root=artifact_root)
     predictions = pipeline.predict(frame[feature_columns])
 
     output = pd.DataFrame(
@@ -116,6 +122,7 @@ def run_prediction(
         "featureset_id": train_manifest.get("featureset_id"),
         "model_type": train_manifest.get("model_type"),
         "coverage": coverage,
+        "frontier_day": coverage.get("max_day", ""),
         "rows": int(len(output)),
     }
 
@@ -123,6 +130,8 @@ def run_prediction(
         output_dir=output_dir,
         predictions=output,
         predict_manifest=predict_manifest,
+        artifact_root=artifact_root,
+        update_manifest=update_manifest,
     )
 
     return predict_manifest

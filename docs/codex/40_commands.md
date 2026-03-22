@@ -23,6 +23,7 @@ cd market_app
 python -m market_monitor.ml.train_xgb --joined-path .\data\features\joined --output-dir .\outputs\<run_id>
 python -m market_monitor.ml.train_xgb --joined-path .\data\features\joined --output-dir .\outputs\<run_id> --model-type numpy_mlp --hidden-layer-sizes 64,32 --epochs 300
 python -m market_monitor.ml.predict --joined-path .\data\features\joined --output-dir .\outputs\<run_id>
+python -m market_monitor.cli ml benchmark --joined-path .\data\features\joined --output-dir .\outputs\<run_id> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42
 
 ## Linux/macOS (Codex cloud / CI)
 From repo root:
@@ -47,6 +48,7 @@ bash scripts/check_watchlist_ohlcv.sh --watchlist watchlists/watchlist_smoke.csv
 python -m market_monitor.ml.train_xgb --joined-path data/features/joined --output-dir outputs/<run_id>
 python -m market_monitor.ml.train_xgb --joined-path data/features/joined --output-dir outputs/<run_id> --model-type numpy_mlp --hidden-layer-sizes 64,32 --epochs 300
 python -m market_monitor.ml.predict --joined-path data/features/joined --output-dir outputs/<run_id>
+python -m market_monitor.cli ml benchmark --joined-path data/features/joined --output-dir outputs/<run_id> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42
 
 ## Python test commands
 Run from the `market_app` directory:
@@ -61,6 +63,10 @@ python -m market_monitor.cli validate-config --config config/config.yaml --forma
 ### Policy simulator (engine + wrapper bridge)
 python -m market_monitor.cli policy simulate --config config/config.yaml --scenario tariff-shock --outdir outputs/policy/tariff-shock --offline --progress-jsonl
 python -m market_app.cli policy simulate --config config/config.yaml --scenario tariff-shock --outdir outputs/policy/tariff-shock --offline --progress-jsonl
+
+### ML benchmark (engine + wrapper bridge)
+python -m market_monitor.cli ml benchmark --joined-path data/features/joined --output-dir outputs/<run_id> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42
+python -m market_app.cli ml benchmark --joined-path data/features/joined --output-dir outputs/<run_id> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42
 
 ### Run comparison
 python -m market_monitor.cli diff-runs --run-a outputs/runs/run_a --run-b outputs/runs/run_b --format json --out outputs/runs/diff.json

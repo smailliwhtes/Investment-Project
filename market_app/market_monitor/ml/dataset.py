@@ -16,6 +16,7 @@ class DatasetInfo:
     frame: pd.DataFrame
     features: list[str]
     label: str
+    label_end_column: str
     day_column: str
     symbol_column: str
     close_column: str
@@ -121,11 +122,13 @@ def _compute_label(
 ) -> pd.DataFrame:
     sorted_frame = frame.sort_values([symbol_column, day_column])
     close = pd.to_numeric(sorted_frame[close_column], errors="coerce")
+    future_day = sorted_frame.groupby(symbol_column)[day_column].shift(-horizon_days)
     label = (
         close.groupby(sorted_frame[symbol_column]).shift(-horizon_days) / close - 1.0
     )
     result = sorted_frame.copy()
     result[f"label_fwd_return_{horizon_days}d"] = label
+    result["label_end_day"] = pd.to_datetime(future_day, errors="coerce").dt.strftime("%Y-%m-%d")
     return result
 
 
@@ -170,6 +173,7 @@ def build_dataset(
         symbol_column="symbol",
     )
     label_column = f"label_fwd_return_{horizon_days}d"
+    label_end_column = "label_end_day"
 
     numeric_cols = labeled.select_dtypes(include=[np.number]).columns.tolist()
     feature_cols = [
@@ -183,7 +187,7 @@ def build_dataset(
         feature_cols = [col for col in feature_cols if col not in excluded_exogenous]
     feature_cols = sorted(set(feature_cols))
 
-    labeled = labeled.dropna(subset=[label_column])
+    labeled = labeled.dropna(subset=[label_column, label_end_column])
     coverage = {
         "min_day": str(labeled["day"].min()) if not labeled.empty else "",
         "max_day": str(labeled["day"].max()) if not labeled.empty else "",
@@ -204,6 +208,7 @@ def build_dataset(
         frame=labeled,
         features=feature_cols,
         label=label_column,
+        label_end_column=label_end_column,
         day_column="day",
         symbol_column="symbol",
         close_column=close_column,

@@ -84,6 +84,7 @@ These may be present but must not replace the required run outputs:
 - `progress.jsonl`
 - `explain/`
 - `ml/`
+- `ml/benchmark/`
 - `cause_effect_manifest.json`
 - `cause_effect_summary.json`
 - `linked_market_gdelt/`
@@ -103,6 +104,45 @@ These may be present but must not replace the required run outputs:
 
 These policy artifacts are scenario-analysis outputs and do not replace the core run outputs.
 The wrapper entrypoint `python -m market_app.cli policy simulate ...` should delegate to the same engine contract.
+
+## ML benchmark artifacts
+
+`python -m market_monitor.cli ml benchmark --joined-path <path> --output-dir <run_dir> ...` is additive to the core run contract. It should produce:
+
+- `ml/benchmark/benchmark_metrics.csv`
+- `ml/benchmark/benchmark_summary.json`
+- `ml/benchmark/benchmark_report.md`
+- `ml/benchmark/<model_type>/` per-model train/predict artifact bundles
+
+`benchmark_metrics.csv` minimum columns:
+
+- `model_type`
+- `fold`
+- `rmse`
+- `mae`
+- `r2`
+- `train_start`
+- `train_end`
+- `val_start`
+- `val_end`
+- `model_id`
+- `featureset_id`
+
+`benchmark_summary.json` minimum fields:
+
+- `schema_version`
+- `models`
+- `winner`
+- `primary_metric`
+- `promotion_recommended`
+- `promotion_reason`
+- `thresholds`
+- `seed`
+- `dataset_hash`
+- `featureset_id`
+
+These benchmark artifacts must not overwrite the canonical promoted-model outputs under `<run_dir>/ml/`.
+The wrapper entrypoint `python -m market_app.cli ml benchmark ...` should delegate to the same engine contract.
 
 ## Linked cause/effect artifacts
 

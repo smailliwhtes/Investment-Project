@@ -15,4 +15,17 @@ def predict_main() -> int:
     return predict.main()
 
 
-__all__ = ["DatasetInfo", "build_dataset", "load_prediction_frame", "predict_main", "train_main"]
+def benchmark_main() -> int:
+    from market_monitor.ml import benchmark
+
+    return benchmark.main()
+
+
+__all__ = [
+    "DatasetInfo",
+    "benchmark_main",
+    "build_dataset",
+    "load_prediction_frame",
+    "predict_main",
+    "train_main",
+]

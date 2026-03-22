@@ -165,4 +165,13 @@ pytest -q
 
 ## Neural Networks / Deep Learning
 
-The repo now ships an additive offline neural backend under `market_app/market_monitor/ml/` alongside the existing classical models. Use `python -m market_monitor.ml.train_xgb --model-type numpy_mlp ...` to train the deterministic NumPy MLP while preserving the same `ml/` artifacts, `predictions_latest.csv`, and scored-output fields (`ml_signal`, `ml_model_id`, `ml_featureset_id`). The broader deep-learning integration path is documented in [docs/codex/30_deep_learning_strategy.md](docs/codex/30_deep_learning_strategy.md).
+The repo now ships an additive offline neural backend under `market_app/market_monitor/ml/` alongside the existing classical models. Use `python -m market_monitor.ml.train_xgb --model-type numpy_mlp ...` to train the deterministic NumPy MLP while preserving the same `ml/` artifacts, `predictions_latest.csv`, and scored-output fields (`ml_signal`, `ml_model_id`, `ml_featureset_id`).
+
+To compare the deterministic NumPy MLP against the current classical baseline without changing promoted production artifacts, run:
+
+```powershell
+cd market_app
+python -m market_monitor.cli ml benchmark --joined-path .\data\features\joined --output-dir ..\outputs\runs\<run_id> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42
+```
+
+This writes additive benchmark outputs under `<run_dir>\ml\benchmark\`, updates the existing `run_manifest.json`, and leaves the canonical promoted-model outputs under `<run_dir>\ml\` untouched. The wrapper CLI also delegates this command, so `python -m market_app.cli ml benchmark ...` is supported. The broader deep-learning integration path is documented in [docs/codex/30_deep_learning_strategy.md](docs/codex/30_deep_learning_strategy.md).

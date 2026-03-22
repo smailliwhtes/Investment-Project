@@ -17,7 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from market_monitor.hash_utils import hash_manifest
 from market_monitor.ml.dataset import DatasetInfo, build_dataset, update_run_manifest
 from market_monitor.ml.neural import NumpyMlpRegressor
-from market_monitor.ml.split import build_walk_forward_splits, filter_frame_by_days
+from market_monitor.ml.split import build_walk_forward_splits, split_frame_for_walk_forward
 
 
 @dataclass(frozen=True)
@@ -179,8 +179,10 @@ def train_model(
     df = dataset.frame.copy()
     df = df.sort_values([dataset.day_column, dataset.symbol_column])
     feature_cols = dataset.features
+    horizon_days = int(dataset.label.split("_")[-1].replace("d", ""))
 
-    splits = build_walk_forward_splits(df[dataset.day_column].unique(), folds, gap=gap)
+    effective_gap = gap + horizon_days
+    splits = build_walk_forward_splits(df[dataset.day_column].unique(), folds, gap=effective_gap)
     metrics: list[dict[str, Any]] = []
     fold_predictions: list[dict[str, float]] = []
 
@@ -188,13 +190,21 @@ def train_model(
     y_all = df[dataset.label].to_numpy()
 
     for split in splits:
-        train_df = filter_frame_by_days(df, dataset.day_column, split.train_days)
-        val_df = filter_frame_by_days(df, dataset.day_column, split.val_days)
+        candidate_train = df[df[dataset.day_column].isin(split.train_days)].copy()
+        train_df, val_df = split_frame_for_walk_forward(
+            df,
+            split,
+            day_column=dataset.day_column,
+            label_end_column=dataset.label_end_column,
+        )
+        purged_train_rows = max(len(candidate_train) - len(train_df), 0)
 
         X_train = train_df[feature_cols].to_numpy()
         y_train = train_df[dataset.label].to_numpy()
         X_val = val_df[feature_cols].to_numpy()
         y_val = val_df[dataset.label].to_numpy()
+        if len(train_df) == 0 or len(val_df) == 0:
+            raise ValueError("Walk-forward split produced empty train or validation data after purging.")
 
         model = _build_model(model_type, random_seed, model_params)
         pipeline = _build_pipeline(model)
@@ -206,11 +216,14 @@ def train_model(
                 "fold": split.fold,
                 "train_days": [split.train_days[0], split.train_days[-1]],
                 "val_days": [split.val_days[0], split.val_days[-1]],
+                "train_rows": int(len(train_df)),
+                "val_rows": int(len(val_df)),
+                "purged_train_rows": int(purged_train_rows),
                 **fold_metrics,
             }
         )
         fold_predictions.extend(
-            {"y_true": float(true), "y_pred": float(pred)}
+            {"fold": split.fold, "y_true": float(true), "y_pred": float(pred)}
             for true, pred in zip(y_val, y_pred)
         )
 
@@ -229,10 +242,13 @@ def train_model(
     )
     featureset_id = dataset.featureset_id
 
+    if not fold_predictions:
+        raise ValueError("No walk-forward validation predictions were produced.")
+    pred_df = pd.DataFrame(fold_predictions)
     aggregate = {
-        "rmse": float(np.mean([entry["rmse"] for entry in metrics])),
-        "mae": float(np.mean([entry["mae"] for entry in metrics])),
-        "r2": float(np.mean([entry["r2"] for entry in metrics])),
+        "rmse": float(np.sqrt(mean_squared_error(pred_df["y_true"], pred_df["y_pred"]))),
+        "mae": float(mean_absolute_error(pred_df["y_true"], pred_df["y_pred"])),
+        "r2": float(r2_score(pred_df["y_true"], pred_df["y_pred"])),
     }
 
     metrics_payload = {
@@ -242,7 +258,6 @@ def train_model(
 
     decile_table: list[dict[str, Any]] = []
     if fold_predictions:
-        pred_df = pd.DataFrame(fold_predictions)
         try:
             pred_df["decile"] = pd.qcut(
                 pred_df["y_pred"], 10, labels=False, duplicates="drop"
@@ -270,11 +285,14 @@ def train_model(
         "dataset_hash": dataset.dataset_hash,
         "join_manifest_hash": dataset.join_manifest.get("content_hash") if dataset.join_manifest else None,
         "label": dataset.label,
-        "horizon_days": int(dataset.label.split("_")[-1].replace("d", "")),
+        "label_end_column": dataset.label_end_column,
+        "horizon_days": horizon_days,
         "schema": dataset.schema,
         "feature_columns": feature_cols,
         "excluded_exogenous_columns": dataset.excluded_exogenous,
         "coverage": dataset.coverage,
+        "purged_walk_forward": True,
+        "label_embargo_days": horizon_days,
         "split_boundaries": [
             {
                 "fold": split.fold,
@@ -286,6 +304,7 @@ def train_model(
             for split in splits
         ],
         "gap": gap,
+        "effective_gap": effective_gap,
         "model_type": model_type,
         "model_params": model_params,
         "seed": random_seed,
@@ -306,8 +325,10 @@ def _write_artifacts(
     output_dir: Path,
     artifacts: TrainingArtifacts,
     pipeline: Pipeline,
+    artifact_root: Path | None = None,
+    update_manifest: bool = True,
 ) -> None:
-    ml_dir = output_dir / "ml"
+    ml_dir = artifact_root or (output_dir / "ml")
     ml_dir.mkdir(parents=True, exist_ok=True)
 
     (ml_dir / "metrics.json").write_text(
@@ -337,25 +358,32 @@ def _write_artifacts(
         json.dumps(model_meta, indent=2, sort_keys=True), encoding="utf-8"
     )
 
-    update_run_manifest(
-        output_dir,
-        {
-            "training": {
-                "model_id": artifacts.model_id,
-                "featureset_id": artifacts.featureset_id,
-                "train_manifest": "ml/train_manifest.json",
-                "metrics": "ml/metrics.json",
-                "feature_importance": "ml/feature_importance.csv",
-                "model": "ml/model.json",
-                "report": "ml/report.md",
-            }
-        },
-    )
-    _write_report(output_dir=output_dir, artifacts=artifacts)
+    if update_manifest:
+        relative_root = ml_dir.relative_to(output_dir).as_posix()
+        update_run_manifest(
+            output_dir,
+            {
+                "training": {
+                    "model_id": artifacts.model_id,
+                    "featureset_id": artifacts.featureset_id,
+                    "train_manifest": f"{relative_root}/train_manifest.json",
+                    "metrics": f"{relative_root}/metrics.json",
+                    "feature_importance": f"{relative_root}/feature_importance.csv",
+                    "model": f"{relative_root}/model.json",
+                    "report": f"{relative_root}/report.md",
+                }
+            },
+        )
+    _write_report(output_dir=output_dir, artifacts=artifacts, artifact_root=ml_dir)
 
 
-def _write_report(*, output_dir: Path, artifacts: TrainingArtifacts) -> None:
-    ml_dir = output_dir / "ml"
+def _write_report(
+    *,
+    output_dir: Path,
+    artifacts: TrainingArtifacts,
+    artifact_root: Path | None = None,
+) -> None:
+    ml_dir = artifact_root or (output_dir / "ml")
     coverage = artifacts.train_manifest.get("coverage", {})
     split_bounds = artifacts.train_manifest.get("split_boundaries", [])
     metrics = artifacts.metrics
@@ -370,6 +398,7 @@ def _write_report(*, output_dir: Path, artifacts: TrainingArtifacts) -> None:
         f"- model_id: {artifacts.model_id}",
         f"- model_type: {artifacts.train_manifest.get('model_type')}",
         f"- gap: {artifacts.train_manifest.get('gap')}",
+        f"- effective_gap: {artifacts.train_manifest.get('effective_gap')}",
         "",
         "## Model parameters",
     ]
@@ -389,7 +418,9 @@ def _write_report(*, output_dir: Path, artifacts: TrainingArtifacts) -> None:
         lines.append(
             f"- fold {fold['fold']}: rmse={fold['rmse']:.4f}, mae={fold['mae']:.4f}, "
             f"r2={fold['r2']:.4f} (train {fold['train_days'][0]} -> {fold['train_days'][1]}, "
-            f"val {fold['val_days'][0]} -> {fold['val_days'][1]})"
+            f"val {fold['val_days'][0]} -> {fold['val_days'][1]}, "
+            f"train_rows={fold.get('train_rows', 0)}, val_rows={fold.get('val_rows', 0)}, "
+            f"purged_train_rows={fold.get('purged_train_rows', 0)})"
         )
     aggregate = metrics.get("aggregate", {})
     lines.append(

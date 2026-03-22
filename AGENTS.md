@@ -163,6 +163,21 @@ Supported flags:
 - `--offline`: enforce offline-only inputs and execution
 - `--progress-jsonl`: emit JSONL progress events to stdout
 
+5) Benchmark additive ML backends (optional but supported):
+- `python -m market_monitor.cli ml benchmark --joined-path <path> --output-dir <run_dir> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42`
+
+Supported flags:
+- `--joined-path <path>`: joined market+exogenous feature dataset (file or directory)
+- `--output-dir <run_dir>`: existing run directory that already contains `run_manifest.json`
+- `--model-types <csv>`: additive model family list (`sklearn_gb`, `numpy_mlp`, optional `xgboost`)
+- `--allow-exogenous <csv>`: same-day exogenous columns explicitly allowed into the dataset
+- `--min-rmse-improvement <float>`: relative RMSE threshold for recommending `numpy_mlp`
+- `--max-mae-regression <float>`: relative MAE regression budget for recommending `numpy_mlp`
+
+Notes:
+- This command is additive and must not overwrite canonical `<run_dir>/ml/` promoted-model artifacts.
+- The wrapper entrypoint `python -m market_app.cli ml benchmark ...` should delegate to the same engine contract.
+
 ### 4.2 Exit codes (engine)
 - `0`: success (all required artifacts produced)
 - `2`: invalid config / schema validation failure
@@ -278,6 +293,7 @@ These are the minimum required outputs for every run (unless explicitly stated o
 - `<out_dir>/linked_market_gdelt/` (partitioned joined market+GDELT features + manifest)
 - `<out_dir>/event_impact_library.csv` (event-spike forward-return outcomes, when available)
 - `<out_dir>/analog_outcomes.csv` (analog forward-return outcomes, when available)
+- `<out_dir>/ml/benchmark/` (additive benchmark artifacts; must not replace canonical `<out_dir>/ml/` outputs)
 - `<out_dir>/policy_event_study.csv` (policy event-study lane)
 - `<out_dir>/policy_analogs.csv` (historical analog retrieval output)
 - `<out_dir>/policy_scenario_rankings.csv` (ranked scenario impact summary)

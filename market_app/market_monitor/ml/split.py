@@ -47,3 +47,24 @@ def build_walk_forward_splits(
 def filter_frame_by_days(df: pd.DataFrame, day_column: str, days: Iterable[str]) -> pd.DataFrame:
     day_set = set(days)
     return df[df[day_column].isin(day_set)].copy()
+
+
+def split_frame_for_walk_forward(
+    df: pd.DataFrame,
+    split: WalkForwardSplit,
+    *,
+    day_column: str,
+    label_end_column: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    train_df = filter_frame_by_days(df, day_column, split.train_days)
+    val_df = filter_frame_by_days(df, day_column, split.val_days)
+    if train_df.empty or val_df.empty:
+        return train_df, val_df
+
+    val_start = pd.to_datetime(split.val_days[0], errors="coerce")
+    if pd.isna(val_start):
+        raise ValueError(f"Validation start day could not be parsed: {split.val_days[0]}")
+
+    label_end = pd.to_datetime(train_df[label_end_column], errors="coerce")
+    purged_train = train_df[label_end < val_start].copy()
+    return purged_train, val_df

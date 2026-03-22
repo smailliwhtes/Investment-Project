@@ -63,3 +63,12 @@ This is intentionally a CPU-only, offline-safe bridge between the existing class
 ## Practical Next Step
 
 The next step is not “add deep learning from scratch” anymore. It is to compare `numpy_mlp` against the classical baselines in offline walk-forward tests, then only add a heavier backend such as PyTorch if it materially improves results while preserving determinism, offline execution, and the same artifact contract.
+
+Use the additive benchmark lane:
+
+```powershell
+cd market_app
+python -m market_monitor.cli ml benchmark --joined-path .\data\features\joined --output-dir ..\outputs\runs\<run_id> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42
+```
+
+This writes comparison artifacts under `<run_dir>/ml/benchmark/` and does not overwrite the canonical promoted-model bundle under `<run_dir>/ml/`.

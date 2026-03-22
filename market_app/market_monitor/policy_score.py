@@ -54,6 +54,12 @@ def rank_policy_impacts(
     for _, row in simulation_summary.iterrows():
         symbol = str(row.get("symbol", "")).upper().strip()
         studies = event_study[event_study["symbol"].astype(str).str.upper() == symbol]
+        raw_effective_sample_count = row.get("effective_sample_count_20d")
+        if raw_effective_sample_count is None or pd.isna(raw_effective_sample_count):
+            effective_sample_count = int(_safe_float(row.get("analog_count")))
+        else:
+            effective_sample_count = int(_safe_float(raw_effective_sample_count))
+        simulation_basis = str(row.get("simulation_basis", "empirical"))
 
         sensitivity = 0.0
         fragility = 0.0
@@ -71,10 +77,13 @@ def rank_policy_impacts(
         tail_risk = _clip01(abs(min(_safe_float(row.get("q10_return_20d")), 0.0)) / 0.25)
 
         spread_20d = _safe_float(row.get("q90_return_20d")) - _safe_float(row.get("q10_return_20d"))
-        confidence = _clip01(
-            min(analog_count / max(top_n_analogs, 1), 1.0)
-            * (1.0 - min(spread_20d / 0.5, 1.0))
-        )
+        if simulation_basis != "empirical" or effective_sample_count <= 0:
+            confidence = 0.0
+        else:
+            confidence = _clip01(
+                min(effective_sample_count / max(top_n_analogs, 1), 1.0)
+                * (1.0 - min(spread_20d / 0.5, 1.0))
+            )
 
         adv20 = _average_dollar_volume(provider, symbol, as_of_date)
         if adv20 <= 0 or average_dollar_volume_floor <= 0:
@@ -99,6 +108,8 @@ def rank_policy_impacts(
                 "tradability_score": round(tradability, 6),
                 "tail_risk_score": round(tail_risk, 6),
                 "confidence_score": round(confidence, 6),
+                "effective_sample_count": effective_sample_count,
+                "simulation_basis": simulation_basis,
                 "adv20_dollar": round(adv20, 2),
                 "scenario_impact_score": round(impact_score, 6),
             }
