@@ -92,7 +92,7 @@ These may be present but must not replace the required run outputs:
 
 ## Policy simulation artifacts
 
-`python -m market_monitor.cli policy simulate --config <path> --scenario <name> --outdir <dir> --offline` is additive to the core run contract. It should produce:
+`python -m market_monitor.cli policy simulate --config <path> --scenario <name> --outdir <dir> --offline --progress-jsonl` is additive to the core run contract. It should produce:
 
 - `policy_event_study.csv`
 - `policy_analogs.csv`
@@ -102,6 +102,7 @@ These may be present but must not replace the required run outputs:
 - `policy_summary.json`
 
 These policy artifacts are scenario-analysis outputs and do not replace the core run outputs.
+The wrapper entrypoint `python -m market_app.cli policy simulate ...` should delegate to the same engine contract.
 
 ## Linked cause/effect artifacts
 

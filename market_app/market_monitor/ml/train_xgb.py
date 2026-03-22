@@ -16,6 +16,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from market_monitor.hash_utils import hash_manifest
 from market_monitor.ml.dataset import DatasetInfo, build_dataset, update_run_manifest
+from market_monitor.ml.neural import NumpyMlpRegressor
 from market_monitor.ml.split import build_walk_forward_splits, filter_frame_by_days
 
 
@@ -57,6 +58,19 @@ def _resolve_tree_method(xgb) -> str:
 
 
 def _build_model(model_type: str, random_seed: int, params: dict[str, Any]) -> Any:
+    if model_type in {"numpy_mlp", "neural_mlp", "nn_mlp"}:
+        hidden_layers = params.get("hidden_layer_sizes", (64, 32))
+        if isinstance(hidden_layers, list):
+            hidden_layers = tuple(int(size) for size in hidden_layers)
+        return NumpyMlpRegressor(
+            hidden_layer_sizes=hidden_layers,
+            learning_rate=params.get("learning_rate", 0.01),
+            epochs=params.get("epochs", 300),
+            l2_penalty=params.get("l2_penalty", 1e-4),
+            activation=params.get("activation", "tanh"),
+            random_state=random_seed,
+            patience=params.get("patience", 30),
+        )
     if model_type == "xgboost":
         xgb = _resolve_xgboost()
         tree_method = _resolve_tree_method(xgb)
@@ -78,6 +92,32 @@ def _build_model(model_type: str, random_seed: int, params: dict[str, Any]) -> A
             random_state=random_seed,
         )
     raise ValueError(f"Unsupported model_type: {model_type}")
+
+
+def _parse_hidden_layers(raw_value: str) -> tuple[int, ...]:
+    parts = [segment.strip() for segment in raw_value.split(",") if segment.strip()]
+    if not parts:
+        raise ValueError("hidden layers must include at least one positive integer")
+    layers = tuple(int(part) for part in parts)
+    if any(layer <= 0 for layer in layers):
+        raise ValueError("hidden layers must be positive integers")
+    return layers
+
+
+def _canonical_model_type(model_type: str) -> str:
+    if model_type in {"numpy_mlp", "neural_mlp", "nn_mlp"}:
+        return "numpy_mlp"
+    return model_type
+
+
+def _parse_hidden_layers(value: str) -> tuple[int, ...]:
+    parts = [part.strip() for part in value.split(",") if part.strip()]
+    if not parts:
+        raise ValueError("hidden-layer-sizes must include at least one positive integer")
+    layers = tuple(int(part) for part in parts)
+    if any(layer <= 0 for layer in layers):
+        raise ValueError("hidden-layer-sizes must only contain positive integers")
+    return layers
 
 
 def _build_pipeline(model: Any) -> Pipeline:
@@ -134,6 +174,7 @@ def train_model(
     model_params: dict[str, Any],
 ) -> tuple[TrainingArtifacts, Pipeline]:
     np.random.seed(random_seed)
+    model_type = _canonical_model_type(model_type)
 
     df = dataset.frame.copy()
     df = df.sort_values([dataset.day_column, dataset.symbol_column])
@@ -272,7 +313,11 @@ def _write_artifacts(
     (ml_dir / "metrics.json").write_text(
         json.dumps(artifacts.metrics, indent=2, sort_keys=True), encoding="utf-8"
     )
-    artifacts.feature_importance.to_csv(ml_dir / "feature_importance.csv", index=False)
+    artifacts.feature_importance.to_csv(
+        ml_dir / "feature_importance.csv",
+        index=False,
+        float_format="%.10f",
+    )
     (ml_dir / "train_manifest.json").write_text(
         json.dumps(artifacts.train_manifest, indent=2, sort_keys=True), encoding="utf-8"
     )
@@ -323,10 +368,17 @@ def _write_report(*, output_dir: Path, artifacts: TrainingArtifacts) -> None:
         f"- horizon_days: {artifacts.train_manifest.get('horizon_days')}",
         f"- featureset_id: {artifacts.featureset_id}",
         f"- model_id: {artifacts.model_id}",
+        f"- model_type: {artifacts.train_manifest.get('model_type')}",
         f"- gap: {artifacts.train_manifest.get('gap')}",
         "",
-        "## Walk-forward folds",
+        "## Model parameters",
     ]
+    for key, value in sorted(artifacts.train_manifest.get("model_params", {}).items()):
+        lines.append(f"- {key}: {value}")
+    lines.extend([
+        "",
+        "## Walk-forward folds",
+    ])
     for split in split_bounds:
         lines.append(
             f"- fold {split['fold']}: train {split['train_start']} -> {split['train_end']} | "
@@ -370,7 +422,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model-type",
         default="xgboost",
-        choices=["xgboost", "sklearn_gb"],
+        choices=["xgboost", "sklearn_gb", "numpy_mlp", "neural_mlp", "nn_mlp"],
         help="Model backend.",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed for determinism.")
@@ -378,6 +430,41 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow-exogenous",
         default="",
         help="Comma-separated list of same-day exogenous columns allowed.",
+    )
+    parser.add_argument(
+        "--hidden-layer-sizes",
+        default="64,32",
+        help="Comma-separated hidden layer widths for the NumPy MLP backend.",
+    )
+    parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=0.01,
+        help="Learning rate for the NumPy MLP backend.",
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=300,
+        help="Training epochs for the NumPy MLP backend.",
+    )
+    parser.add_argument(
+        "--l2-penalty",
+        type=float,
+        default=1e-4,
+        help="L2 penalty for the NumPy MLP backend.",
+    )
+    parser.add_argument(
+        "--activation",
+        default="tanh",
+        choices=["tanh", "relu"],
+        help="Hidden-layer activation for the NumPy MLP backend.",
+    )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=30,
+        help="Early-stopping patience for the NumPy MLP backend.",
     )
     return parser
 
@@ -393,12 +480,22 @@ def main() -> int:
         allow_exogenous=allow_exogenous,
     )
 
+    model_type = _canonical_model_type(args.model_type)
     model_params = {}
+    if model_type == "numpy_mlp":
+        model_params = {
+            "hidden_layer_sizes": _parse_hidden_layers(args.hidden_layer_sizes),
+            "learning_rate": args.learning_rate,
+            "epochs": args.epochs,
+            "l2_penalty": args.l2_penalty,
+            "activation": args.activation,
+            "patience": args.patience,
+        }
     artifacts, pipeline = train_model(
         dataset,
         folds=args.folds,
         gap=args.gap,
-        model_type=args.model_type,
+        model_type=model_type,
         random_seed=args.seed,
         model_params=model_params,
     )

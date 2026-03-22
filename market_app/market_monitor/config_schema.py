@@ -134,7 +134,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         },
         "deep_learning": {
             "enabled": False,
-            "backend": "pytorch",
+            "backend": "numpy_mlp",
             "sequence_length": 60,
             "hidden_size": 64,
             "epochs": 25,

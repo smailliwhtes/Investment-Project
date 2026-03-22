@@ -134,6 +134,7 @@ public class EngineBridgeServiceTests
         Assert.Contains("tariff-shock", args);
         Assert.Contains("--outdir", args);
         Assert.Contains("--offline", args);
+        Assert.Contains("--progress-jsonl", args);
     }
 
     [Fact]

@@ -50,10 +50,10 @@ public class DefaultChartProvider : IChartProvider
             Spacing = 4,
             Children =
             {
-                new Label { Text = "Price + Forecast", FontAttributes = FontAttributes.Bold },
-                new Label { Text = trainedUntilText, FontSize = 12 },
+                new Label { Text = "Signal Trend + Forecast", FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#102235") },
+                new Label { Text = trainedUntilText, FontSize = 12, TextColor = Color.FromArgb("#5C6F86") },
                 scroll,
-                new Label { Text = "Tip: horizontal scroll supports pan over long history.", FontSize = 11, Opacity = 0.75 },
+                new Label { Text = "Preview only. Use it to compare paths, not to assume certainty.", FontSize = 11, TextColor = Color.FromArgb("#5C6F86") },
             },
         };
     }
@@ -82,7 +82,7 @@ public class DefaultChartProvider : IChartProvider
             Spacing = 4,
             Children =
             {
-                new Label { Text = "Indicator (RSI-like preview)", FontAttributes = FontAttributes.Bold },
+                new Label { Text = "Momentum Preview", FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#102235") },
                 new ScrollView
                 {
                     Orientation = ScrollOrientation.Horizontal,
@@ -205,8 +205,16 @@ public class DefaultChartProvider : IChartProvider
             float Y(double value) => (float)(plotBottom - ((value - min) / (max - min)) * height);
             float X(int idx, int count) => plotLeft + (float)idx / Math.Max(1, count - 1) * width;
 
-            canvas.FillColor = Color.FromArgb("#F7F8FA");
+            canvas.FillColor = Color.FromArgb("#F4F7FB");
             canvas.FillRectangle(plotLeft, plotTop, width, height);
+
+            canvas.StrokeColor = Color.FromArgb("#D6E0EB");
+            canvas.StrokeSize = 1;
+            for (var i = 1; i < 5; i++)
+            {
+                var y = plotTop + (height / 5f) * i;
+                canvas.DrawLine(plotLeft, y, plotRight, y);
+            }
 
             for (var i = 0; i < _close.Count; i++)
             {
@@ -222,7 +230,9 @@ public class DefaultChartProvider : IChartProvider
 
                 var top = Math.Min(yOpen, yClose);
                 var bodyHeight = Math.Max(1f, Math.Abs(yOpen - yClose));
-                canvas.FillColor = yClose <= yOpen ? Color.FromArgb("#17833D") : Color.FromArgb("#B42318");
+                canvas.FillColor = _close[i] >= _open[i]
+                    ? Color.FromArgb("#1C8A57")
+                    : Color.FromArgb("#C64545");
                 canvas.FillRectangle(x - (candleWidth / 2), top, candleWidth, bodyHeight);
             }
 
@@ -234,7 +244,7 @@ public class DefaultChartProvider : IChartProvider
                 if (_forecastLo.Count == _forecast.Count && _forecastHi.Count == _forecast.Count)
                 {
                     canvas.StrokeColor = Colors.Transparent;
-                    canvas.FillColor = Color.FromRgba(36, 99, 235, 48);
+                    canvas.FillColor = Color.FromRgba(93, 127, 168, 56);
                     var band = new PathF();
                     band.MoveTo(startX, Y(_forecastHi[0]));
                     for (var i = 1; i < _forecastHi.Count; i++)
@@ -249,7 +259,7 @@ public class DefaultChartProvider : IChartProvider
                     canvas.FillPath(band);
                 }
 
-                canvas.StrokeColor = Color.FromArgb("#1D4ED8");
+                canvas.StrokeColor = Color.FromArgb("#315C88");
                 canvas.StrokeSize = 1.5f;
                 for (var i = 1; i < _forecast.Count; i++)
                 {
@@ -294,10 +304,18 @@ public class DefaultChartProvider : IChartProvider
             float Y(double value) => (float)(plotBottom - ((value - min) / (max - min)) * height);
             float X(int idx) => plotLeft + (float)idx / Math.Max(1, _values.Count - 1) * width;
 
-            canvas.FillColor = Color.FromArgb("#F7F8FA");
+            canvas.FillColor = Color.FromArgb("#F4F7FB");
             canvas.FillRectangle(plotLeft, plotTop, width, height);
 
-            canvas.StrokeColor = Color.FromArgb("#0E7490");
+            canvas.StrokeColor = Color.FromArgb("#D6E0EB");
+            canvas.StrokeSize = 1;
+            for (var i = 1; i < 4; i++)
+            {
+                var y = plotTop + (height / 4f) * i;
+                canvas.DrawLine(plotLeft, y, plotRight, y);
+            }
+
+            canvas.StrokeColor = Color.FromArgb("#315C88");
             canvas.StrokeSize = 1.5f;
             for (var i = 1; i < _values.Count; i++)
             {

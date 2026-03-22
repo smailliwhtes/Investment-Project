@@ -83,8 +83,10 @@ Policy simulator:
 ```powershell
 .\scripts\provision_policy_data.ps1
 cd market_app
-python -m market_monitor.cli policy simulate --config .\config\config.yaml --scenario tariff-shock --outdir ..\outputs\policy\tariff-shock --offline
+python -m market_monitor.cli policy simulate --config .\config\config.yaml --scenario tariff-shock --outdir ..\outputs\policy\tariff-shock --offline --progress-jsonl
 ```
+
+The wrapper entrypoint delegates engine-owned commands, so `python -m market_app.cli policy simulate ...` is also supported when you want one CLI surface for both wrapper and engine tasks.
 
 ## Audit command
 
@@ -163,4 +165,4 @@ pytest -q
 
 ## Neural Networks / Deep Learning
 
-The repo already has an additive ML seam under `market_app/market_monitor/ml/` plus scored-output fields for `ml_signal`, `ml_model_id`, and `ml_featureset_id`. The current deep-learning integration path is documented in [docs/codex/30_deep_learning_strategy.md](docs/codex/30_deep_learning_strategy.md).
+The repo now ships an additive offline neural backend under `market_app/market_monitor/ml/` alongside the existing classical models. Use `python -m market_monitor.ml.train_xgb --model-type numpy_mlp ...` to train the deterministic NumPy MLP while preserving the same `ml/` artifacts, `predictions_latest.csv`, and scored-output fields (`ml_signal`, `ml_model_id`, `ml_featureset_id`). The broader deep-learning integration path is documented in [docs/codex/30_deep_learning_strategy.md](docs/codex/30_deep_learning_strategy.md).

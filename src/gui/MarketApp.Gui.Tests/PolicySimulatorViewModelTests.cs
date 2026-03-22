@@ -30,7 +30,12 @@ public class PolicySimulatorViewModelTests
                     }
                 });
                 await File.WriteAllTextAsync(summaryPath, payload);
-                return new EngineCommandResult(0, "simulation finished", string.Empty);
+                return new[]
+                {
+                    new ProgressEvent("stage_start", "policy_loader", "Loading scenario", null, DateTime.UtcNow),
+                    new ProgressEvent("stage_progress", "policy_loader", "Computing impacts", 0.5, DateTime.UtcNow),
+                    new ProgressEvent("stage_end", "policy_simulate", "Policy simulation completed", 1.0, DateTime.UtcNow),
+                };
             });
             var settings = new InMemorySettingsService();
             var viewModel = new PolicySimulatorViewModel(bridge, settings)
@@ -47,9 +52,11 @@ public class PolicySimulatorViewModelTests
             Assert.NotNull(viewModel.SummaryPath);
             Assert.Contains("Policy scenario complete", viewModel.SummaryText);
             Assert.Contains("median_return", viewModel.SummaryText);
+            Assert.Contains("Progress log:", viewModel.SummaryText);
             Assert.NotNull(bridge.LastRequest);
             Assert.True(bridge.LastRequest!.Offline);
             Assert.Equal("tariff-shock", bridge.LastRequest.ScenarioName);
+            Assert.Equal(1, bridge.StreamCallCount);
         }
         finally
         {
@@ -71,7 +78,11 @@ public class PolicySimulatorViewModelTests
             var bridge = new RecordingEngineBridgeService(request =>
             {
                 Directory.CreateDirectory(request.OutDirectory);
-                return Task.FromResult(new EngineCommandResult(0, "simulation finished", string.Empty));
+                return Task.FromResult<IReadOnlyList<ProgressEvent>>(new[]
+                {
+                    new ProgressEvent("stage_start", "policy_loader", "Loading scenario", null, DateTime.UtcNow),
+                    new ProgressEvent("stage_end", "policy_simulate", "Policy simulation completed", 1.0, DateTime.UtcNow),
+                });
             });
             var settings = new InMemorySettingsService();
             var viewModel = new PolicySimulatorViewModel(bridge, settings)
@@ -87,6 +98,7 @@ public class PolicySimulatorViewModelTests
             Assert.Equal("Policy simulation complete", viewModel.Status);
             Assert.Null(viewModel.SummaryPath);
             Assert.Contains("No JSON summary file was found", viewModel.SummaryText);
+            Assert.Contains("Progress log:", viewModel.SummaryText);
         }
         finally
         {
@@ -99,14 +111,15 @@ public class PolicySimulatorViewModelTests
 
     private sealed class RecordingEngineBridgeService : IEngineBridgeService
     {
-        private readonly Func<PolicySimulationRequest, Task<EngineCommandResult>> _simulateHandler;
+        private readonly Func<PolicySimulationRequest, Task<IReadOnlyList<ProgressEvent>>> _simulateHandler;
 
-        public RecordingEngineBridgeService(Func<PolicySimulationRequest, Task<EngineCommandResult>> simulateHandler)
+        public RecordingEngineBridgeService(Func<PolicySimulationRequest, Task<IReadOnlyList<ProgressEvent>>> simulateHandler)
         {
             _simulateHandler = simulateHandler;
         }
 
         public PolicySimulationRequest? LastRequest { get; private set; }
+        public int StreamCallCount { get; private set; }
 
         public async IAsyncEnumerable<ProgressEvent> RunAsync(
             EngineRunRequest request,
@@ -116,12 +129,27 @@ public class PolicySimulatorViewModelTests
             yield break;
         }
 
-        public async Task<EngineCommandResult> SimulatePolicyAsync(
+        public async IAsyncEnumerable<ProgressEvent> SimulatePolicyStreamAsync(
+            PolicySimulationRequest request,
+            [System.Runtime.CompilerServices.EnumeratorCancellation]
+            CancellationToken cancellationToken = default)
+        {
+            LastRequest = request;
+            StreamCallCount++;
+            var events = await _simulateHandler(request).ConfigureAwait(false);
+            foreach (var evt in events)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return evt;
+            }
+        }
+
+        public Task<EngineCommandResult> SimulatePolicyAsync(
             PolicySimulationRequest request,
             CancellationToken cancellationToken = default)
         {
             LastRequest = request;
-            return await _simulateHandler(request).ConfigureAwait(false);
+            return Task.FromResult(new EngineCommandResult(0, string.Empty, string.Empty));
         }
 
         public Task<ConfigValidationResult> ValidateConfigAsync(string configPath, string? pythonPath, CancellationToken cancellationToken = default)

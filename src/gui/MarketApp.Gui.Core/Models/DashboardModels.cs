@@ -48,6 +48,12 @@ public sealed record DashboardSummary(
     RunQualitySnapshot? QualitySnapshot = null
 );
 
+public sealed record DashboardFact(string Label, string Value, string Tone = "neutral");
+
+public sealed record DashboardMetricTile(string Label, string Value, string Delta, string Tone = "neutral");
+
+public sealed record DashboardCallout(string Title, string Message, string Tone = "neutral");
+
 public sealed record DataFreshnessSummary(int WorstLagDays, double MedianLagDays, string LastDateMax);
 
 public sealed record ProgressCounters(int Done, int Total, string Units);

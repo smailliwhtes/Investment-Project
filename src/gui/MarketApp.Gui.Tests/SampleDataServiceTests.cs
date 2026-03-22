@@ -21,6 +21,39 @@ public class SampleDataServiceTests
     }
 
     [Fact]
+    public void DashboardViewModel_BuildsPreviewSeriesAndPlainLanguageFacts()
+    {
+        var viewModel = new DashboardViewModel(new SampleDataService());
+
+        Assert.NotEmpty(viewModel.HeaderSubtitle);
+        Assert.NotEmpty(viewModel.OverviewTiles);
+        Assert.NotEmpty(viewModel.SignalFacts);
+        Assert.NotEmpty(viewModel.ScenarioFacts);
+        Assert.NotEmpty(viewModel.RiskRules);
+        Assert.True(viewModel.TrendPreview.Values.Count > 0);
+        Assert.True(viewModel.IndicatorPreview.Values.Count > 0);
+        Assert.NotNull(viewModel.ForecastPreview);
+        Assert.True(viewModel.ForecastPreview!.YHat.Count > 0);
+    }
+
+    [Fact]
+    public void DashboardViewModel_BuildsPreviewSeriesAndHelpText()
+    {
+        var viewModel = new DashboardViewModel(new SampleDataService());
+
+        Assert.NotEmpty(viewModel.MarketOverviewTiles);
+        Assert.NotEmpty(viewModel.TrainingChecklist);
+        Assert.NotEmpty(viewModel.QuickHelp);
+        Assert.NotEmpty(viewModel.PricePreview.Values);
+        var forecast = Assert.IsType<ForecastOverlayModel>(viewModel.ForecastPreview);
+        Assert.Equal(forecast.HorizonPoints, forecast.YHat.Count);
+        Assert.Equal(forecast.HorizonPoints, forecast.Lo.Count);
+        Assert.Equal(forecast.HorizonPoints, forecast.Hi.Count);
+        Assert.False(string.IsNullOrWhiteSpace(viewModel.MarketHeadline));
+        Assert.False(string.IsNullOrWhiteSpace(viewModel.BestModelDetail));
+    }
+
+    [Fact]
     public async Task RunViewModel_UsesEngineBridgeProgressEvents()
     {
         var events = new[]
@@ -188,6 +221,14 @@ public class SampleDataServiceTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new EngineCommandResult(0, string.Empty, string.Empty));
+        }
+
+        public async IAsyncEnumerable<ProgressEvent> SimulatePolicyStreamAsync(
+            PolicySimulationRequest request,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            yield break;
         }
 
         public Task<RunDiffResult> DiffRunsAsync(string runA, string runB, string? pythonPath, CancellationToken cancellationToken = default)

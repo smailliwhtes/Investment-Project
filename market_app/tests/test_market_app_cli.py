@@ -6,7 +6,10 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
 import yaml
+
+from market_app import cli as app_cli
 
 
 def _write_temp_config(
@@ -132,3 +135,28 @@ def test_market_app_variant_changes_score(tmp_path: Path) -> None:
     opp = pd.read_csv(tmp_path / "outputs" / "runs" / "opp_run" / "scored.csv")
 
     assert not cons["total_score"].equals(opp["total_score"])
+
+
+def test_parse_args_delegates_unknown_engine_subcommand() -> None:
+    args = app_cli.parse_args(["policy", "simulate", "--offline"])
+    assert args.command == "engine-delegate"
+    assert args.delegate_argv == ["policy", "simulate", "--offline"]
+
+
+def test_parse_args_keeps_wrapper_owned_subcommands() -> None:
+    args = app_cli.parse_args(["run", "--config", "config.yaml", "--offline"])
+    assert args.command == "run"
+
+
+def test_run_cli_delegates_to_market_monitor(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, list[str] | None] = {}
+
+    def _fake_main(argv: list[str] | None = None) -> int:
+        captured["argv"] = argv
+        return 17
+
+    monkeypatch.setattr("market_monitor.cli.main", _fake_main)
+    exit_code = app_cli.run_cli(["policy", "simulate", "--offline"])
+
+    assert exit_code == 17
+    assert captured["argv"] == ["policy", "simulate", "--offline"]

@@ -102,6 +102,9 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+WRAPPER_COMMANDS = frozenset({"run", "doctor", "determinism-check"})
+
+
 def _parse_legacy_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Offline-first market_app wrapper CLI (legacy)")
     _build_run_parser(parser)
@@ -113,6 +116,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         argv = sys.argv[1:]
     if not argv or argv[0].startswith("-"):
         return _parse_legacy_args(argv)
+    if argv[0] not in WRAPPER_COMMANDS:
+        return argparse.Namespace(command="engine-delegate", delegate_argv=list(argv))
     parser = _build_parser()
     return parser.parse_args(argv)
 
@@ -969,6 +974,10 @@ def _run_determinism_check(
 
 def run_cli(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.command == "engine-delegate":
+        from market_monitor import cli as engine_cli
+
+        return engine_cli.main(args.delegate_argv)
     if args.command == "doctor":
         return _run_doctor(args)
     if args.command == "determinism-check":

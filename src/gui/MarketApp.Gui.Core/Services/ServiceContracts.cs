@@ -21,6 +21,10 @@ public interface IEngineBridgeService
 {
     IAsyncEnumerable<ProgressEvent> RunAsync(EngineRunRequest request, CancellationToken cancellationToken);
 
+    IAsyncEnumerable<ProgressEvent> SimulatePolicyStreamAsync(
+        PolicySimulationRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<EngineCommandResult> SimulatePolicyAsync(
         PolicySimulationRequest request,
         CancellationToken cancellationToken = default);

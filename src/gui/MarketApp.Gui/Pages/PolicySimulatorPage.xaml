@@ -30,7 +30,7 @@
   <ScrollView>
     <VerticalStackLayout Padding="18" Spacing="14">
       <Label Text="Policy Simulator" FontSize="24" FontAttributes="Bold" />
-      <Label Text="Offline-only scenario runner that invokes the Python engine and surfaces the JSON summary file when one is written." FontSize="13" />
+      <Label Text="Offline-only scenario runner that invokes the Python engine, streams live progress JSONL events, and then surfaces the JSON summary file when one is written." FontSize="13" />
 
       <Frame Padding="14">
         <VerticalStackLayout Spacing="10">
@@ -61,6 +61,7 @@
           <Label Text="Status" Style="{StaticResource SectionTitleStyle}" />
           <Label Text="{Binding Status}" FontSize="14" />
           <Label Text="{Binding SummaryPath, StringFormat='Summary file: {0}'}" FontSize="12" LineBreakMode="TailTruncation" />
+          <Label Text="Live progress appears below while the run is executing. Final JSON summary and fields are appended when available." FontSize="12" />
           <Editor Text="{Binding SummaryText}" IsReadOnly="True" AutoSize="TextChanges" HeightRequest="260" FontFamily="Consolas" />
         </VerticalStackLayout>
       </Frame>

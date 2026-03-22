@@ -8,9 +8,24 @@ This repo already has an additive ML seam:
 
 That makes neural networks or deeper sequence models feasible without breaking the current contracts, as long as they stay additive and offline-first.
 
+## Current State
+
+The first deep-learning-style backend is now implemented as a deterministic NumPy MLP:
+
+- module: `market_app/market_monitor/ml/neural.py`
+- training entrypoint: `python -m market_monitor.ml.train_xgb --model-type numpy_mlp`
+- artifact contract: unchanged under `<out_dir>/ml/`
+- serialization: existing `model.joblib` / `model.json` / `train_manifest.json`
+- determinism controls:
+  - fixed random seed
+  - canonical backend name `numpy_mlp`
+  - fixed float formatting in CSV artifacts that carry neural outputs
+
+This is intentionally a CPU-only, offline-safe bridge between the existing classical models and any future heavier framework integration.
+
 ## Recommended Integration Path
 
-1. Add a new backend under `market_app/market_monitor/ml/` rather than creating a parallel modeling stack.
+1. Keep new neural backends under `market_app/market_monitor/ml/` rather than creating a parallel modeling stack.
 2. Keep the output contract identical:
    - write under `<out_dir>/ml/`
    - continue emitting `predictions_latest.csv`
@@ -47,4 +62,4 @@ That makes neural networks or deeper sequence models feasible without breaking t
 
 ## Practical Next Step
 
-The clean next step is a small PyTorch backend under `market_app/market_monitor/ml/` that consumes the existing dataset contract and writes the same `ml/` artifacts as the sklearn/xgboost lane. That preserves the run folder contract, keeps the GUI unchanged, and lets the repo compare classical versus neural models in the same offline evaluation harness.
+The next step is not “add deep learning from scratch” anymore. It is to compare `numpy_mlp` against the classical baselines in offline walk-forward tests, then only add a heavier backend such as PyTorch if it materially improves results while preserving determinism, offline execution, and the same artifact contract.

@@ -2,183 +2,597 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="MarketApp.Gui.Pages.DashboardPage"
-             Title="Dashboard">
+             Title="Dashboard"
+             BackgroundColor="#E8EDF6">
   <ContentPage.Resources>
-    <Style x:Key="InfoIconButtonStyle" TargetType="Button">
-      <Setter Property="Text" Value="i" />
+    <Color x:Key="DashboardNavy">#1F3A5A</Color>
+    <Color x:Key="DashboardNavyDark">#182F4A</Color>
+    <Color x:Key="DashboardSlate">#5E718A</Color>
+    <Color x:Key="DashboardText">#17324B</Color>
+    <Color x:Key="DashboardMuted">#66788E</Color>
+    <Color x:Key="DashboardSurface">#F8FAFD</Color>
+    <Color x:Key="DashboardSurfaceStrong">#FFFFFF</Color>
+    <Color x:Key="DashboardLine">#D5DEE8</Color>
+    <Color x:Key="DashboardSuccess">#178A58</Color>
+    <Color x:Key="DashboardDanger">#C24E3E</Color>
+
+    <Style x:Key="SectionHeaderStyle" TargetType="Label">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="TextColor" Value="{StaticResource DashboardSlate}" />
       <Setter Property="FontAttributes" Value="Bold" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="WidthRequest" Value="22" />
-      <Setter Property="MinimumWidthRequest" Value="22" />
-      <Setter Property="HeightRequest" Value="22" />
-      <Setter Property="MinimumHeightRequest" Value="22" />
-      <Setter Property="CornerRadius" Value="11" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Margin" Value="0" />
-      <Setter Property="HorizontalOptions" Value="Start" />
-      <Setter Property="VerticalOptions" Value="Center" />
-      <Setter Property="BackgroundColor" Value="#2F2F2F" />
-      <Setter Property="BorderColor" Value="#4E6FA4" />
-      <Setter Property="BorderWidth" Value="1" />
-      <Setter Property="TextColor" Value="#FFFFFF" />
+    </Style>
+
+    <Style x:Key="CardTitleStyle" TargetType="Label">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontAttributes" Value="Bold" />
+      <Setter Property="TextColor" Value="{StaticResource White}" />
+    </Style>
+
+    <Style x:Key="BodyTitleStyle" TargetType="Label">
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="FontAttributes" Value="Bold" />
+      <Setter Property="TextColor" Value="{StaticResource DashboardText}" />
+    </Style>
+
+    <Style x:Key="BodyTextStyle" TargetType="Label">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="TextColor" Value="{StaticResource DashboardMuted}" />
+      <Setter Property="LineBreakMode" Value="WordWrap" />
+    </Style>
+
+    <Style x:Key="MetricValueStyle" TargetType="Label">
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="FontAttributes" Value="Bold" />
+      <Setter Property="TextColor" Value="{StaticResource DashboardText}" />
     </Style>
   </ContentPage.Resources>
 
   <Shell.TitleView>
-    <Grid ColumnDefinitions="40,*,40">
-      <Label Grid.Column="1"
-             Text="Dashboard"
-             HorizontalOptions="Center"
-             VerticalOptions="Center"
+    <Grid ColumnDefinitions="*" Padding="0,0,4,0">
+      <Label Text="Dashboard"
+             FontSize="20"
              FontAttributes="Bold"
-             FontSize="20" />
+             HorizontalOptions="Center"
+             VerticalOptions="Center" />
     </Grid>
   </Shell.TitleView>
 
   <ScrollView>
-    <VerticalStackLayout Padding="16" Spacing="12">
-      <Label Text="Market Monitor Dashboard"
-             FontSize="24"
-             FontAttributes="Bold" />
+    <VerticalStackLayout Padding="22,16,22,28" Spacing="18">
+      <Border Padding="22"
+              StrokeThickness="0"
+              Background="#1F3A5A">
+        <Border.StrokeShape>
+          <RoundRectangle CornerRadius="26" />
+        </Border.StrokeShape>
+        <Border.Shadow>
+          <Shadow Brush="#2A3D54"
+                  Offset="0,12"
+                  Radius="24"
+                  Opacity="0.20" />
+        </Border.Shadow>
+        <Grid ColumnDefinitions="*,Auto"
+              RowDefinitions="Auto,Auto"
+              ColumnSpacing="18"
+              RowSpacing="14">
+          <VerticalStackLayout Spacing="8">
+            <Label Text="{Binding HeaderTitle}"
+                   FontSize="32"
+                   FontAttributes="Bold"
+                   TextColor="White" />
+            <Label Text="{Binding HeaderSubtitle}"
+                   FontSize="14"
+                   TextColor="#D9E4F2"
+                   LineBreakMode="WordWrap" />
+          </VerticalStackLayout>
 
-      <Frame>
-        <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
-          <HorizontalStackLayout Grid.Column="0" Spacing="6">
-            <Label Text="Last run" FontAttributes="Bold" />
-            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="last_run" Clicked="OnInfoClicked" />
-          </HorizontalStackLayout>
-          <HorizontalStackLayout Grid.Column="1" HorizontalOptions="Center" Spacing="6">
-            <Label Text="Universe" FontAttributes="Bold" />
-            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="universe" Clicked="OnInfoClicked" />
-          </HorizontalStackLayout>
-          <HorizontalStackLayout Grid.Column="2" HorizontalOptions="Center" Spacing="6">
-            <Label Text="Eligible" FontAttributes="Bold" />
-            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="eligible" Clicked="OnInfoClicked" />
-          </HorizontalStackLayout>
-          <Label Text="{Binding LastRun.RunId}" Grid.Row="1" />
-          <Label Text="{Binding LastRun.UniverseCount}" Grid.Row="1" Grid.Column="1" HorizontalTextAlignment="Center" />
-          <Label Text="{Binding LastRun.EligibleCount}" Grid.Row="1" Grid.Column="2" HorizontalTextAlignment="Center" />
+          <VerticalStackLayout Grid.Column="1"
+                               Spacing="10"
+                               HorizontalOptions="End"
+                               VerticalOptions="Center">
+            <Border Padding="12,8"
+                    Stroke="#5E718A"
+                    StrokeThickness="1"
+                    Background="#2A4B70">
+              <Border.StrokeShape>
+                <RoundRectangle CornerRadius="18" />
+              </Border.StrokeShape>
+              <Label Text="{Binding LastRun.LastDateMax, StringFormat='Fresh through {0}'}"
+                     TextColor="White"
+                     FontSize="12" />
+            </Border>
+            <Border Padding="12,8"
+                    Stroke="#5E718A"
+                    StrokeThickness="1"
+                    Background="#2A4B70">
+              <Border.StrokeShape>
+                <RoundRectangle CornerRadius="18" />
+              </Border.StrokeShape>
+              <Label Text="{Binding LastRun.WorstLagDays, StringFormat='Worst lag {0}d'}"
+                     TextColor="White"
+                     FontSize="12" />
+            </Border>
+          </VerticalStackLayout>
         </Grid>
-      </Frame>
+      </Border>
 
-      <Frame>
-        <VerticalStackLayout Spacing="4">
-          <HorizontalStackLayout Spacing="6">
-            <Label Text="Cause/effect linkage" FontAttributes="Bold" />
-            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="cause_effect" Clicked="OnInfoClicked" />
-          </HorizontalStackLayout>
-          <Label Text="{Binding CauseEffect.JoinedRows, StringFormat='Joined rows: {0}'}" />
-          <Label Text="{Binding CauseEffect.EventImpactRows, StringFormat='Event impact rows: {0}'}" />
-          <Label Text="{Binding CauseEffect.TopContextDay, StringFormat='Top context day: {0}'}" />
-          <Label Text="{Binding CauseEffect.TopContextMetric, StringFormat='Top metric: {0}'}" />
+      <FlexLayout Direction="Row"
+                  Wrap="Wrap"
+                  AlignItems="Start"
+                  JustifyContent="SpaceBetween">
+        <VerticalStackLayout FlexLayout.Basis="350"
+                             FlexLayout.Grow="1"
+                             Spacing="16">
+          <Border Stroke="#D5DEE8"
+                  StrokeThickness="1"
+                  Background="{StaticResource DashboardSurfaceStrong}">
+            <Border.StrokeShape>
+              <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+              <Shadow Brush="#32465C"
+                      Offset="0,10"
+                      Radius="18"
+                      Opacity="0.10" />
+            </Border.Shadow>
+            <VerticalStackLayout Spacing="0">
+              <Border Background="{StaticResource DashboardNavyDark}"
+                      StrokeThickness="0"
+                      Padding="18,14">
+                <Border.StrokeShape>
+                  <RoundRectangle CornerRadius="22,22,0,0" />
+                </Border.StrokeShape>
+                <Label Text="Training Desk"
+                       Style="{StaticResource CardTitleStyle}" />
+              </Border>
+              <VerticalStackLayout Padding="18" Spacing="12">
+                <Label Text="Use the dashboard to practice reading signals, freshness, and scenario risk before you act."
+                       Style="{StaticResource BodyTitleStyle}"
+                       FontSize="17" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding TrainingDeskItems}"
+                                     Spacing="10">
+                  <BindableLayout.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                        <Label Text="•"
+                               FontSize="18"
+                               TextColor="{StaticResource DashboardNavy}" />
+                        <Label Grid.Column="1"
+                               Text="{Binding .}"
+                               Style="{StaticResource BodyTextStyle}"
+                               TextColor="{StaticResource DashboardText}" />
+                      </Grid>
+                    </DataTemplate>
+                  </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+              </VerticalStackLayout>
+            </VerticalStackLayout>
+          </Border>
+
+          <FlexLayout Direction="Row"
+                      Wrap="Wrap"
+                      AlignItems="Start"
+                      JustifyContent="SpaceBetween">
+            <Border FlexLayout.Basis="170"
+                    FlexLayout.Grow="1"
+                    Margin="0,0,12,0"
+                    Stroke="#D5DEE8"
+                    StrokeThickness="1"
+                    Background="{StaticResource DashboardSurfaceStrong}">
+              <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+              </Border.StrokeShape>
+              <VerticalStackLayout Spacing="0">
+                <Border Background="{StaticResource DashboardNavy}"
+                        StrokeThickness="0"
+                        Padding="18,14">
+                  <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22,22,0,0" />
+                  </Border.StrokeShape>
+                  <Label Text="Current Setup"
+                         Style="{StaticResource CardTitleStyle}" />
+                </Border>
+                <VerticalStackLayout Padding="18" Spacing="10">
+                  <Label Text="{Binding LeadSymbol}"
+                         FontSize="30"
+                         FontAttributes="Bold"
+                         TextColor="{StaticResource DashboardText}" />
+                  <Label Text="{Binding LeadHeadline}"
+                         FontSize="14"
+                         TextColor="{StaticResource DashboardSlate}" />
+                  <BoxView HeightRequest="1"
+                           Color="{StaticResource DashboardLine}" />
+                  <Label Text="{Binding LeadScoreText}"
+                         FontSize="15"
+                         TextColor="{StaticResource DashboardText}" />
+                  <Label Text="{Binding LeadLagText}"
+                         FontSize="15"
+                         TextColor="{StaticResource DashboardDanger}" />
+                  <Label Text="{Binding LeadThemesText}"
+                         Style="{StaticResource BodyTextStyle}" />
+                </VerticalStackLayout>
+              </VerticalStackLayout>
+            </Border>
+
+            <Border FlexLayout.Basis="170"
+                    FlexLayout.Grow="1"
+                    Stroke="#D5DEE8"
+                    StrokeThickness="1"
+                    Background="{StaticResource DashboardSurfaceStrong}">
+              <Border.StrokeShape>
+                <RoundRectangle CornerRadius="22" />
+              </Border.StrokeShape>
+              <VerticalStackLayout Spacing="0">
+                <Border Background="{StaticResource DashboardNavy}"
+                        StrokeThickness="0"
+                        Padding="18,14">
+                  <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22,22,0,0" />
+                  </Border.StrokeShape>
+                  <Label Text="Trading Signals"
+                         Style="{StaticResource CardTitleStyle}" />
+                </Border>
+                <VerticalStackLayout Padding="18" Spacing="12"
+                                     BindableLayout.ItemsSource="{Binding SignalFacts}">
+                  <BindableLayout.ItemTemplate>
+                    <DataTemplate>
+                      <VerticalStackLayout Spacing="5">
+                        <Label Text="{Binding Label}"
+                               Style="{StaticResource SectionHeaderStyle}" />
+                        <Label Text="{Binding Value}"
+                               FontSize="14"
+                               TextColor="{StaticResource DashboardText}" />
+                        <BoxView HeightRequest="1"
+                                 Color="{StaticResource DashboardLine}" />
+                      </VerticalStackLayout>
+                    </DataTemplate>
+                  </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+              </VerticalStackLayout>
+            </Border>
+          </FlexLayout>
         </VerticalStackLayout>
-      </Frame>
 
-      <Frame>
-        <VerticalStackLayout Spacing="6">
-          <HorizontalStackLayout Spacing="6">
-            <Label Text="Backtest quality" FontAttributes="Bold" />
-            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="backtest_quality" Clicked="OnInfoClicked" />
-          </HorizontalStackLayout>
-          <Label Text="{Binding QualitySnapshot.RunId, StringFormat='Run: {0}'}" />
-          <Label Text="{Binding QualitySnapshot.EvaluatedAtUtc, StringFormat='Evaluated (UTC): {0:yyyy-MM-dd HH:mm:ss}'}" />
+        <VerticalStackLayout FlexLayout.Basis="560"
+                             FlexLayout.Grow="1"
+                             Margin="16,0"
+                             Spacing="16">
+          <Border Stroke="#D5DEE8"
+                  StrokeThickness="1"
+                  Background="{StaticResource DashboardSurfaceStrong}">
+            <Border.StrokeShape>
+              <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <Border.Shadow>
+              <Shadow Brush="#32465C"
+                      Offset="0,10"
+                      Radius="18"
+                      Opacity="0.10" />
+            </Border.Shadow>
+            <VerticalStackLayout Spacing="0">
+              <Border Background="{StaticResource DashboardNavy}"
+                      StrokeThickness="0"
+                      Padding="18,14">
+                <Border.StrokeShape>
+                  <RoundRectangle CornerRadius="22,22,0,0" />
+                </Border.StrokeShape>
+                <Label Text="Market Monitor"
+                       Style="{StaticResource CardTitleStyle}" />
+              </Border>
+              <VerticalStackLayout Padding="18" Spacing="16">
+                <Label Text="Market Overview"
+                       Style="{StaticResource BodyTitleStyle}" />
 
-          <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,0,0,4">
-            <HorizontalStackLayout Grid.Column="0" Spacing="4">
-              <Label Text="Model" FontAttributes="Bold" />
-              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_model" Clicked="OnInfoClicked" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Grid.Column="1" Spacing="4">
-              <Label Text="MSE" FontAttributes="Bold" />
-              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_mse" Clicked="OnInfoClicked" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Grid.Column="2" Spacing="4">
-              <Label Text="MAE" FontAttributes="Bold" />
-              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_mae" Clicked="OnInfoClicked" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Grid.Column="3" Spacing="4">
-              <Label Text="Accuracy" FontAttributes="Bold" />
-              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_accuracy" Clicked="OnInfoClicked" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Grid.Column="4" Spacing="4">
-              <Label Text="F1" FontAttributes="Bold" />
-              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="metric_f1" Clicked="OnInfoClicked" />
-            </HorizontalStackLayout>
-          </Grid>
+                <FlexLayout Direction="Row"
+                            Wrap="Wrap"
+                            AlignItems="Start"
+                            BindableLayout.ItemsSource="{Binding OverviewTiles}">
+                  <BindableLayout.ItemTemplate>
+                    <DataTemplate>
+                      <Border Margin="0,0,10,10"
+                              FlexLayout.Basis="122"
+                              FlexLayout.Grow="1"
+                              Padding="12"
+                              Stroke="#D5DEE8"
+                              StrokeThickness="1"
+                              Background="{StaticResource DashboardSurface}">
+                        <Border.StrokeShape>
+                          <RoundRectangle CornerRadius="16" />
+                        </Border.StrokeShape>
+                        <VerticalStackLayout Spacing="4">
+                          <Label Text="{Binding Label}"
+                                 Style="{StaticResource SectionHeaderStyle}" />
+                          <Label Text="{Binding Value}"
+                                 Style="{StaticResource MetricValueStyle}" />
+                          <Label Text="{Binding Delta}"
+                                 Style="{StaticResource BodyTextStyle}" />
+                        </VerticalStackLayout>
+                      </Border>
+                    </DataTemplate>
+                  </BindableLayout.ItemTemplate>
+                </FlexLayout>
 
-          <VerticalStackLayout BindableLayout.ItemsSource="{Binding BacktestMetrics}" Spacing="2">
+                <VerticalStackLayout Spacing="10">
+                  <Label Text="Trend Preview"
+                         Style="{StaticResource BodyTitleStyle}" />
+                  <ContentView x:Name="TrendChartHost"
+                               MinimumHeightRequest="270" />
+                </VerticalStackLayout>
+
+                <Border Padding="14"
+                        Stroke="#D5DEE8"
+                        StrokeThickness="1"
+                        Background="{StaticResource DashboardSurface}">
+                  <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="16" />
+                  </Border.StrokeShape>
+                  <Label Text="{Binding MarketHeadline}"
+                         FontSize="14"
+                         TextColor="{StaticResource DashboardText}" />
+                </Border>
+
+                <Grid ColumnDefinitions="2*,*"
+                      ColumnSpacing="14">
+                  <ContentView x:Name="IndicatorChartHost"
+                               Grid.Column="0"
+                               MinimumHeightRequest="170" />
+                  <Border Grid.Column="1"
+                          Padding="14"
+                          Stroke="#D5DEE8"
+                          StrokeThickness="1"
+                          Background="{StaticResource DashboardSurface}">
+                    <Border.StrokeShape>
+                      <RoundRectangle CornerRadius="16" />
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="10">
+                      <Label Text="Desk Note"
+                             Style="{StaticResource SectionHeaderStyle}" />
+                      <Label Text="{Binding SentimentSummary}"
+                             FontSize="14"
+                             TextColor="{StaticResource DashboardText}" />
+                      <Label Text="Higher score means the symbol fits the current rule set better."
+                             Style="{StaticResource BodyTextStyle}" />
+                      <Label Text="Lag tells you how old the newest data is."
+                             Style="{StaticResource BodyTextStyle}" />
+                      <Label Text="Forecasts are scenario estimates, not guarantees."
+                             Style="{StaticResource BodyTextStyle}" />
+                    </VerticalStackLayout>
+                  </Border>
+                </Grid>
+              </VerticalStackLayout>
+            </VerticalStackLayout>
+          </Border>
+        </VerticalStackLayout>
+
+        <VerticalStackLayout FlexLayout.Basis="330"
+                             FlexLayout.Grow="1"
+                             Spacing="16">
+          <Border Stroke="#D5DEE8"
+                  StrokeThickness="1"
+                  Background="{StaticResource DashboardSurfaceStrong}">
+            <Border.StrokeShape>
+              <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="0">
+              <Border Background="{StaticResource DashboardNavy}"
+                      StrokeThickness="0"
+                      Padding="18,14">
+                <Border.StrokeShape>
+                  <RoundRectangle CornerRadius="22,22,0,0" />
+                </Border.StrokeShape>
+                <Label Text="Scenario &amp; Forecast"
+                       Style="{StaticResource CardTitleStyle}" />
+              </Border>
+              <VerticalStackLayout Padding="18" Spacing="12">
+                <Label Text="What-if Scenario"
+                       Style="{StaticResource BodyTitleStyle}" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding ScenarioFacts}"
+                                     Spacing="12">
+                  <BindableLayout.ItemTemplate>
+                    <DataTemplate>
+                      <VerticalStackLayout Spacing="5">
+                        <Label Text="{Binding Label}"
+                               Style="{StaticResource SectionHeaderStyle}" />
+                        <Label Text="{Binding Value}"
+                               FontSize="14"
+                               TextColor="{StaticResource DashboardText}" />
+                        <BoxView HeightRequest="1"
+                                 Color="{StaticResource DashboardLine}" />
+                      </VerticalStackLayout>
+                    </DataTemplate>
+                  </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+              </VerticalStackLayout>
+            </VerticalStackLayout>
+          </Border>
+
+          <Border Stroke="#D5DEE8"
+                  StrokeThickness="1"
+                  Background="{StaticResource DashboardSurfaceStrong}">
+            <Border.StrokeShape>
+              <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="0">
+              <Border Background="{StaticResource DashboardNavyDark}"
+                      StrokeThickness="0"
+                      Padding="18,14">
+                <Border.StrokeShape>
+                  <RoundRectangle CornerRadius="22,22,0,0" />
+                </Border.StrokeShape>
+                <Label Text="Risk Rules"
+                       Style="{StaticResource CardTitleStyle}" />
+              </Border>
+              <VerticalStackLayout Padding="18"
+                                   Spacing="12"
+                                   BindableLayout.ItemsSource="{Binding RiskRules}">
+                <BindableLayout.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                      <Label Text="•"
+                             FontSize="18"
+                             TextColor="{StaticResource DashboardNavy}" />
+                      <Label Grid.Column="1"
+                             Text="{Binding .}"
+                             Style="{StaticResource BodyTextStyle}"
+                             TextColor="{StaticResource DashboardText}" />
+                    </Grid>
+                  </DataTemplate>
+                </BindableLayout.ItemTemplate>
+              </VerticalStackLayout>
+            </VerticalStackLayout>
+          </Border>
+
+          <Border Stroke="#D5DEE8"
+                  StrokeThickness="1"
+                  Background="{StaticResource DashboardSurfaceStrong}">
+            <Border.StrokeShape>
+              <RoundRectangle CornerRadius="22" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="0">
+              <Border Background="{StaticResource DashboardNavyDark}"
+                      StrokeThickness="0"
+                      Padding="18,14">
+                <Border.StrokeShape>
+                  <RoundRectangle CornerRadius="22,22,0,0" />
+                </Border.StrokeShape>
+                <Label Text="Plain-Language Guide"
+                       Style="{StaticResource CardTitleStyle}" />
+              </Border>
+              <VerticalStackLayout Padding="18" Spacing="10">
+                <Label Text="Score: higher usually means a stronger fit to the model rules."
+                       Style="{StaticResource BodyTextStyle}"
+                       TextColor="{StaticResource DashboardText}" />
+                <Label Text="Lag: how many days old the newest market data is."
+                       Style="{StaticResource BodyTextStyle}"
+                       TextColor="{StaticResource DashboardText}" />
+                <Label Text="Scenario: a structured what-if test, not a prediction of certainty."
+                       Style="{StaticResource BodyTextStyle}"
+                       TextColor="{StaticResource DashboardText}" />
+                <Label Text="Options note: leverage can magnify both gains and losses fast."
+                       Style="{StaticResource BodyTextStyle}"
+                       TextColor="{StaticResource DashboardText}" />
+              </VerticalStackLayout>
+            </VerticalStackLayout>
+          </Border>
+        </VerticalStackLayout>
+      </FlexLayout>
+
+      <Border Stroke="#D5DEE8"
+              StrokeThickness="1"
+              Background="{StaticResource DashboardSurfaceStrong}">
+        <Border.StrokeShape>
+          <RoundRectangle CornerRadius="22" />
+        </Border.StrokeShape>
+        <Border.Shadow>
+          <Shadow Brush="#32465C"
+                  Offset="0,10"
+                  Radius="18"
+                  Opacity="0.08" />
+        </Border.Shadow>
+        <VerticalStackLayout Spacing="0">
+          <Border Background="{StaticResource DashboardNavy}"
+                  StrokeThickness="0"
+                  Padding="18,14">
+            <Border.StrokeShape>
+              <RoundRectangle CornerRadius="22,22,0,0" />
+            </Border.StrokeShape>
+            <Label Text="Watchlist"
+                   Style="{StaticResource CardTitleStyle}" />
+          </Border>
+          <VerticalStackLayout Padding="18" Spacing="14">
+            <Label Text="{Binding WatchlistCaption}"
+                   Style="{StaticResource BodyTextStyle}" />
+            <Grid ColumnDefinitions="1.1*,0.9*,0.9*,2.1*"
+                  ColumnSpacing="12">
+              <Label Text="Symbol"
+                     Style="{StaticResource SectionHeaderStyle}" />
+              <Label Grid.Column="1"
+                     Text="Score"
+                     Style="{StaticResource SectionHeaderStyle}" />
+              <Label Grid.Column="2"
+                     Text="Lag"
+                     Style="{StaticResource SectionHeaderStyle}" />
+              <Label Grid.Column="3"
+                     Text="Themes"
+                     Style="{StaticResource SectionHeaderStyle}" />
+            </Grid>
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding TopSymbols}"
+                                 Spacing="10">
+              <BindableLayout.ItemTemplate>
+                <DataTemplate>
+                  <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="1.1*,0.9*,0.9*,2.1*"
+                          ColumnSpacing="12">
+                      <Label Text="{Binding Symbol}"
+                             FontSize="16"
+                             FontAttributes="Bold"
+                             TextColor="{StaticResource DashboardText}" />
+                      <Label Grid.Column="1"
+                             Text="{Binding Score, StringFormat='{}{0:F2}'}"
+                             FontSize="15"
+                             TextColor="{StaticResource DashboardText}" />
+                      <Label Grid.Column="2"
+                             Text="{Binding LagDays, StringFormat='{}{0}d'}"
+                             FontSize="15"
+                             TextColor="{StaticResource DashboardDanger}" />
+                      <Label Grid.Column="3"
+                             Text="{Binding ThemeLabels}"
+                             FontSize="14"
+                             TextColor="{StaticResource DashboardSlate}"
+                             LineBreakMode="TailTruncation" />
+                    </Grid>
+                    <BoxView HeightRequest="1"
+                             Color="{StaticResource DashboardLine}" />
+                  </VerticalStackLayout>
+                </DataTemplate>
+              </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+          </VerticalStackLayout>
+        </VerticalStackLayout>
+      </Border>
+
+      <Border Stroke="#D5DEE8"
+              StrokeThickness="1"
+              Background="{StaticResource DashboardSurfaceStrong}">
+        <Border.StrokeShape>
+          <RoundRectangle CornerRadius="22" />
+        </Border.StrokeShape>
+        <VerticalStackLayout Spacing="0">
+          <Border Background="{StaticResource DashboardNavyDark}"
+                  StrokeThickness="0"
+                  Padding="18,14">
+            <Border.StrokeShape>
+              <RoundRectangle CornerRadius="22,22,0,0" />
+            </Border.StrokeShape>
+            <Label Text="Recent Logs"
+                   Style="{StaticResource CardTitleStyle}" />
+          </Border>
+          <VerticalStackLayout Padding="18"
+                               Spacing="10"
+                               BindableLayout.ItemsSource="{Binding RecentLogs}">
             <BindableLayout.ItemTemplate>
               <DataTemplate>
-                <Grid ColumnDefinitions="2*,*,*,*,*" Padding="0,2">
-                  <Label Text="{Binding Model}" LineBreakMode="TailTruncation" MaxLines="1" />
-                  <Label Text="{Binding Mse, StringFormat='{}{0:F4}'}" Grid.Column="1" />
-                  <Label Text="{Binding Mae, StringFormat='{}{0:F4}'}" Grid.Column="2" />
-                  <Label Text="{Binding Accuracy, StringFormat='{}{0:P1}'}" Grid.Column="3" />
-                  <Label Text="{Binding F1, StringFormat='{}{0:P1}'}" Grid.Column="4" />
+                <Grid ColumnDefinitions="Auto,Auto,*"
+                      ColumnSpacing="10">
+                  <Label Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}"
+                         Style="{StaticResource BodyTextStyle}"
+                         TextColor="{StaticResource DashboardSlate}" />
+                  <Label Grid.Column="1"
+                         Text="{Binding Level}"
+                         FontSize="12"
+                         FontAttributes="Bold"
+                         TextColor="{StaticResource DashboardText}" />
+                  <Label Grid.Column="2"
+                         Text="{Binding Message}"
+                         Style="{StaticResource BodyTextStyle}"
+                         TextColor="{StaticResource DashboardText}"
+                         LineBreakMode="TailTruncation" />
                 </Grid>
               </DataTemplate>
             </BindableLayout.ItemTemplate>
           </VerticalStackLayout>
         </VerticalStackLayout>
-      </Frame>
-
-      <Frame>
-        <VerticalStackLayout Spacing="6">
-          <HorizontalStackLayout Spacing="6">
-            <Label Text="Top symbols" FontAttributes="Bold" />
-            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbols" Clicked="OnInfoClicked" />
-          </HorizontalStackLayout>
-
-          <Grid ColumnDefinitions="2*,*,*,*" Padding="0,0,0,4">
-            <HorizontalStackLayout Grid.Column="0" Spacing="4">
-              <Label Text="Symbol" FontAttributes="Bold" />
-              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbol_symbol" Clicked="OnInfoClicked" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Grid.Column="1" Spacing="4">
-              <Label Text="Score" FontAttributes="Bold" />
-              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbol_score" Clicked="OnInfoClicked" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Grid.Column="2" Spacing="4">
-              <Label Text="Lag (d)" FontAttributes="Bold" />
-              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbol_lag" Clicked="OnInfoClicked" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Grid.Column="3" Spacing="4">
-              <Label Text="Themes" FontAttributes="Bold" />
-              <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="top_symbol_theme" Clicked="OnInfoClicked" />
-            </HorizontalStackLayout>
-          </Grid>
-
-          <VerticalStackLayout BindableLayout.ItemsSource="{Binding TopSymbols}" Spacing="2">
-            <BindableLayout.ItemTemplate>
-              <DataTemplate>
-                <Grid ColumnDefinitions="2*,*,*,*" Padding="0,2">
-                  <Label Text="{Binding Symbol}" />
-                  <Label Text="{Binding Score, StringFormat='{}{0:F2}'}" Grid.Column="1" />
-                  <Label Text="{Binding LagDays}" Grid.Column="2" />
-                  <Label Text="{Binding ThemeLabels}" Grid.Column="3" LineBreakMode="TailTruncation" MaxLines="1" />
-                </Grid>
-              </DataTemplate>
-            </BindableLayout.ItemTemplate>
-          </VerticalStackLayout>
-        </VerticalStackLayout>
-      </Frame>
-
-      <Frame>
-        <VerticalStackLayout Spacing="6">
-          <Label Text="Recent logs" FontAttributes="Bold" />
-          <VerticalStackLayout BindableLayout.ItemsSource="{Binding RecentLogs}" Spacing="2">
-            <BindableLayout.ItemTemplate>
-              <DataTemplate>
-                <Grid ColumnDefinitions="Auto,Auto,*" Padding="0,2" ColumnSpacing="8">
-                  <Label Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" />
-                  <Label Text="{Binding Level}" Grid.Column="1" FontAttributes="Bold" />
-                  <Label Text="{Binding Message}" Grid.Column="2" LineBreakMode="TailTruncation" MaxLines="1" />
-                </Grid>
-              </DataTemplate>
-            </BindableLayout.ItemTemplate>
-          </VerticalStackLayout>
-        </VerticalStackLayout>
-      </Frame>
+      </Border>
     </VerticalStackLayout>
   </ScrollView>
 </ContentPage>

@@ -10,7 +10,7 @@ public sealed class EngineBridgeService : IEngineBridgeService
 {
     private static readonly TimeSpan ProgressThrottleInterval = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan PostStageHeartbeatInterval = TimeSpan.FromSeconds(5);
-    private static readonly string[] PolicySummaryFileNames =
+    internal static readonly string[] PolicySummaryFileNames =
     [
         "policy_simulation_summary.json",
         "policy_summary.json",
@@ -40,7 +40,7 @@ public sealed class EngineBridgeService : IEngineBridgeService
             runArgs,
             runDir,
             logWriter,
-            cancellationToken))
+            cancellationToken: cancellationToken))
         {
             if (string.Equals(evt.Stage, "run", StringComparison.OrdinalIgnoreCase))
             {
@@ -251,6 +251,35 @@ public sealed class EngineBridgeService : IEngineBridgeService
         return result;
     }
 
+    public async IAsyncEnumerable<ProgressEvent> SimulatePolicyStreamAsync(
+        PolicySimulationRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var outDirectory = Path.GetFullPath(request.OutDirectory);
+        Directory.CreateDirectory(outDirectory);
+        var uiLogPath = Path.Combine(outDirectory, "ui_engine.log");
+        await using var logStream = new FileStream(uiLogPath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+        await using var logWriter = new StreamWriter(logStream) { AutoFlush = true };
+
+        var marketAppRoot = ResolveMarketAppRoot();
+        var python = ResolvePythonPath(request.PythonPath);
+        var args = BuildPolicySimulationArguments(request, marketAppRoot);
+
+        await foreach (var evt in StreamCommandAsync(
+            python,
+            args,
+            outDirectory,
+            logWriter,
+            completionStage: "policy_simulate",
+            completionSuccessMessage: "Policy simulation completed",
+            completionCanceledMessage: "Policy simulation canceled",
+            completionFailurePrefix: "Policy simulation failed",
+            cancellationToken))
+        {
+            yield return evt;
+        }
+    }
+
     public Task<EngineCommandResult> BuildLinkedAsync(
         string configPath,
         string outDirectory,
@@ -452,7 +481,11 @@ public sealed class EngineBridgeService : IEngineBridgeService
         IReadOnlyList<string> args,
         string runDir,
         StreamWriter logWriter,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        string completionStage = "run",
+        string completionSuccessMessage = "Run completed",
+        string completionCanceledMessage = "Run canceled",
+        string completionFailurePrefix = "Run failed",
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var marketAppRoot = ResolveMarketAppRoot();
         var startInfo = BuildStartInfo(python, args, marketAppRoot);
@@ -476,7 +509,7 @@ public sealed class EngineBridgeService : IEngineBridgeService
                 : startError;
             yield return new ProgressEvent(
                 Type: "error",
-                Stage: "run",
+                Stage: completionStage,
                 Message: "Failed to start engine process",
                 Pct: null,
                 Timestamp: DateTime.UtcNow,
@@ -535,14 +568,14 @@ public sealed class EngineBridgeService : IEngineBridgeService
 
                 var exitMessage = process.ExitCode switch
                 {
-                    0 => "Run completed",
-                    130 => "Run canceled",
-                    _ => $"Run failed (exit {process.ExitCode})"
+                    0 => completionSuccessMessage,
+                    130 => completionCanceledMessage,
+                    _ => $"{completionFailurePrefix} (exit {process.ExitCode})"
                 };
 
                 await channel.Writer.WriteAsync(new ProgressEvent(
                     Type: exitType,
-                    Stage: "run",
+                    Stage: completionStage,
                     Message: exitMessage,
                     Pct: process.ExitCode == 0 ? 1.0 : null,
                     Timestamp: DateTime.UtcNow,
@@ -663,7 +696,8 @@ public sealed class EngineBridgeService : IEngineBridgeService
             "-m", "market_monitor.cli", "policy", "simulate",
             "--config", ResolveConfigPath(request.ConfigPath, marketAppRoot),
             "--scenario", request.ScenarioName,
-            "--outdir", Path.GetFullPath(request.OutDirectory)
+            "--outdir", Path.GetFullPath(request.OutDirectory),
+            "--progress-jsonl"
         };
         if (request.Offline)
         {

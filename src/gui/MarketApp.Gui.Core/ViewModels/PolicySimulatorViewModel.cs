@@ -1,17 +1,10 @@
+using System.Text;
 using System.Text.Json;
 
 namespace MarketApp.Gui.Core;
 
 public class PolicySimulatorViewModel : ViewModelBase
 {
-    private static readonly string[] SummaryFileNames =
-    [
-        "policy_simulation_summary.json",
-        "policy_summary.json",
-        "summary.json",
-        "policy_simulation.json"
-    ];
-
     private readonly IEngineBridgeService _engineBridge;
     private readonly IUserSettingsService _settings;
     private CancellationTokenSource? _cts;
@@ -117,19 +110,45 @@ public class PolicySimulatorViewModel : ViewModelBase
                 Offline: true,
                 PythonPath: string.IsNullOrWhiteSpace(PythonPath) ? null : PythonPath);
 
-            var result = await _engineBridge.SimulatePolicyAsync(request, _cts.Token).ConfigureAwait(false);
+            var progressLines = new List<string>();
+            var result = new EngineCommandResult(0, string.Empty, string.Empty);
+            await foreach (var evt in _engineBridge.SimulatePolicyStreamAsync(request, _cts.Token))
+            {
+                var progressLine = FormatProgressLine(evt);
+                progressLines.Add(progressLine);
+                if (progressLines.Count > 200)
+                {
+                    progressLines.RemoveAt(0);
+                }
+
+                SummaryText = string.Join(Environment.NewLine, progressLines);
+                Status = BuildLiveStatus(evt);
+
+                if (IsTerminalPolicyEvent(evt))
+                {
+                    var exitCode = evt.Type.Equals("stage_end", StringComparison.OrdinalIgnoreCase)
+                        ? 0
+                        : evt.Error?.Code.Equals("INTERRUPTED", StringComparison.OrdinalIgnoreCase) == true
+                            ? 130
+                            : 4;
+
+                    var errorText = evt.Error?.Detail ?? string.Empty;
+                    result = new EngineCommandResult(exitCode, string.Empty, errorText);
+                }
+            }
+
             var summary = TryLoadSummaryFromDirectory(OutputDirectory);
             if (summary is not null)
             {
                 SummaryPath = summary.SummaryPath;
-                SummaryText = BuildSummaryText(result, summary);
+                SummaryText = BuildSummaryText(result, summary, progressLines);
                 Status = result.ExitCode == 0
                     ? "Policy simulation complete"
                     : "Policy simulation completed with errors";
             }
             else
             {
-                SummaryText = BuildSummaryText(result, null);
+                SummaryText = BuildSummaryText(result, null, progressLines);
                 Status = result.ExitCode == 0
                     ? "Policy simulation complete"
                     : "Policy simulation failed";
@@ -166,7 +185,7 @@ public class PolicySimulatorViewModel : ViewModelBase
             return null;
         }
 
-        foreach (var fileName in SummaryFileNames)
+        foreach (var fileName in EngineBridgeService.PolicySummaryFileNames)
         {
             var candidate = Path.Combine(directory, fileName);
             if (!File.Exists(candidate))
@@ -259,7 +278,10 @@ public class PolicySimulatorViewModel : ViewModelBase
         }
     }
 
-    internal static string BuildSummaryText(EngineCommandResult result, PolicySimulationSummary? summary)
+    internal static string BuildSummaryText(
+        EngineCommandResult result,
+        PolicySimulationSummary? summary,
+        IReadOnlyList<string>? progressLines = null)
     {
         var lines = new List<string>();
         lines.Add(summary?.Summary ?? "No JSON summary file was found.");
@@ -307,7 +329,64 @@ public class PolicySimulatorViewModel : ViewModelBase
             }
         }
 
+        if (progressLines is not null && progressLines.Count > 0)
+        {
+            lines.Add(string.Empty);
+            lines.Add("Progress log:");
+            foreach (var line in progressLines)
+            {
+                lines.Add(line);
+            }
+        }
+
         return string.Join(Environment.NewLine, lines.Where(line => line is not null));
+    }
+
+    private static bool IsTerminalPolicyEvent(ProgressEvent evt)
+    {
+        if (!evt.Stage.Equals("policy_simulate", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return evt.Type.Equals("stage_end", StringComparison.OrdinalIgnoreCase)
+            || evt.Type.Equals("error", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildLiveStatus(ProgressEvent evt)
+    {
+        if (evt.Pct.HasValue)
+        {
+            return $"{evt.Message} ({evt.Pct:P0})";
+        }
+
+        return evt.Message;
+    }
+
+    private static string FormatProgressLine(ProgressEvent evt)
+    {
+        var builder = new StringBuilder();
+        builder.Append('[');
+        builder.Append(evt.Timestamp.ToLocalTime().ToString("HH:mm:ss"));
+        builder.Append("] ");
+        builder.Append(evt.Stage);
+        builder.Append('/');
+        builder.Append(evt.Type);
+        if (evt.Pct.HasValue)
+        {
+            builder.Append(' ');
+            builder.Append(evt.Pct.Value.ToString("P0"));
+        }
+        builder.Append(": ");
+        builder.Append(evt.Message);
+
+        if (!string.IsNullOrWhiteSpace(evt.Error?.Detail))
+        {
+            builder.Append(" | ");
+            builder.Append(evt.Error.Detail);
+        }
+
+        return builder.ToString();
     }
 
     private static bool TryGetScalarText(JsonElement node, out string value)

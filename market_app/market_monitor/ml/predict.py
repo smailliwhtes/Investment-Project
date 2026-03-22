@@ -42,7 +42,7 @@ def _write_predictions(
     latest = predictions.sort_values("day").groupby("symbol").tail(1)
     latest = latest.sort_values("symbol").reset_index(drop=True)
     latest_path = ml_dir / "predictions_latest.csv"
-    latest.to_csv(latest_path, index=False)
+    latest.to_csv(latest_path, index=False, float_format="%.10f")
 
     manifest_path = ml_dir / "predict_manifest.json"
     manifest_path.write_text(
