@@ -1,7 +1,13 @@
 # GUI/UI Readiness Audit (Repository Snapshot)
 
-Date: 2026-02-25  
+Date: 2026-03-21  
 Scope: Validate whether the current repository contains the assets and contracts required to run the MAUI GUI/UI against the Python engine.
+
+## Update
+
+- `EngineBridgeService`, run discovery, and contract-focused GUI tests are now present.
+- The GUI now includes a thin `Policy Simulator` screen that shells out to `python -m market_monitor.cli policy simulate ... --offline`.
+- Policy simulation remains additive to the core engine contracts; the GUI is still orchestrating the Python engine rather than duplicating logic.
 
 ## What is present and ready
 
@@ -22,42 +28,39 @@ Scope: Validate whether the current repository contains the assets and contracts
 - Engine CLI contract surface needed by GUI is implemented in code:
   - `run --config ... --out-dir ... --offline --progress-jsonl`
   - `validate-config --config ... --format json`
+  - `policy simulate --config ... --scenario ... --outdir ... --offline`
   - Progress JSONL emission helper
   - Required artifacts enforcement (`scored.csv`, `eligible.csv`, `report.md`, `run_manifest.json`, `config_snapshot.yaml`)
   - `scored.csv` freshness hardening (`last_date`, `lag_days`) with deterministic merge/fallback.
+- GUI orchestration services are present in the current codebase:
+  - `EngineBridgeService`
+  - `RunDiscoveryService`
+  - `RunCompareService`
+  - `QualityMetricsService`
+- Contract-oriented GUI tests exist for:
+  - progress JSONL parsing
+  - engine path resolution and process environment
+  - run discovery / dashboard artifact loading
+  - policy simulator request wiring
 
-## Gaps that block full "GUI drives engine" readiness
+## Remaining gaps
 
-1. **GUI is still demo/simulated rather than engine-bridged**
-   - DI registers `SampleDataService` and `SimulatedRunOrchestrator`.
-   - No `EngineBridgeService`, `RunDiscoveryService`, or `CsvLoader` implementation/registration found.
-   - Result: GUI currently runs sample data and simulated progress instead of launching Python engine and parsing live JSONL.
-
-2. **Python process discovery/spawn contract not implemented in GUI code**
-   - No evidence of logic for interpreter discovery order:
-     1) user setting
-     2) repo-local `.venv\Scripts\python.exe`
-     3) `python` on PATH
-   - No evidence of required process environment settings:
-     - `PYTHONUTF8=1`
-     - `PYTHONIOENCODING=utf-8`
-
-3. **Contract-focused GUI tests are incomplete**
-   - Existing tests validate contract record shapes and sample-data behavior.
-   - Missing explicit tests for:
-     - progress JSONL parser resilience,
-     - run discovery via `run_manifest.json`,
-     - deterministic scored/data_quality merge failure semantics.
-
-4. **Environment-dependent build check could not be completed in this Linux container**
+1. **Environment-dependent build check could not be completed in this Linux container**
    - `dotnet` is not installed in this environment, so GUI restore/build/test commands could not be executed here.
+
+2. **Policy simulator is intentionally thin**
+   - The current GUI page shells out to the engine and surfaces the generated summary/report payloads.
+   - It does not yet stream live policy-stage progress or render policy charts/tables beyond the textual summary.
+
+3. **Deep-learning work remains a design seam, not a shipped backend**
+   - The repo now documents a clean deep-learning integration path, but the production backend is still the classical offline ML lane.
 
 ## Contract and docs drift to reconcile
 
-- Root AGENTS map references `scripts/run.ps1` and `scripts/provision_data.ps1` as primary engine entrypoints, but those files exist under `market_app/scripts/` in this repository snapshot.
-- Root README engine examples mix `market_monitor.cli` and `market_app.cli` command families; this should be normalized to the intended public contract.
+- Root AGENTS map has been updated for the watchlist runner path and now documents the additive `policy simulate` CLI.
+- Root README examples now use the public `market_monitor.cli` command family consistently.
 
 ## Practical conclusion
 
-- **Repository has enough structure to build and run the MAUI shell on a properly provisioned Windows machine** (SDK + MAUI workload), but **does not yet fully satisfy the "GUI orchestrates real engine runs" contract**.
-- To be fully ready for production-style GUI orchestration, next implementation step should add concrete engine bridge/discovery/csv/run-history services and corresponding contract tests.
+- **Repository now satisfies the core "GUI orchestrates real engine runs" contract for the implemented offline engine lanes**, including contract runs, run discovery, comparison, and the new policy simulator.
+- The next practical step is not architecture rescue; it is refinement: richer policy visualization, optional deep-learning backends behind the existing engine contracts, and Windows-side build verification in a provisioned MAUI environment.

@@ -1,0 +1,21 @@
+sources:
+  policy_events:
+    type: jsonl
+    path: data/policy_events.jsonl
+    required: true
+    description: Offline policy-event ledger used by the simulator and analog retrieval lane.
+  fred_cache:
+    type: fred_cache
+    path: data/fred_cache
+    required: true
+    description: Locally cached FRED macro series for regime tagging.
+  gdelt_daily_features:
+    type: csv
+    path: data/policy_gdelt_daily_features.csv
+    required: true
+    description: Deterministic daily GDELT features used for conflict and stress context.
+  etf_holdings:
+    type: csv
+    path: data/etf_holdings.csv
+    required: true
+    description: Local ETF constituent map used to expand scenario exposure.

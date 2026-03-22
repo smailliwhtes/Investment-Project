@@ -1,82 +1,118 @@
-# 20_output_contract — Required outputs per run
+# 20_output_contract
 
-All runs write to: outputs/<run_id>/ where run_id is a timestamp or unique id.
+Successful runs must preserve the engine contracts defined in `AGENTS.md`.
 
-## 1) eligible.csv (always produced)
-Required columns:
-- symbol (string)
-- eligible (bool)
-- gate_fail_reasons (string; pipe-delimited; empty if eligible)
-- theme_bucket (string)
-- asset_type (string)
+## Required run artifacts
 
-Gate reason codes (minimum set):
-- MISSING_OHLC
-- HISTORY_LT_MIN
-- PRICE_LT_FLOOR
-- LIQUIDITY_LT_FLOOR (only if Volume exists)
-- WATCHLIST_INVALID_ROW
+Every successful `python -m market_monitor.cli run --config <path> --out-dir <dir> --offline --progress-jsonl` invocation must produce:
 
-## 2) scored.csv (always produced; for eligible and/or all, but must be documented)
-Required columns:
-- symbol (string)
-- score_1to10 (int in [1..10])
-- risk_flags (string; pipe-delimited; empty allowed)
-- explanation (string; one-line, short)
-- theme_bucket (string)
-- asset_type (string)
-- last_date (YYYY-MM-DD)
-- lag_days (int; calendar-day lag vs run as-of frontier / last_date_max)
-- staleness_days_at_run (int; calendar-day lag vs run timestamp anchor: finished_at preferred, else started_at)
-- ml_signal (float; nullable; model output only when available)
-- ml_model_id (string; nullable; training identifier)
-- ml_featureset_id (string; nullable; dataset schema/config hash)
+- `scored.csv`
+- `eligible.csv`
+- `report.md`
+- `run_manifest.json`
+- `config_snapshot.yaml`
+- `ui_engine.log`
+- `logs/engine.log`
 
-Risk flags (minimum set):
-- volume_missing
-- high_volatility
-- deep_drawdown
+## `eligible.csv`
 
-## 3) report.md (always produced)
+Minimum columns:
+
+- `symbol`
+- `eligible`
+- `reasons` (recommended; semicolon-delimited when populated)
+
+## `scored.csv`
+
+Minimum columns:
+
+- `symbol`
+- `score`
+- `rank` or a separately documented deterministic sort rule
+- `flags_count` (recommended)
+- `theme_labels` (recommended)
+- `gates_passed`
+- `last_date`
+- `lag_days`
+
+Recommended additive columns already supported by the engine:
+
+- `staleness_days_at_run`
+- `ml_signal`
+- `ml_model_id`
+- `ml_featureset_id`
+
+`last_date` and `lag_days` are hard contract fields. They must be present in the final `scored.csv`, whether produced directly by the engine or merged deterministically from `data_quality.csv`.
+
+## `report.md`
+
 Must include:
-- Run metadata (run_id, config used)
-- Counts: total watchlist, eligible, ineligible
-- Top N by score
-- Compact per-symbol lines: symbol | score | flags | one-line explanation
 
-## 4) run_manifest.json (required)
-Required for successful runs.
+- run metadata
+- counts summary
+- top-ranked symbols
+- compact symbol-level explanation lines
 
-Must include `data_freshness` object:
-- `last_date_max` (YYYY-MM-DD)
-- `worst_lag_days` (int)
-- `median_lag_days` (number)
-- `staleness_days_at_run` (int, computed at run time from run timestamp anchor; do not compute a read-time `..._now` field)
+## `run_manifest.json`
 
-## 5) config_snapshot.yaml (required)
-Exact run config snapshot used for the run.
+Must include:
 
-## 6) logs
-- logs/engine.log (required)
-- ui_engine.log (required; may be empty for direct CLI runs)
+- `run_id`
+- `started_at`
+- `finished_at`
+- `duration_s`
+- `app`
+- `environment`
+- `config`
+- `counts`
+- `artifacts`
+- `data_freshness`
 
-## Optional artifacts (allowed)
-- features_*.csv / intermediate debug files
-Optional artifacts must NOT replace the required outputs.
+`data_freshness` must include:
 
-## 7) linked cause/effect artifacts (corpus build-linked)
-When running:
-- `python -m market_monitor corpus build-linked --config <path> ...`
+- `last_date_max`
+- `worst_lag_days`
+- `median_lag_days`
+- `staleness_days_at_run`
 
-Expected artifacts in the selected output directory:
-- `cause_effect_manifest.json` (schema + artifact hashes/counts)
-- `cause_effect_summary.json` (top context days + return stats)
-- `market_daily.csv` (historical market panel used for joins)
-- `gdelt_daily_features.csv` (daily GDELT context features)
-- `linked_market_gdelt/manifest.json` plus partitions (joined market+GDELT features)
-- `event_impact_library.csv` (if spike windows produce outcomes)
-- `analog_outcomes.csv` (if analog outcomes are produced)
+## Optional additive artifacts
 
-Notes:
-- These files are optional and additive; they do not replace the required run outputs in sections 1-6.
-- Outputs must be deterministic given the same config and local inputs.
+These may be present but must not replace the required run outputs:
+
+- `data_quality.csv`
+- `flags.csv`
+- `progress.jsonl`
+- `explain/`
+- `ml/`
+- `cause_effect_manifest.json`
+- `cause_effect_summary.json`
+- `linked_market_gdelt/`
+- `event_impact_library.csv`
+- `analog_outcomes.csv`
+
+## Policy simulation artifacts
+
+`python -m market_monitor.cli policy simulate --config <path> --scenario <name> --outdir <dir> --offline` is additive to the core run contract. It should produce:
+
+- `policy_event_study.csv`
+- `policy_analogs.csv`
+- `policy_scenario_rankings.csv`
+- `policy_report.md`
+- `policy_manifest.json`
+- `policy_summary.json`
+
+These policy artifacts are scenario-analysis outputs and do not replace the core run outputs.
+
+## Linked cause/effect artifacts
+
+`python -m market_monitor.cli corpus build-linked --config <path> ...` may produce:
+
+- `cause_effect_manifest.json`
+- `cause_effect_summary.json`
+- `market_daily.csv`
+- `gdelt_daily_features.csv`
+- `linked_market_gdelt/manifest.json` plus partitions
+- `event_impact_library.csv`
+- `analog_outcomes.csv`
+
+These files must remain deterministic for the same offline inputs and config.

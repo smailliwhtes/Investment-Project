@@ -23,6 +23,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<DashboardViewModel>();
         builder.Services.AddSingleton<RunViewModel>();
+        builder.Services.AddSingleton<PolicySimulatorViewModel>();
         builder.Services.AddSingleton<RunsViewModel>();
         builder.Services.AddSingleton<UniverseViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
@@ -30,6 +31,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<Pages.DashboardPage>();
         builder.Services.AddSingleton<Pages.RunPage>();
+        builder.Services.AddSingleton<Pages.PolicySimulatorPage>();
         builder.Services.AddSingleton<Pages.RunsPage>();
         builder.Services.AddSingleton<Pages.UniversePage>();
         builder.Services.AddSingleton<Pages.SettingsPage>();

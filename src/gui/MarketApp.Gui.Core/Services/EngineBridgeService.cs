@@ -10,6 +10,13 @@ public sealed class EngineBridgeService : IEngineBridgeService
 {
     private static readonly TimeSpan ProgressThrottleInterval = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan PostStageHeartbeatInterval = TimeSpan.FromSeconds(5);
+    private static readonly string[] PolicySummaryFileNames =
+    [
+        "policy_simulation_summary.json",
+        "policy_summary.json",
+        "summary.json",
+        "policy_simulation.json"
+    ];
 
     public async IAsyncEnumerable<ProgressEvent> RunAsync(
         EngineRunRequest request,
@@ -203,6 +210,45 @@ public sealed class EngineBridgeService : IEngineBridgeService
         }
 
         return new ConfigValidationResult(valid, errors, json);
+    }
+
+    public async Task<EngineCommandResult> SimulatePolicyAsync(
+        PolicySimulationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var marketAppRoot = ResolveMarketAppRoot();
+        var outDirectory = Path.GetFullPath(request.OutDirectory);
+        Directory.CreateDirectory(outDirectory);
+
+        var result = await RunCommandCaptureAsync(
+            ResolvePythonPath(request.PythonPath),
+            BuildPolicySimulationArguments(request, marketAppRoot),
+            marketAppRoot,
+            cancellationToken).ConfigureAwait(false);
+
+        var uiLogPath = Path.Combine(outDirectory, "ui_engine.log");
+        try
+        {
+            var payload = new StringBuilder();
+            payload.AppendLine($"{DateTime.UtcNow:o} policy simulate exit={result.ExitCode}");
+            if (!string.IsNullOrWhiteSpace(result.Stdout))
+            {
+                payload.AppendLine("[stdout]");
+                payload.AppendLine(result.Stdout.TrimEnd());
+            }
+            if (!string.IsNullOrWhiteSpace(result.Stderr))
+            {
+                payload.AppendLine("[stderr]");
+                payload.AppendLine(result.Stderr.TrimEnd());
+            }
+            await File.AppendAllTextAsync(uiLogPath, payload.ToString(), cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Best-effort GUI log capture.
+        }
+
+        return result;
     }
 
     public Task<EngineCommandResult> BuildLinkedAsync(
@@ -602,6 +648,26 @@ public sealed class EngineBridgeService : IEngineBridgeService
         if (request.IncludeRawGdelt)
         {
             args.Add("--include-raw-gdelt");
+        }
+
+        return args;
+    }
+
+    internal static IReadOnlyList<string> BuildPolicySimulationArguments(
+        PolicySimulationRequest request,
+        string? marketAppRootOverride = null)
+    {
+        var marketAppRoot = marketAppRootOverride ?? ResolveMarketAppRoot();
+        var args = new List<string>
+        {
+            "-m", "market_monitor.cli", "policy", "simulate",
+            "--config", ResolveConfigPath(request.ConfigPath, marketAppRoot),
+            "--scenario", request.ScenarioName,
+            "--outdir", Path.GetFullPath(request.OutDirectory)
+        };
+        if (request.Offline)
+        {
+            args.Add("--offline");
         }
 
         return args;

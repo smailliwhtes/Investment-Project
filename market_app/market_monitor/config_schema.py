@@ -114,6 +114,33 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "walk_forward_folds": 3,
         "embargo_days": 60,
     },
+    "policy": {
+        "paths": {
+            "events_file": "data/policy_events.jsonl",
+            "fred_cache_dir": "data/fred_cache",
+            "gdelt_daily_file": "data/policy_gdelt_daily_features.csv",
+            "etf_holdings_file": "data/etf_holdings.csv",
+            "sources_config": "policy_sources.yaml",
+            "scenarios_config": "policy_scenarios.yaml",
+        },
+        "simulation": {
+            "estimation_lookback_days": 60,
+            "horizons": [1, 5, 20, 60],
+            "top_n_analogs": 5,
+            "path_count": 256,
+            "seed": 20260321,
+            "benchmark_symbol": "SPY",
+            "average_dollar_volume_floor": 1_000_000.0,
+        },
+        "deep_learning": {
+            "enabled": False,
+            "backend": "pytorch",
+            "sequence_length": 60,
+            "hidden_size": 64,
+            "epochs": 25,
+            "seed": 20260321,
+        },
+    },
     "themes": {
         "defense": {"symbols": [], "keywords": ["defense", "aero", "missile"]},
         "tech": {"symbols": [], "keywords": ["semiconductor", "ai", "cloud"]},

@@ -30,7 +30,7 @@ Agent rule:
 - Primary PowerShell entrypoints:
   - Engine run: `scripts/run.ps1`
   - Provisioning: `scripts/provision_data.ps1` (optional)
-- Watchlist runner: `tools/run_watchlist.py`
+- Watchlist runner: `market_app/tools/run_watchlist.py`
 - GUI solution root: `src/gui/`
   - `src/gui/MarketApp.Gui/` (MAUI app)
   - `src/gui/MarketApp.Gui.Core/` (Core MVVM/services/contracts)
@@ -153,6 +153,16 @@ Notes:
 - Produces deterministic linkage artifacts under the selected output dir.
 - This command is additive and must not change `run` command output contracts.
 
+4) Run policy scenario simulation (optional but supported):
+- `python -m market_monitor.cli policy simulate --config <path> --scenario <name> --outdir <dir> --offline`
+
+Supported flags:
+- `--config <path>`: config YAML path
+- `--scenario <name>`: scenario key from `policy_scenarios.yaml`
+- `--outdir <dir>`: output directory for policy artifacts
+- `--offline`: enforce offline-only inputs and execution
+- `--progress-jsonl`: emit JSONL progress events to stdout
+
 ### 4.2 Exit codes (engine)
 - `0`: success (all required artifacts produced)
 - `2`: invalid config / schema validation failure
@@ -268,6 +278,12 @@ These are the minimum required outputs for every run (unless explicitly stated o
 - `<out_dir>/linked_market_gdelt/` (partitioned joined market+GDELT features + manifest)
 - `<out_dir>/event_impact_library.csv` (event-spike forward-return outcomes, when available)
 - `<out_dir>/analog_outcomes.csv` (analog forward-return outcomes, when available)
+- `<out_dir>/policy_event_study.csv` (policy event-study lane)
+- `<out_dir>/policy_analogs.csv` (historical analog retrieval output)
+- `<out_dir>/policy_scenario_rankings.csv` (ranked scenario impact summary)
+- `<out_dir>/policy_report.md` (policy simulation markdown report)
+- `<out_dir>/policy_manifest.json` (policy simulation manifest)
+- `<out_dir>/policy_summary.json` (GUI-friendly policy simulation summary payload)
 
 ### 6.3 `eligible.csv` minimal columns
 At minimum:

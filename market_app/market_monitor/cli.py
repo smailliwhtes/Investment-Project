@@ -51,6 +51,11 @@ from market_monitor.preflight import run_preflight
 from market_monitor.evaluate import run_evaluation
 from market_monitor.pipeline import run_pipeline as engine_run_pipeline
 from market_monitor.provider_factory import build_provider
+from market_monitor.scenario_engine import (
+    PolicyMissingInputError,
+    PolicyScenarioError,
+    run_policy_scenario,
+)
 from market_monitor.provision import import_exogenous, import_ohlcv, init_dirs
 from market_monitor.run_watchlist import run_watchlist as run_watchlist_pipeline
 from market_monitor.themes import tag_themes
@@ -1337,6 +1342,145 @@ def run_evaluate_command(args: argparse.Namespace) -> int:
     )
 
 
+def run_policy_simulate(args: argparse.Namespace) -> int:
+    progress_enabled = bool(getattr(args, "progress_jsonl", False))
+    try:
+        config_path, base_dir, _ = _resolve_config_paths(args.config)
+        config, config_hash = _load_config_for_command(config_path)
+    except ConfigError as exc:
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="policy",
+            message=str(exc),
+            error={"code": "INVALID_CONFIG", "detail": str(exc)},
+        )
+        print(f"[error] {exc}")
+        return 2
+
+    logger = get_console_logger(args.log_level)
+    if args.offline:
+        config.setdefault("data", {})["offline_mode"] = True
+    if not bool(config["data"].get("offline_mode", False)):
+        message = "Offline mode is required for policy simulation. Set data.offline_mode=true."
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="policy",
+            message=message,
+            error={"code": "MISSING_INPUT_DATA", "detail": message},
+        )
+        logger.error(message)
+        return 3
+
+    set_offline_mode(True)
+    outputs_root = resolve_path(base_dir, config.get("paths", {}).get("outputs_dir", "outputs"))
+    out_dir = resolve_path(base_dir, args.outdir) if args.outdir else outputs_root / "policy"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    as_of_date = args.asof or config.get("pipeline", {}).get("asof_default")
+    if not as_of_date:
+        as_of_date = utcnow().date().isoformat()
+
+    def emit(event_type: str, stage: str, message: str, pct: float | None) -> None:
+        _emit_progress_event(
+            progress_enabled,
+            event_type=event_type,
+            stage=stage,
+            message=message,
+            pct=pct,
+        )
+
+    try:
+        emit("stage_start", "policy", f"Running policy simulation for {args.scenario}", 0.0)
+        provider = build_provider(config, logger, base_dir)
+        result = run_policy_scenario(
+            config,
+            config_path=config_path,
+            config_hash=config_hash,
+            base_dir=base_dir,
+            output_dir=out_dir,
+            scenario_name=args.scenario,
+            provider=provider,
+            as_of_date=as_of_date,
+            seed=args.seed,
+            progress=emit,
+        )
+        for artifact_path in (
+            result.event_study_path,
+            result.analogs_path,
+            result.rankings_path,
+            result.report_path,
+            result.summary_path,
+            result.manifest_path,
+        ):
+            _emit_progress_event(
+                progress_enabled,
+                event_type="artifact_emitted",
+                stage="policy_outputs",
+                message=f"Emitted {artifact_path.name}",
+                pct=1.0,
+                artifact={
+                    "name": artifact_path.name,
+                    "path": str(artifact_path.relative_to(out_dir)),
+                },
+            )
+        emit("stage_end", "policy", f"Completed policy simulation for {args.scenario}", 1.0)
+        print(
+            json.dumps(
+                {
+                    "manifest_path": str(result.manifest_path),
+                    "output_dir": str(result.output_dir),
+                    "rankings_path": str(result.rankings_path),
+                    "run_id": result.run_id,
+                    "scenario": result.scenario_name,
+                    "summary_path": str(result.summary_path),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    except KeyboardInterrupt:
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="policy",
+            message="Policy simulation canceled by user.",
+            error={"code": "INTERRUPTED", "detail": "Policy simulation interrupted by user"},
+        )
+        return 130
+    except (PolicyMissingInputError, FileNotFoundError, ProviderError) as exc:
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="policy",
+            message=str(exc),
+            error={"code": "MISSING_INPUT_DATA", "detail": str(exc)},
+        )
+        print(f"[error] {exc}")
+        return 3
+    except (PolicyScenarioError, RuntimeError) as exc:
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="policy",
+            message=str(exc),
+            error={"code": "RUNTIME_FAILURE", "detail": str(exc)},
+        )
+        print(f"[error] {exc}")
+        return 4
+    except Exception as exc:
+        _emit_progress_event(
+            progress_enabled,
+            event_type="error",
+            stage="policy",
+            message=str(exc),
+            error={"code": "RUNTIME_FAILURE", "detail": str(exc)},
+        )
+        print(f"[error] {exc}")
+        return 4
+
+
 def _load_bulk_symbols(config: dict[str, Any], base_dir: Path, args: argparse.Namespace) -> pd.Series:
     mode = args.mode or "watchlist"
     if mode == "universe":
@@ -1513,6 +1657,21 @@ def build_parser() -> argparse.ArgumentParser:
     corpus_linked_parser.add_argument("--output-format", choices=["csv", "parquet"], default="csv")
     corpus_linked_parser.add_argument("--log-level", default="INFO")
 
+    policy_parser = sub.add_parser("policy", help="Policy scenario simulation utilities")
+    policy_sub = policy_parser.add_subparsers(dest="policy_command")
+    policy_simulate_parser = policy_sub.add_parser(
+        "simulate",
+        help="Run an offline policy event-study and analog simulation lane",
+    )
+    policy_simulate_parser.add_argument("--config", default="config.yaml")
+    policy_simulate_parser.add_argument("--scenario", required=True)
+    policy_simulate_parser.add_argument("--outdir")
+    policy_simulate_parser.add_argument("--asof", default=None)
+    policy_simulate_parser.add_argument("--seed", type=int, default=None)
+    policy_simulate_parser.add_argument("--offline", action="store_true")
+    policy_simulate_parser.add_argument("--progress-jsonl", action="store_true", default=False)
+    policy_simulate_parser.add_argument("--log-level", default="INFO")
+
     evaluate_parser = sub.add_parser("evaluate", help="Run offline evaluation harness")
     evaluate_parser.add_argument("--config", default="config.yaml")
     evaluate_parser.add_argument("--outdir")
@@ -1630,6 +1789,11 @@ def main(argv: list[str] | None = None) -> int:
             return run_corpus_validate(args)
         if args.corpus_command == "build-linked":
             return run_corpus_build_linked(args)
+        return 2
+
+    if args.command == "policy":
+        if args.policy_command == "simulate":
+            return run_policy_simulate(args)
         return 2
 
     if args.command == "bulk-plan":

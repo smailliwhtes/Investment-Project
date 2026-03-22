@@ -75,7 +75,15 @@ Deterministic direct CLI run:
 
 ```bash
 cd market_app
-python -m market_app.cli --config ./config/config.yaml --offline --as-of 2025-01-31
+python -m market_monitor.cli run --config ./config/config.yaml --out-dir ../outputs/runs/manual_2025_01_31 --offline --progress-jsonl
+```
+
+Policy simulator:
+
+```powershell
+.\scripts\provision_policy_data.ps1
+cd market_app
+python -m market_monitor.cli policy simulate --config .\config\config.yaml --scenario tariff-shock --outdir ..\outputs\policy\tariff-shock --offline
 ```
 
 ## Audit command
@@ -152,3 +160,7 @@ Optional smoke helpers:
 cd market_app
 pytest -q
 ```
+
+## Neural Networks / Deep Learning
+
+The repo already has an additive ML seam under `market_app/market_monitor/ml/` plus scored-output fields for `ml_signal`, `ml_model_id`, and `ml_featureset_id`. The current deep-learning integration path is documented in [docs/codex/30_deep_learning_strategy.md](docs/codex/30_deep_learning_strategy.md).

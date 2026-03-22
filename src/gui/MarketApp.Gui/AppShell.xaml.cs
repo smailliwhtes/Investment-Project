@@ -7,6 +7,7 @@ public partial class AppShell : Shell
     public AppShell(
         DashboardPage dashboardPage,
         RunPage runPage,
+        PolicySimulatorPage policySimulatorPage,
         RunsPage runsPage,
         UniversePage universePage,
         SettingsPage settingsPage,
@@ -27,6 +28,13 @@ public partial class AppShell : Shell
             contentRoute: "run_orchestration",
             contentTitle: "Run Orchestration",
             page: runPage);
+
+        var policyItem = CreateFlyoutItem(
+            itemRoute: "policy_item",
+            itemTitle: "Policy",
+            contentRoute: "policy_simulator",
+            contentTitle: "Policy Simulator",
+            page: policySimulatorPage);
 
         var runsItem = CreateFlyoutItem(
             itemRoute: "runs_item",
@@ -58,6 +66,7 @@ public partial class AppShell : Shell
 
         Items.Add(dashboardItem);
         Items.Add(runItem);
+        Items.Add(policyItem);
         Items.Add(runsItem);
         Items.Add(analysisItem);
         Items.Add(settingsItem);

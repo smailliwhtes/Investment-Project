@@ -117,6 +117,26 @@ public class EngineBridgeServiceTests
     }
 
     [Fact]
+    public void BuildPolicySimulationArguments_IncludesScenarioOfflineAndOutdir()
+    {
+        var request = new PolicySimulationRequest(
+            ConfigPath: "config/config.yaml",
+            ScenarioName: "tariff-shock",
+            OutDirectory: "outputs/policy_simulations/test",
+            Offline: true,
+            PythonPath: null);
+
+        var args = EngineBridgeService.BuildPolicySimulationArguments(request, Path.GetFullPath("."));
+
+        Assert.Equal(new[] { "-m", "market_monitor.cli", "policy", "simulate" }, args.Take(4));
+        Assert.Contains("--config", args);
+        Assert.Contains("--scenario", args);
+        Assert.Contains("tariff-shock", args);
+        Assert.Contains("--outdir", args);
+        Assert.Contains("--offline", args);
+    }
+
+    [Fact]
     public void ResolveConfigPath_UsesMarketAppRelativePathWhenRepoRelativeMissing()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "engine_bridge_cfg_" + Guid.NewGuid().ToString("N"));

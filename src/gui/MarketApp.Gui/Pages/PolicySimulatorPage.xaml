@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:MarketApp.Gui.Converters"
+             x:Class="MarketApp.Gui.Pages.PolicySimulatorPage"
+             Title="Policy Simulator">
+  <ContentPage.Resources>
+    <ResourceDictionary>
+      <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+      <Style x:Key="SectionTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontAttributes" Value="Bold" />
+      </Style>
+      <Style x:Key="FieldLabelStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="VerticalTextAlignment" Value="Center" />
+      </Style>
+      <Style x:Key="InputEntryStyle" TargetType="Entry">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinimumHeightRequest" Value="40" />
+      </Style>
+      <Style x:Key="ActionButtonStyle" TargetType="Button">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinimumHeightRequest" Value="38" />
+        <Setter Property="Padding" Value="14,8" />
+      </Style>
+    </ResourceDictionary>
+  </ContentPage.Resources>
+
+  <ScrollView>
+    <VerticalStackLayout Padding="18" Spacing="14">
+      <Label Text="Policy Simulator" FontSize="24" FontAttributes="Bold" />
+      <Label Text="Offline-only scenario runner that invokes the Python engine and surfaces the JSON summary file when one is written." FontSize="13" />
+
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="10">
+          <Label Text="Scenario" Style="{StaticResource SectionTitleStyle}" />
+          <Grid ColumnDefinitions="180,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="10">
+            <Label Grid.Row="0" Grid.Column="0" Text="Config path" Style="{StaticResource FieldLabelStyle}" />
+            <Entry Grid.Row="0" Grid.Column="1" Style="{StaticResource InputEntryStyle}" Text="{Binding ConfigPath}" />
+
+            <Label Grid.Row="1" Grid.Column="0" Text="Scenario name" Style="{StaticResource FieldLabelStyle}" />
+            <Entry Grid.Row="1" Grid.Column="1" Style="{StaticResource InputEntryStyle}" Text="{Binding ScenarioName}" />
+
+            <Label Grid.Row="2" Grid.Column="0" Text="Output directory" Style="{StaticResource FieldLabelStyle}" />
+            <Entry Grid.Row="2" Grid.Column="1" Style="{StaticResource InputEntryStyle}" Text="{Binding OutputDirectory}" />
+
+            <Label Grid.Row="3" Grid.Column="0" Text="Python path" Style="{StaticResource FieldLabelStyle}" />
+            <Entry Grid.Row="3" Grid.Column="1" Style="{StaticResource InputEntryStyle}" Text="{Binding PythonPath}" />
+          </Grid>
+
+          <FlexLayout Direction="Row" Wrap="Wrap">
+            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Run simulation" Command="{Binding RunCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Cancel" Command="{Binding CancelCommand}" IsEnabled="{Binding IsRunning}" />
+          </FlexLayout>
+        </VerticalStackLayout>
+      </Frame>
+
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="8">
+          <Label Text="Status" Style="{StaticResource SectionTitleStyle}" />
+          <Label Text="{Binding Status}" FontSize="14" />
+          <Label Text="{Binding SummaryPath, StringFormat='Summary file: {0}'}" FontSize="12" LineBreakMode="TailTruncation" />
+          <Editor Text="{Binding SummaryText}" IsReadOnly="True" AutoSize="TextChanges" HeightRequest="260" FontFamily="Consolas" />
+        </VerticalStackLayout>
+      </Frame>
+    </VerticalStackLayout>
+  </ScrollView>
+</ContentPage>

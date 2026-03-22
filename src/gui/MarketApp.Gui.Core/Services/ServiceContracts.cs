@@ -21,6 +21,10 @@ public interface IEngineBridgeService
 {
     IAsyncEnumerable<ProgressEvent> RunAsync(EngineRunRequest request, CancellationToken cancellationToken);
 
+    Task<EngineCommandResult> SimulatePolicyAsync(
+        PolicySimulationRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<ConfigValidationResult> ValidateConfigAsync(
         string configPath,
         string? pythonPath,

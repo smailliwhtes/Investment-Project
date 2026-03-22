@@ -1,0 +1,54 @@
+scenarios:
+  tariff-shock:
+    description: Escalating tariff regime that pressures industrial supply chains and global trade proxies.
+    event_type: tariff
+    severity: 0.8
+    sectors:
+      - industrials
+      - supply_chain
+      - metals
+    linked_etfs:
+      - XLI
+      - GLD
+    tickers:
+      - GLD
+      - TLT
+    countries:
+      - USA
+      - CHN
+    direction_bias: negative
+    benchmark_symbol: SPY
+  sanctions-escalation:
+    description: New sanctions package with spillover into energy, shipping, and defense names.
+    event_type: sanction
+    severity: 0.7
+    sectors:
+      - energy
+      - defense
+      - commodities
+    linked_etfs:
+      - XLE
+      - GLD
+    tickers:
+      - GLD
+    countries:
+      - USA
+      - RUS
+    direction_bias: negative
+    benchmark_symbol: SPY
+  industrial-subsidy:
+    description: Domestic subsidy package aimed at infrastructure, reshoring, and capital equipment demand.
+    event_type: subsidy
+    severity: 0.6
+    sectors:
+      - industrials
+      - infrastructure
+      - clean_energy
+    linked_etfs:
+      - XLI
+    tickers:
+      - TLT
+    countries:
+      - USA
+    direction_bias: positive
+    benchmark_symbol: SPY

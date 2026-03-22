@@ -183,6 +183,13 @@ public class SampleDataServiceTests
             return Task.FromResult(new EngineCommandResult(0, string.Empty, string.Empty));
         }
 
+        public Task<EngineCommandResult> SimulatePolicyAsync(
+            PolicySimulationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new EngineCommandResult(0, string.Empty, string.Empty));
+        }
+
         public Task<RunDiffResult> DiffRunsAsync(string runA, string runB, string? pythonPath, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new RunDiffResult("a", "b", new RunDiffSummary(0, 0, 0, 0), Array.Empty<RunDiffRow>()));
