@@ -13,7 +13,7 @@ public class RunsViewModel : ViewModelBase
     private RunSummary? _selectedRunB;
     private RunDiffResult? _diffResult;
     private RunQualitySnapshot? _selectedRunQuality;
-    private string _status = "Idle";
+    private string _status = "Ready";
 
     public RunsViewModel(
         IRunDiscoveryService runDiscovery,
@@ -26,7 +26,7 @@ public class RunsViewModel : ViewModelBase
         _qualityMetrics = qualityMetrics;
         _settings = settings;
 
-        Title = "Runs History";
+        Title = "Saved Runs";
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsBusy);
         CompareCommand = new AsyncRelayCommand(CompareRunsAsync, () => !IsBusy && SelectedRunA is not null && SelectedRunB is not null);
 
@@ -76,8 +76,8 @@ public class RunsViewModel : ViewModelBase
     public IReadOnlyList<RunDiffRow> DiffRows => DiffResult?.Rows ?? Array.Empty<RunDiffRow>();
 
     public string DiffSummary => DiffResult is null
-        ? "No comparison loaded"
-        : $"Symbols: {DiffResult.Summary.NSymbols} | New: {DiffResult.Summary.NNew} | Removed: {DiffResult.Summary.NRemoved} | Rank changed: {DiffResult.Summary.NRankChanged}";
+        ? "Choose two runs to see what changed."
+        : $"Showing {DiffResult.Summary.NSymbols} symbols. {DiffResult.Summary.NNew} are new, {DiffResult.Summary.NRemoved} dropped out, and {DiffResult.Summary.NRankChanged} moved in rank.";
 
     public RunQualitySnapshot? SelectedRunQuality
     {
@@ -117,7 +117,7 @@ public class RunsViewModel : ViewModelBase
 
             SelectedRunA = Runs.FirstOrDefault();
             SelectedRunB = Runs.Skip(1).FirstOrDefault() ?? SelectedRunA;
-            Status = $"Loaded {Runs.Count} run(s)";
+            Status = $"Loaded {Runs.Count} saved run(s)";
         }
         finally
         {
@@ -148,13 +148,13 @@ public class RunsViewModel : ViewModelBase
         IsBusy = true;
         RefreshCommand.RaiseCanExecuteChanged();
         CompareCommand.RaiseCanExecuteChanged();
-        Status = "Comparing runs";
+        Status = "Comparing the selected runs";
 
         try
         {
             var python = _settings.GetPythonPath();
             DiffResult = await _runCompare.CompareAsync(SelectedRunA, SelectedRunB, python).ConfigureAwait(false);
-            Status = DiffResult is null ? "Comparison unavailable" : "Comparison loaded";
+            Status = DiffResult is null ? "Comparison unavailable" : "Comparison ready";
         }
         catch (Exception ex)
         {

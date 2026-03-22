@@ -31,10 +31,10 @@ public partial class SettingsPage : ContentPage
         {
             "engine_settings" => (
                 "Engine Settings",
-                "These values tell the app where your config file is and which Python it should use to run the engine."),
+                "These values tell the app which config file and Python runner to use."),
             "secrets" => (
-                "Secrets",
-                "API keys are private passwords for data providers. The app stores them in secure storage on your computer."),
+                "Optional Live-Data Keys",
+                "These API keys are optional. Leave them blank if you only want offline practice. If you add them, the app stores them securely on your computer."),
             _ => (
                 "Info",
                 "This setting controls how the app connects to local engine and secure keys.")

@@ -21,11 +21,11 @@ public partial class UniversePage : ContentPage
         var (title, message) = key switch
         {
             "universe_symbols" => (
-                "Universe and Scored Symbols",
-                "This table is the full list of symbols the run scored. You can filter it and pick one symbol to inspect."),
+                "Scored Symbols",
+                "This is the saved list of symbols from the run. Search for one name, then open it for a short plain-language read."),
             "symbol_detail" => (
                 "Symbol Detail",
-                "This panel explains one chosen symbol, including charts, explain notes, and quality checks."),
+                "This panel shows one symbol at a time. Start with the short takeaway, then look at the charts if you want more detail."),
             _ => (
                 "Info",
                 "This section helps you inspect individual symbols after they were scored.")

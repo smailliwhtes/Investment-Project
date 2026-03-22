@@ -12,8 +12,8 @@ public class PolicySimulatorViewModel : ViewModelBase
     private string _scenarioName = "tariff-shock";
     private string _outputDirectory = "outputs/policy_simulations/local";
     private string _pythonPath;
-    private string _status = "Idle";
-    private string _summaryText = "Run a scenario to see the policy simulation summary.";
+    private string _status = "Ready";
+    private string _summaryText = "Run a what-if to see a short plain-language summary here.";
     private string? _summaryPath;
     private bool _isRunning;
 
@@ -97,8 +97,8 @@ public class PolicySimulatorViewModel : ViewModelBase
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
         IsRunning = true;
-        Status = "Running policy simulation";
-        SummaryText = "Waiting for simulation output...";
+        Status = "Running what-if test";
+        SummaryText = "Working on the what-if test...";
         SummaryPath = null;
 
         try
@@ -143,21 +143,21 @@ public class PolicySimulatorViewModel : ViewModelBase
                 SummaryPath = summary.SummaryPath;
                 SummaryText = BuildSummaryText(result, summary, progressLines);
                 Status = result.ExitCode == 0
-                    ? "Policy simulation complete"
-                    : "Policy simulation completed with errors";
+                    ? "What-if test complete"
+                    : "What-if test finished with errors";
             }
             else
             {
                 SummaryText = BuildSummaryText(result, null, progressLines);
                 Status = result.ExitCode == 0
-                    ? "Policy simulation complete"
-                    : "Policy simulation failed";
+                    ? "What-if test complete"
+                    : "What-if test failed";
             }
         }
         catch (OperationCanceledException)
         {
             Status = "Canceled";
-            SummaryText = "The policy simulation was canceled before completion.";
+            SummaryText = "The what-if test was canceled before it finished.";
         }
         finally
         {
@@ -284,7 +284,7 @@ public class PolicySimulatorViewModel : ViewModelBase
         IReadOnlyList<string>? progressLines = null)
     {
         var lines = new List<string>();
-        lines.Add(summary?.Summary ?? "No JSON summary file was found.");
+        lines.Add(summary?.Summary ?? "No saved summary file was found.");
 
         if (summary is not null)
         {
@@ -294,37 +294,38 @@ public class PolicySimulatorViewModel : ViewModelBase
             }
             if (!string.IsNullOrWhiteSpace(summary.Status))
             {
-                lines.Add($"Status: {summary.Status}");
+                lines.Add($"Result: {summary.Status}");
             }
             if (!string.IsNullOrWhiteSpace(summary.OutputDirectory))
             {
-                lines.Add($"Output directory: {summary.OutputDirectory}");
+                lines.Add($"Saved to: {summary.OutputDirectory}");
             }
             if (summary.Fields.Count > 0)
             {
                 lines.Add(string.Empty);
-                lines.Add("Fields:");
+                lines.Add("Main takeaways:");
                 foreach (var field in summary.Fields)
                 {
-                    lines.Add($"- {field.Name}: {field.Value}");
+                    lines.Add($"- {ToFriendlyFieldName(field.Name)}: {field.Value}");
                 }
             }
             lines.Add(string.Empty);
-            lines.Add("Raw JSON:");
-            lines.Add(summary.RawJson.Trim());
+            lines.Add("Advanced details:");
+            lines.Add($"- Summary file: {summary.SummaryPath}");
+            lines.Add("- Raw JSON is available in that file if you need it.");
         }
         else
         {
             if (!string.IsNullOrWhiteSpace(result.Stdout))
             {
                 lines.Add(string.Empty);
-                lines.Add("Stdout:");
+                lines.Add("Advanced details:");
                 lines.Add(result.Stdout.Trim());
             }
             if (!string.IsNullOrWhiteSpace(result.Stderr))
             {
                 lines.Add(string.Empty);
-                lines.Add("Stderr:");
+                lines.Add("Error detail:");
                 lines.Add(result.Stderr.Trim());
             }
         }
@@ -332,7 +333,7 @@ public class PolicySimulatorViewModel : ViewModelBase
         if (progressLines is not null && progressLines.Count > 0)
         {
             lines.Add(string.Empty);
-            lines.Add("Progress log:");
+            lines.Add("Progress details:");
             foreach (var line in progressLines)
             {
                 lines.Add(line);
@@ -369,16 +370,13 @@ public class PolicySimulatorViewModel : ViewModelBase
         builder.Append('[');
         builder.Append(evt.Timestamp.ToLocalTime().ToString("HH:mm:ss"));
         builder.Append("] ");
-        builder.Append(evt.Stage);
-        builder.Append('/');
-        builder.Append(evt.Type);
+        builder.Append(evt.Message);
         if (evt.Pct.HasValue)
         {
-            builder.Append(' ');
+            builder.Append(" (");
             builder.Append(evt.Pct.Value.ToString("P0"));
+            builder.Append(')');
         }
-        builder.Append(": ");
-        builder.Append(evt.Message);
 
         if (!string.IsNullOrWhiteSpace(evt.Error?.Detail))
         {
@@ -387,6 +385,25 @@ public class PolicySimulatorViewModel : ViewModelBase
         }
 
         return builder.ToString();
+    }
+
+    private static string ToFriendlyFieldName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Field";
+        }
+
+        var text = value
+            .Replace('_', ' ')
+            .Replace('-', ' ')
+            .Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "Field";
+        }
+
+        return char.ToUpperInvariant(text[0]) + text[1..];
     }
 
     private static bool TryGetScalarText(JsonElement node, out string value)

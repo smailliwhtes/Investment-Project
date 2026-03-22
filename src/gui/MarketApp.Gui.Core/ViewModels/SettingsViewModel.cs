@@ -9,7 +9,7 @@ public class SettingsViewModel : ViewModelBase
     private string? _finnhub;
     private string? _twelveData;
     private string? _alphaVantage;
-    private string _status = "Offline ready";
+    private string _status = "Offline practice is ready. API keys are optional.";
 
     public SettingsViewModel(ISecretsStore secretsStore, IUserSettingsService userSettings)
     {
@@ -72,6 +72,6 @@ public class SettingsViewModel : ViewModelBase
         await _secretsStore.SetAsync("ALPHAVANTAGE_API_KEY", AlphaVantageKey ?? string.Empty).ConfigureAwait(false);
 
         _userSettings.SetPythonPath(PythonPath);
-        StatusMessage = "Settings saved locally";
+        StatusMessage = "Local settings saved. API keys are optional for offline practice.";
     }
 }

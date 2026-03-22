@@ -36,6 +36,7 @@
       <Label Text="Engine &amp; UI logs" Style="{StaticResource PageTitleStyle}" />
       <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="logs" Clicked="OnInfoClicked" />
     </HorizontalStackLayout>
+    <Label Text="Use this page only when something fails. Warnings mean caution; errors mean a step stopped." FontSize="13" />
 
     <Frame Padding="12">
       <Editor Text="{Binding CombinedLog}"

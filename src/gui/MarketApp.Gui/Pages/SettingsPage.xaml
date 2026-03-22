@@ -61,21 +61,23 @@
             <Label Text="Engine settings" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="engine_settings" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
-          <Entry Style="{StaticResource InputEntryStyle}" Placeholder="Config path" Text="{Binding ConfigPath}" />
-          <Entry Style="{StaticResource InputEntryStyle}" Placeholder="Python path" Text="{Binding PythonPath}" />
+          <Label Style="{StaticResource BodyLabelStyle}" Text="These tell the app which config file and Python runner to use." />
+          <Entry Style="{StaticResource InputEntryStyle}" Placeholder="Config file" Text="{Binding ConfigPath}" />
+          <Entry Style="{StaticResource InputEntryStyle}" Placeholder="Python runner" Text="{Binding PythonPath}" />
         </VerticalStackLayout>
       </Frame>
 
       <Frame Padding="14">
         <VerticalStackLayout Spacing="10">
           <HorizontalStackLayout Spacing="6">
-            <Label Text="Secrets" Style="{StaticResource SectionTitleStyle}" />
+            <Label Text="Optional live-data keys" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="secrets" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
+          <Label Style="{StaticResource BodyLabelStyle}" Text="Leave these blank if you only want offline practice." />
           <Entry Style="{StaticResource InputEntryStyle}" IsPassword="True" Placeholder="Finnhub API key" Text="{Binding FinnhubKey}" />
           <Entry Style="{StaticResource InputEntryStyle}" IsPassword="True" Placeholder="TwelveData API key" Text="{Binding TwelveDataKey}" />
           <Entry Style="{StaticResource InputEntryStyle}" IsPassword="True" Placeholder="AlphaVantage API key" Text="{Binding AlphaVantageKey}" />
-          <Button Style="{StaticResource ActionButtonStyle}" Text="Save secrets" Command="{Binding SaveSecretsCommand}" />
+          <Button Style="{StaticResource ActionButtonStyle}" Text="Save local settings" Command="{Binding SaveSecretsCommand}" />
         </VerticalStackLayout>
       </Frame>
 

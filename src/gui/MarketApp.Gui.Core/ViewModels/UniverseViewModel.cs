@@ -13,8 +13,8 @@ public class UniverseViewModel : ViewModelBase
     private IReadOnlyList<ScoreRow> _filtered = Array.Empty<ScoreRow>();
     private Microsoft.Maui.Controls.View? _priceChart;
     private Microsoft.Maui.Controls.View? _indicatorChart;
-    private string _explainSummary = "Select a symbol to view explainability details.";
-    private string _qualitySummary = "Select a symbol to view quality diagnostics.";
+    private string _explainSummary = "Pick a symbol to see the short reason it ranked here.";
+    private string _qualitySummary = "Pick a symbol to see a short data-health note.";
 
     public UniverseViewModel(SampleDataService dataService, IChartProvider chartProvider)
     {
@@ -46,7 +46,7 @@ public class UniverseViewModel : ViewModelBase
         }
     }
 
-    public IReadOnlyList<string> DetailTabs { get; } = new[] { "Overview", "Explain", "Quality" };
+    public IReadOnlyList<string> DetailTabs { get; } = new[] { "Overview", "Why it ranked", "Data health" };
 
     public string SelectedDetailTab
     {
@@ -64,9 +64,9 @@ public class UniverseViewModel : ViewModelBase
 
     public bool IsOverviewTab => string.Equals(SelectedDetailTab, "Overview", StringComparison.OrdinalIgnoreCase);
 
-    public bool IsExplainTab => string.Equals(SelectedDetailTab, "Explain", StringComparison.OrdinalIgnoreCase);
+    public bool IsExplainTab => string.Equals(SelectedDetailTab, "Why it ranked", StringComparison.OrdinalIgnoreCase);
 
-    public bool IsQualityTab => string.Equals(SelectedDetailTab, "Quality", StringComparison.OrdinalIgnoreCase);
+    public bool IsQualityTab => string.Equals(SelectedDetailTab, "Data health", StringComparison.OrdinalIgnoreCase);
 
     public ScoreRow? SelectedScore
     {
@@ -138,13 +138,28 @@ public class UniverseViewModel : ViewModelBase
             return;
         }
 
+        var checksText = SelectedScore.GatesPassed.Equals("yes", StringComparison.OrdinalIgnoreCase)
+            ? "It passed the main checks"
+            : "It did not pass every main check";
+        var flagText = SelectedScore.FlagsCount == 1
+            ? "1 caution flag"
+            : $"{SelectedScore.FlagsCount} caution flags";
+        var themeText = string.IsNullOrWhiteSpace(SelectedScore.ThemeLabels)
+            ? "no theme tags"
+            : SelectedScore.ThemeLabels.Replace(';', ',').Replace('|', ',');
+        var freshnessText = SelectedScore.LagDays <= 1
+            ? "very fresh"
+            : SelectedScore.LagDays <= 3
+                ? "fairly fresh"
+                : "older than ideal";
+
         ExplainSummary =
-            $"{SelectedScore.Symbol}: score={SelectedScore.Score:F2}, rank={SelectedScore.Rank}, " +
-            $"gates={SelectedScore.GatesPassed}, flags={SelectedScore.FlagsCount}, themes={SelectedScore.ThemeLabels}.";
+            $"{SelectedScore.Symbol} is ranked #{SelectedScore.Rank} with fit score {SelectedScore.Score:F2}. " +
+            $"{checksText}, shows {flagText}, and is mostly linked to {themeText}.";
 
         QualitySummary =
-            $"Freshness check: last_date={SelectedScore.LastDate}, lag_days={SelectedScore.LagDays}. " +
-            "Operational freshness uses calendar days; forecast horizon and risk analytics use trading-session assumptions.";
+            $"Newest saved price: {SelectedScore.LastDate}. This symbol is {SelectedScore.LagDays} day(s) behind the run date, so the data is {freshnessText}. " +
+            "Lower lag is better because it means the view is using newer prices.";
 
         if (!TryBuildChartsFromOhlcv(SelectedScore.Symbol, out var priceModel, out var indicatorModel, out var forecast))
         {

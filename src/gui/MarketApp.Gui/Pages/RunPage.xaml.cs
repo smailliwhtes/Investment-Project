@@ -21,53 +21,53 @@ public partial class RunPage : ContentPage
         var (title, message) = key switch
         {
             "run_orchestration" => (
-                "Run Orchestration",
-                "This section is where you tell the app what config to use and where to save the run results."),
+                "Start A Run",
+                "Most users only need the top section. Pick the config file, choose where to save the results, and start the run."),
             "config_path" => (
-                "Config Path",
-                "This is the recipe file for your run. It tells the engine what data, filters, and rules to use."),
+                "Config File",
+                "This is the run recipe. It tells the engine which data, filters, and rules to use."),
             "output_directory" => (
-                "Output Directory",
-                "This is the folder where reports and CSV results are saved after each run."),
+                "Save Results To",
+                "This is the folder where the app will save the run report and CSV files."),
             "python_path" => (
-                "Python Path",
-                "This points to the Python app runner. If left as python, the app uses your default Python install."),
+                "Python Runner",
+                "This tells the app which Python to use. If you leave it as python, the app uses your default Python install."),
             "preprocessed_snapshot" => (
-                "Preprocessed Snapshot",
-                "This mode tells the app to use your already-cleaned market and GDELT files instead of guessing paths."),
+                "Advanced Path Setup",
+                "You can ignore this unless you already have cleaned files and want the app to use those exact paths."),
             "manifest_json" => (
-                "Manifest JSON",
-                "This file is a summary report from your preprocessor. The app reads it to find the right data folders."),
+                "Manifest File",
+                "This file tells the app where your cleaned files live."),
             "market_registry_json" => (
-                "Market Registry JSON",
-                "This file tracks which market files were already processed, so work is repeatable and traceable."),
+                "Price Registry File",
+                "This file helps the app reuse your saved price-file setup."),
             "gdelt_registry_json" => (
-                "GDELT Registry JSON",
-                "This file tracks which GDELT corpus files were already parsed by your preprocessor."),
+                "Event Registry File",
+                "This file helps the app reuse your saved event-file setup."),
             "gdelt_join_ready_csv" => (
-                "GDELT Join-Ready CSV",
-                "This is the daily GDELT table ready to join with market dates. It is the main corpus file used in scoring."),
+                "Joined Event File",
+                "This is the cleaned day-by-day event file that can line up with market dates."),
             "ingest_process" => (
-                "Ingest and Process",
-                "Use these buttons to copy in new raw files first, then build processed datasets the models use."),
+                "Optional Import And Processing",
+                "Use these tools only when you want to bring in new price or event files."),
             "market_source" => (
-                "Market Source Folder",
-                "This is where your newest raw market files live, like your Desktop market data folder."),
+                "Price-Data Source Folder",
+                "This is the folder that holds the raw price files you want to import."),
             "market_dest" => (
-                "Market App Folder",
-                "This is where the app stores imported market files before normalizing them for runs."),
+                "Price-Data App Folder",
+                "This is where the app stores imported price files."),
             "corpus_source" => (
-                "Corpus Source Folder",
-                "This is where your newest event/news corpus files live before importing."),
+                "Event-Data Source Folder",
+                "This is the folder that holds the raw event files you want to import."),
             "corpus_dest" => (
-                "Corpus App Folder",
-                "This is where the app stores imported corpus files before creating cleaned features."),
+                "Event-Data App Folder",
+                "This is where the app stores imported event files."),
             "corpus_normalized" => (
-                "Corpus Normalized",
-                "This folder stores cleaned, day-by-day corpus data that the engine can join with market data."),
+                "Cleaned Event Folder",
+                "This folder stores the cleaned event data that the app can line up with market data."),
             "progress_events" => (
-                "Progress Events",
-                "These lines are the engine's live timeline, so you can see each step and catch errors fast."),
+                "Run Progress",
+                "This shows the step-by-step timeline. You only need it if you want to watch the run live or troubleshoot a failure."),
             _ => (
                 "Info",
                 "This setting controls part of the run workflow for importing, processing, or executing analysis.")

@@ -39,13 +39,35 @@ public sealed record RunQualitySnapshot(
     IReadOnlyList<BacktestMetricRow> Metrics
 );
 
+public sealed record DataSourceSummary(
+    bool IsSampleData,
+    string Title,
+    string Message,
+    string Tone = "neutral"
+);
+
+public sealed record DataReadinessItem(
+    string Label,
+    string Status,
+    string Detail,
+    string Tone = "neutral"
+);
+
+public sealed record DataReadinessSummary(
+    string Title,
+    string Message,
+    IReadOnlyList<DataReadinessItem> Items
+);
+
 public sealed record DashboardSummary(
     RunSummary LastRun,
     IReadOnlyList<ScoreRow> TopSymbols,
     IReadOnlyList<LogEntry> RecentLogs,
     CauseEffectSnapshot? CauseEffect,
     IReadOnlyList<BacktestMetricRow> BacktestMetrics,
-    RunQualitySnapshot? QualitySnapshot = null
+    RunQualitySnapshot? QualitySnapshot = null,
+    DataSourceSummary? DataSource = null,
+    DataReadinessSummary? DataReadiness = null
 );
 
 public sealed record DashboardFact(string Label, string Value, string Tone = "neutral");

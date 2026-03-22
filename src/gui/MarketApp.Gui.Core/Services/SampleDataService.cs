@@ -10,9 +10,14 @@ public class SampleDataService
     private readonly IReadOnlyList<LogEntry> _logs;
     private readonly CauseEffectSnapshot? _causeEffect;
     private readonly IReadOnlyList<BacktestMetricRow> _backtestMetrics;
+    private readonly DataSourceSummary _dataSource;
+    private readonly DataReadinessSummary _dataReadiness;
 
     public SampleDataService()
     {
+        var outputsRoot = ResolveOutputsRoot();
+        var repoRoot = ResolveRepoRoot(outputsRoot);
+
         if (TryLoadFromArtifacts(
             out var scores,
             out var runHistory,
@@ -25,6 +30,8 @@ public class SampleDataService
             _logs = logs;
             _causeEffect = causeEffect;
             _backtestMetrics = backtestMetrics;
+            _dataSource = BuildDataSourceSummary(isSampleData: false, runHistory.FirstOrDefault());
+            _dataReadiness = BuildDataReadinessSummary(repoRoot, hasCompletedRun: true);
             return;
         }
 
@@ -44,6 +51,8 @@ public class SampleDataService
             new BacktestMetricRow("market_only", 0.012, 0.079, 0.57, 0.52, 3),
             new BacktestMetricRow("market_plus_corpus", 0.010, 0.072, 0.61, 0.56, 3)
         };
+        _dataSource = BuildDataSourceSummary(isSampleData: true, run: null);
+        _dataReadiness = BuildDataReadinessSummary(repoRoot, hasCompletedRun: false);
     }
 
     public DashboardSummary GetDashboard()
@@ -59,7 +68,9 @@ public class SampleDataService
             _logs.Take(8).ToArray(),
             _causeEffect,
             _backtestMetrics,
-            qualitySnapshot);
+            qualitySnapshot,
+            _dataSource,
+            _dataReadiness);
     }
 
     public IReadOnlyList<RunSummary> GetRunHistory() => _runHistory;
@@ -119,6 +130,41 @@ public class SampleDataService
                 return candidate;
             }
             current = current.Parent;
+        }
+
+        return null;
+    }
+
+    private static string? ResolveRepoRoot(string? outputsRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(outputsRoot))
+        {
+            var current = new DirectoryInfo(Path.GetFullPath(outputsRoot));
+            while (current is not null)
+            {
+                if (Directory.Exists(Path.Combine(current.FullName, "market_app")))
+                {
+                    return current.FullName;
+                }
+
+                if (current.Name.Equals("market_app", StringComparison.OrdinalIgnoreCase))
+                {
+                    return current.Parent?.FullName ?? current.FullName;
+                }
+
+                current = current.Parent;
+            }
+        }
+
+        var probe = new DirectoryInfo(AppContext.BaseDirectory);
+        while (probe is not null)
+        {
+            if (Directory.Exists(Path.Combine(probe.FullName, "market_app")))
+            {
+                return probe.FullName;
+            }
+
+            probe = probe.Parent;
         }
 
         return null;
@@ -359,6 +405,107 @@ public class SampleDataService
         return grouped;
     }
 
+    private static DataSourceSummary BuildDataSourceSummary(bool isSampleData, RunSummary? run)
+    {
+        if (isSampleData)
+        {
+            return new DataSourceSummary(
+                IsSampleData: true,
+                Title: "Showing sample data",
+                Message: "No completed run was found. These example values help you learn the layout before you run your own scan.",
+                Tone: "warn");
+        }
+
+        var message = run is null
+            ? "These cards come from the latest completed run."
+            : $"These cards come from {run.RunId}, saved on {run.FinishedAt:yyyy-MM-dd HH:mm}.";
+
+        return new DataSourceSummary(
+            IsSampleData: false,
+            Title: "Showing your latest run",
+            Message: message,
+            Tone: "positive");
+    }
+
+    private static DataReadinessSummary BuildDataReadinessSummary(string? repoRoot, bool hasCompletedRun)
+    {
+        if (string.IsNullOrWhiteSpace(repoRoot))
+        {
+            return new DataReadinessSummary(
+                "What your data can do",
+                hasCompletedRun
+                    ? "A completed run was found, but this build could not inspect the local data folders."
+                    : "Run the engine once to replace sample cards with your own saved results.",
+                new[]
+                {
+                    new DataReadinessItem("Charts", "Unknown", "The app could not inspect local data folders.", "neutral"),
+                    new DataReadinessItem("Machine learning", "Unknown", "Open the repo from its normal workspace to inspect local data.", "neutral"),
+                });
+        }
+
+        var marketAppRoot = Path.Combine(repoRoot, "market_app");
+        var dataRoot = Path.Combine(marketAppRoot, "data");
+        var rawPriceFiles = CountFiles(Path.Combine(dataRoot, "raw", "stooq"));
+        var cachedPriceFiles = CountFiles(Path.Combine(dataRoot, "cache"));
+        var processedFiles = CountFiles(Path.Combine(dataRoot, "processed"));
+
+        var policyFilesPresent =
+            File.Exists(Path.Combine(dataRoot, "policy_events.jsonl")) &&
+            File.Exists(Path.Combine(dataRoot, "policy_gdelt_daily_features.csv")) &&
+            File.Exists(Path.Combine(dataRoot, "etf_holdings.csv")) &&
+            Directory.Exists(Path.Combine(dataRoot, "fred_cache"));
+
+        var optionsDataPresent = HasOptionsData(dataRoot);
+        var priceHistoryReady = (rawPriceFiles + cachedPriceFiles) > 0;
+        var baselineMlReady = priceHistoryReady && (processedFiles > 0 || hasCompletedRun);
+        var deepLearningEarly = baselineMlReady && policyFilesPresent && (rawPriceFiles + cachedPriceFiles) >= 100;
+
+        var items = new[]
+        {
+            new DataReadinessItem(
+                "Charts and scans",
+                priceHistoryReady ? "Ready" : "Missing",
+                priceHistoryReady
+                    ? "Local price files were found, so charts and offline scans can run."
+                    : "Add local price files first.",
+                priceHistoryReady ? "positive" : "warn"),
+            new DataReadinessItem(
+                "Machine learning",
+                baselineMlReady ? "Ready" : "Needs setup",
+                baselineMlReady
+                    ? "Good for basic model tests and ranking practice."
+                    : "You need cleaned data or a completed run first.",
+                baselineMlReady ? "positive" : "warn"),
+            new DataReadinessItem(
+                "Policy what-if tests",
+                policyFilesPresent ? "Ready" : "Needs files",
+                policyFilesPresent
+                    ? "Local event files are present for scenario practice."
+                    : "Some policy files are missing, so scenario depth is limited.",
+                policyFilesPresent ? "positive" : "warn"),
+            new DataReadinessItem(
+                "Deep learning",
+                deepLearningEarly ? "Early" : "Not ready",
+                deepLearningEarly
+                    ? "Enough for small experiments, but treat results as practice only."
+                    : "Needs more history and richer inputs before it is dependable.",
+                deepLearningEarly ? "neutral" : "warn"),
+            new DataReadinessItem(
+                "Options practice",
+                optionsDataPresent ? "Ready" : "Missing",
+                optionsDataPresent
+                    ? "Options chain files were found."
+                    : "No options chain data was found yet.",
+                optionsDataPresent ? "positive" : "warn"),
+        };
+
+        var message = hasCompletedRun
+            ? "You can use charts and beginner ML practice now. The cards below show what is ready and what still needs setup."
+            : "You can learn the layout now, but run the engine once to replace sample values with your own saved results.";
+
+        return new DataReadinessSummary("What your data can do", message, items);
+    }
+
     private static double? Average(IEnumerable<Dictionary<string, string>> rows, string key)
     {
         var values = rows
@@ -444,6 +591,31 @@ public class SampleDataService
     private static string? GetValue(Dictionary<string, string> row, string key)
     {
         return row.TryGetValue(key, out var value) ? value : null;
+    }
+
+    private static int CountFiles(string path)
+    {
+        if (!Directory.Exists(path))
+        {
+            return 0;
+        }
+
+        return Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories).Count();
+    }
+
+    private static bool HasOptionsData(string dataRoot)
+    {
+        if (!Directory.Exists(dataRoot))
+        {
+            return false;
+        }
+
+        var markers = new[] { "option", "options", "chain", "greeks", "open_interest", "implied_vol" };
+        return Directory
+            .EnumerateFiles(dataRoot, "*", SearchOption.AllDirectories)
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Any(name => markers.Any(marker => name!.Contains(marker, StringComparison.OrdinalIgnoreCase)));
     }
 
     private static int CountPipeItems(string? value)

@@ -65,18 +65,19 @@
   <ScrollView>
     <VerticalStackLayout Padding="18" Spacing="14">
       <HorizontalStackLayout Spacing="6">
-        <Label Text="Run history" Style="{StaticResource PageTitleStyle}" />
+        <Label Text="Saved runs" Style="{StaticResource PageTitleStyle}" />
         <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_history" Clicked="OnInfoClicked" />
       </HorizontalStackLayout>
+      <Label Style="{StaticResource BodyLabelStyle}" Text="Use this page to compare two saved scans and see the main changes." />
 
       <Frame Padding="14">
         <VerticalStackLayout Spacing="8">
           <Grid ColumnDefinitions="2.2*,1.2*,1.2*,0.8*,0.8*" Padding="0,0,0,4" ColumnSpacing="8">
-            <Label Style="{StaticResource TableHeaderStyle}" Text="Run id" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Run" />
             <Label Style="{StaticResource TableHeaderStyle}" Text="Started" Grid.Column="1" />
             <Label Style="{StaticResource TableHeaderStyle}" Text="Finished" Grid.Column="2" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="Universe" Grid.Column="3" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="Eligible" Grid.Column="4" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Tracked" Grid.Column="3" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Ready" Grid.Column="4" />
           </Grid>
 
           <ScrollView HeightRequest="190">
@@ -131,10 +132,10 @@
 
           <Grid ColumnDefinitions="2.2*,1.1*,0.9*,0.8*,0.8*" Padding="0,0,0,4" ColumnSpacing="8">
             <Label Style="{StaticResource TableHeaderStyle}" Text="Symbol" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="Delta score" Grid.Column="1" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="Delta rank" Grid.Column="2" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="Flags A" Grid.Column="3" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="Flags B" Grid.Column="4" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Score move" Grid.Column="1" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Rank move" Grid.Column="2" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Warnings A" Grid.Column="3" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Warnings B" Grid.Column="4" />
           </Grid>
 
           <ScrollView HeightRequest="220">
@@ -158,16 +159,17 @@
       <Frame Padding="14">
         <VerticalStackLayout Spacing="8">
           <HorizontalStackLayout Spacing="6">
-            <Label Text="Run A quality" Style="{StaticResource SectionTitleStyle}" />
+            <Label Text="Run A model check" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_a_quality" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
+          <Label Style="{StaticResource BodyLabelStyle}" Text="This is a short report card for Run A. Lower miss values are better." />
 
           <Grid ColumnDefinitions="2.2*,0.9*,0.9*,0.9*,0.9*" Padding="0,0,0,4" ColumnSpacing="8">
             <Label Style="{StaticResource TableHeaderStyle}" Text="Model" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="MSE" Grid.Column="1" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="MAE" Grid.Column="2" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="Accuracy" Grid.Column="3" />
-            <Label Style="{StaticResource TableHeaderStyle}" Text="F1" Grid.Column="4" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Squared miss" Grid.Column="1" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Avg miss" Grid.Column="2" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Hit rate" Grid.Column="3" />
+            <Label Style="{StaticResource TableHeaderStyle}" Text="Balance" Grid.Column="4" />
           </Grid>
 
           <VerticalStackLayout BindableLayout.ItemsSource="{Binding SelectedRunMetrics}" Spacing="2">

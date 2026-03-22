@@ -6,17 +6,17 @@ public class DashboardViewModel : ViewModelBase
 {
     private static readonly string[] DefaultTrainingDeskItems =
     {
-        "Read the watchlist before trading.",
-        "Practice sizing positions before taking risk.",
-        "Use the scenario tools to test a thesis.",
+        "Start with the score, then check how old the data is.",
+        "Use small position sizes while you are still practicing.",
+        "Test a what-if before you trust a market story.",
     };
 
     private static readonly string[] DefaultRiskRules =
     {
-        "Keep position size small enough to survive a wrong call.",
-        "Fresh data matters. High lag means lower confidence.",
-        "A strong score is not a guarantee. Confirm the trend and the risk.",
-        "Options add leverage and time decay, so define exits before entry.",
+        "Keep each trade small enough that one bad call does not hurt much.",
+        "Older data means weaker confidence.",
+        "A strong score is a clue, not a promise.",
+        "Options can move fast, so decide your exit before you enter.",
     };
 
     private DashboardSummary? _summary;
@@ -27,16 +27,16 @@ public class DashboardViewModel : ViewModelBase
     private PriceSeriesModel _trendPreview = EmptyPriceSeries();
     private ForecastOverlayModel? _forecastPreview;
     private IndicatorSeriesModel _indicatorPreview = EmptyIndicatorSeries();
-    private string _headerSubtitle = "Offline monitor ready.";
+    private string _headerSubtitle = "Offline practice mode is ready.";
     private string _leadSymbol = "WATCH";
-    private string _leadHeadline = "Highest conviction setup";
-    private string _leadScoreText = "Score: n/a";
-    private string _leadLagText = "Freshness: n/a";
-    private string _leadThemesText = "Themes: n/a";
+    private string _leadHeadline = "Top idea from the latest view";
+    private string _leadScoreText = "Fit score: n/a";
+    private string _leadLagText = "Newest data: n/a";
+    private string _leadThemesText = "Main themes: n/a";
     private string _marketHeadline = "Load a run to see the latest market context.";
     private string _sentimentSummary = "Tone: Waiting for a completed run.";
-    private string _watchlistCaption = "Top ranked symbols from the latest completed run.";
-    private string _bestModelDetail = "Backtest model detail is not available yet.";
+    private string _watchlistCaption = "Top ideas from the latest completed run.";
+    private string _bestModelDetail = "Model check details are not available yet.";
 
     public DashboardViewModel(SampleDataService dataService)
     {
@@ -66,9 +66,18 @@ public class DashboardViewModel : ViewModelBase
     public IReadOnlyList<BacktestMetricRow> BacktestMetrics =>
         _summary?.BacktestMetrics ?? Array.Empty<BacktestMetricRow>();
     public RunQualitySnapshot? QualitySnapshot => _summary?.QualitySnapshot;
+    public DataSourceSummary? DataSource => _summary?.DataSource;
+    public DataReadinessSummary? DataReadiness => _summary?.DataReadiness;
 
     public string HeaderTitle => "Investment Dashboard";
     public string HeaderSubtitle => _headerSubtitle;
+    public bool ShowDataSourceBanner => DataSource is not null;
+    public string DataSourceTitle => DataSource?.Title ?? string.Empty;
+    public string DataSourceMessage => DataSource?.Message ?? string.Empty;
+    public IReadOnlyList<DataReadinessItem> DataReadinessItems =>
+        DataReadiness?.Items ?? Array.Empty<DataReadinessItem>();
+    public string DataReadinessTitle => DataReadiness?.Title ?? "What your data can do";
+    public string DataReadinessMessage => DataReadiness?.Message ?? string.Empty;
     public IReadOnlyList<DashboardMetricTile> OverviewTiles => _overviewTiles;
     public IReadOnlyList<DashboardMetricTile> MarketOverviewTiles => _overviewTiles;
     public IReadOnlyList<string> TrainingDeskItems => DefaultTrainingDeskItems;
@@ -108,20 +117,20 @@ public class DashboardViewModel : ViewModelBase
         if (lead is null)
         {
             _leadSymbol = "WATCH";
-            _leadHeadline = "Highest conviction setup";
-            _leadScoreText = "Score: n/a";
-            _leadLagText = "Freshness: n/a";
-            _leadThemesText = "Themes: n/a";
+            _leadHeadline = "Top idea from the latest view";
+            _leadScoreText = "Fit score: n/a";
+            _leadLagText = "Newest data: n/a";
+            _leadThemesText = "Main themes: n/a";
             return;
         }
 
         _leadSymbol = lead.Symbol;
         _leadHeadline = lead.GatesPassed.Equals("yes", StringComparison.OrdinalIgnoreCase)
-            ? "Highest conviction setup"
-            : "Watch with caution";
-        _leadScoreText = $"Composite score: {lead.Score:F2}";
-        _leadLagText = $"Freshness lag: {lead.LagDays} day(s)";
-        _leadThemesText = $"Themes: {NormalizeText(lead.ThemeLabels, "Unclassified")}";
+            ? "Passed the main checks"
+            : "Worth watching with care";
+        _leadScoreText = $"Fit score: {lead.Score:F2}";
+        _leadLagText = $"Newest data: {FormatLagText(lead.LagDays)}";
+        _leadThemesText = $"Main themes: {FormatFriendlyList(lead.ThemeLabels, "No theme tags yet")}";
     }
 
     private void NotifyDashboardBindingsChanged()
@@ -132,8 +141,16 @@ public class DashboardViewModel : ViewModelBase
         OnPropertyChanged(nameof(CauseEffect));
         OnPropertyChanged(nameof(BacktestMetrics));
         OnPropertyChanged(nameof(QualitySnapshot));
+        OnPropertyChanged(nameof(DataSource));
+        OnPropertyChanged(nameof(DataReadiness));
         OnPropertyChanged(nameof(HeaderTitle));
         OnPropertyChanged(nameof(HeaderSubtitle));
+        OnPropertyChanged(nameof(ShowDataSourceBanner));
+        OnPropertyChanged(nameof(DataSourceTitle));
+        OnPropertyChanged(nameof(DataSourceMessage));
+        OnPropertyChanged(nameof(DataReadinessItems));
+        OnPropertyChanged(nameof(DataReadinessTitle));
+        OnPropertyChanged(nameof(DataReadinessMessage));
         OnPropertyChanged(nameof(OverviewTiles));
         OnPropertyChanged(nameof(MarketOverviewTiles));
         OnPropertyChanged(nameof(TrainingDeskItems));
@@ -163,10 +180,10 @@ public class DashboardViewModel : ViewModelBase
         {
             return new[]
             {
-                new DashboardMetricTile("Universe", "0", "Waiting for run data", "neutral"),
-                new DashboardMetricTile("Eligible", "0", "No completed scan yet", "neutral"),
-                new DashboardMetricTile("Freshness", "n/a", "Load a recent run", "neutral"),
-                new DashboardMetricTile("Best model", "n/a", "Backtest not loaded", "neutral"),
+                new DashboardMetricTile("Names tracked", "0", "Waiting for a run", "neutral"),
+                new DashboardMetricTile("Ready now", "0", "No completed scan yet", "neutral"),
+                new DashboardMetricTile("Data age", "n/a", "Run the engine first", "neutral"),
+                new DashboardMetricTile("Model check", "n/a", "No review loaded", "neutral"),
             };
         }
 
@@ -178,10 +195,10 @@ public class DashboardViewModel : ViewModelBase
 
         return new[]
         {
-            new DashboardMetricTile("Universe", lastRun.UniverseCount.ToString("N0", CultureInfo.InvariantCulture), "Names tracked", "neutral"),
-            new DashboardMetricTile("Eligible", lastRun.EligibleCount.ToString("N0", CultureInfo.InvariantCulture), $"{passRate:P0} passed", passRate >= 0.4 ? "positive" : "neutral"),
-            new DashboardMetricTile("Freshness", $"{lastRun.WorstLagDays}d", $"Median {lastRun.MedianLagDays:F1}d", lastRun.WorstLagDays <= 2 ? "positive" : "warn"),
-            new DashboardMetricTile("Best model", NormalizeText(bestModel?.Model, "n/a"), bestModel?.Accuracy is double accuracy ? $"Accuracy {accuracy:P0}" : "Backtest not available", "neutral"),
+            new DashboardMetricTile("Names tracked", lastRun.UniverseCount.ToString("N0", CultureInfo.InvariantCulture), "Symbols checked", "neutral"),
+            new DashboardMetricTile("Ready now", lastRun.EligibleCount.ToString("N0", CultureInfo.InvariantCulture), $"{passRate:P0} passed the checks", passRate >= 0.4 ? "positive" : "neutral"),
+            new DashboardMetricTile("Data age", $"{lastRun.WorstLagDays}d", $"Typical age {lastRun.MedianLagDays:F1}d", lastRun.WorstLagDays <= 2 ? "positive" : "warn"),
+            new DashboardMetricTile("Model check", ToFriendlyMetricName(bestModel?.Model), bestModel?.Accuracy is double accuracy ? $"Right about {accuracy:P0} of the time" : "No review loaded", "neutral"),
         };
     }
 
@@ -193,19 +210,19 @@ public class DashboardViewModel : ViewModelBase
         {
             return new[]
             {
-                new DashboardFact("Signal bias", "No scored symbols loaded yet."),
-                new DashboardFact("Why it matters", "Scores help rank ideas, not replace judgment."),
-                new DashboardFact("Freshness", "Lower lag means newer data and cleaner context."),
+                new DashboardFact("Market mood", "No scored symbols loaded yet."),
+                new DashboardFact("Why it matters", "Scores help sort ideas, but they do not make the decision for you."),
+                new DashboardFact("Data age", "Lower lag means newer data."),
             };
         }
 
         var signalBias = lead.Score >= 0.85 ? "Constructive" : lead.Score >= 0.7 ? "Measured" : "Selective";
         return new[]
         {
-            new DashboardFact("Signal bias", signalBias, lead.Score >= 0.85 ? "positive" : "neutral"),
-            new DashboardFact("Gate status", NormalizeText(lead.GatesPassed, "unknown")),
-            new DashboardFact("Model view", NormalizeText(bestModel?.Model, "No model selected")),
-            new DashboardFact("Freshness", $"{lead.LagDays} day(s) lag", lead.LagDays <= 2 ? "positive" : "warn"),
+            new DashboardFact("Market mood", signalBias, lead.Score >= 0.85 ? "positive" : "neutral"),
+            new DashboardFact("Main checks", FormatGateText(lead.GatesPassed)),
+            new DashboardFact("Model view", ToFriendlyMetricName(bestModel?.Model)),
+            new DashboardFact("Data age", FormatLagText(lead.LagDays), lead.LagDays <= 2 ? "positive" : "warn"),
         };
     }
 
@@ -215,9 +232,9 @@ public class DashboardViewModel : ViewModelBase
         {
             return new[]
             {
-                new DashboardFact("Scenario desk", "Use the policy simulator to test a shock."),
-                new DashboardFact("Impact library", "Event analogs appear here after the corpus build."),
-                new DashboardFact("Confidence", "More linked rows improves context quality."),
+                new DashboardFact("What-if desk", "Use the policy simulator to test one shock at a time."),
+                new DashboardFact("Past cases", "Past event matches appear here after you build event links."),
+                new DashboardFact("Confidence", "More linked history usually means a steadier estimate."),
             };
         }
 
@@ -230,10 +247,10 @@ public class DashboardViewModel : ViewModelBase
         return new[]
         {
             new DashboardFact(
-                "Context event",
-                $"{NormalizeText(causeEffect.TopContextMetric, "linked event")} on {NormalizeText(causeEffect.TopContextDay, "latest window")}"),
-            new DashboardFact("Impact library", $"{causeEffect.EventImpactRows:N0} event-study rows"),
-            new DashboardFact("Forecast stance", causeEffect.EventImpactRows >= 100 ? "Scenario desk is ready for what-if work." : "Build more event history for stronger analogs."),
+                "Latest event",
+                $"{ToFriendlySentence(causeEffect.TopContextMetric, "linked event")} on {NormalizeText(causeEffect.TopContextDay, "the latest saved day")}"),
+            new DashboardFact("Past cases", $"{causeEffect.EventImpactRows:N0} saved event outcomes"),
+            new DashboardFact("What-if desk", causeEffect.EventImpactRows >= 100 ? "Ready for beginner what-if practice." : "Add more event history for steadier examples."),
             new DashboardFact("Confidence", confidence),
         };
     }
@@ -242,22 +259,22 @@ public class DashboardViewModel : ViewModelBase
     {
         if (summary?.LastRun is null)
         {
-            return "Run the offline engine to populate the dashboard.";
+            return "Run the offline engine once to replace sample cards with your own results.";
         }
 
         var lastRun = summary.LastRun;
-        return $"Run {lastRun.RunId} closed {lastRun.FinishedAt:yyyy-MM-dd HH:mm} UTC with {lastRun.EligibleCount:N0} eligible names and worst lag {lastRun.WorstLagDays}d.";
+        return $"Latest run: {lastRun.RunId}. It found {lastRun.EligibleCount:N0} usable names, and the oldest data was {lastRun.WorstLagDays} day(s) behind.";
     }
 
     private static string BuildMarketHeadline(DashboardSummary? summary)
     {
         if (summary?.CauseEffect is null)
         {
-            return "Market context is waiting for linked event data.";
+            return "Event context is not loaded yet, so this view is using price-only signals.";
         }
 
         var causeEffect = summary.CauseEffect;
-        return $"Context watch: {NormalizeText(causeEffect.TopContextMetric, "linked event")} peaked on {NormalizeText(causeEffect.TopContextDay, "the latest day")}.";
+        return $"Watch item: {ToFriendlySentence(causeEffect.TopContextMetric, "linked event")} was most active on {NormalizeText(causeEffect.TopContextDay, "the latest saved day")}.";
     }
 
     private static string BuildSentimentSummary(DashboardSummary? summary)
@@ -275,14 +292,14 @@ public class DashboardViewModel : ViewModelBase
             : worstLag <= 4
                 ? "Measured"
                 : "Cautious";
-        return $"Tone: {tone}. Use the score as a starting point, then confirm risk and timing.";
+        return $"Tone: {tone}. Start with the score, then check risk and timing before you act.";
     }
 
     private static string BuildWatchlistCaption(DashboardSummary? summary)
     {
         if (summary?.TopSymbols.Count > 0)
         {
-            return "Sorted by composite score from the latest completed run.";
+            return "Sorted by fit score from the latest completed run.";
         }
 
         return "Top-ranked names appear here after a completed scan.";
@@ -292,9 +309,9 @@ public class DashboardViewModel : ViewModelBase
     {
         return new[]
         {
-            new DashboardCallout("Score", "Higher score usually means a stronger fit to the current rule set."),
-            new DashboardCallout("Lag", "Lag tells you how old the newest market data is."),
-            new DashboardCallout("Forecast", "A forecast is a scenario estimate, not a promise."),
+            new DashboardCallout("Score", "Higher score usually means a stronger fit to the current checks."),
+            new DashboardCallout("Data age", "This tells you how old the newest market data is."),
+            new DashboardCallout("Forecast", "This is a practice estimate, not a promise."),
         };
     }
 
@@ -303,7 +320,7 @@ public class DashboardViewModel : ViewModelBase
         var bestModel = SelectBestMetric(summary?.BacktestMetrics ?? Array.Empty<BacktestMetricRow>());
         if (bestModel is null)
         {
-            return "Backtest model detail is not available yet.";
+            return "Model check detail is not available yet.";
         }
 
         var accuracyText = bestModel.Accuracy is double accuracy
@@ -312,7 +329,7 @@ public class DashboardViewModel : ViewModelBase
         var f1Text = bestModel.F1 is double f1
             ? f1.ToString("P0", CultureInfo.InvariantCulture)
             : "n/a";
-        return $"{bestModel.Model} leads the current table with accuracy {accuracyText} and F1 {f1Text}.";
+        return $"{ToFriendlyMetricName(bestModel.Model)} is the steadiest model in the current check. It was right about {accuracyText} of the time with balance score {f1Text}.";
     }
 
     private static (PriceSeriesModel Price, ForecastOverlayModel Forecast, IndicatorSeriesModel Indicator) BuildVisualModels(
@@ -417,6 +434,68 @@ public class DashboardViewModel : ViewModelBase
             .OrderByDescending(metric => metric.Accuracy ?? double.MinValue)
             .ThenBy(metric => metric.Mse ?? double.MaxValue)
             .FirstOrDefault();
+    }
+
+    private static string FormatFriendlyList(string? value, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        return value
+            .Replace(';', ',')
+            .Replace('|', ',')
+            .Trim();
+    }
+
+    private static string FormatGateText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Check result not available";
+        }
+
+        return value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+            ? "Passed the main checks"
+            : value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                ? "Did not pass every main check"
+                : value.Trim();
+    }
+
+    private static string FormatLagText(int lagDays)
+    {
+        return lagDays == 1
+            ? "1 day old"
+            : $"{lagDays} days old";
+    }
+
+    private static string ToFriendlyMetricName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "No model selected";
+        }
+
+        return value
+            .Replace('_', ' ')
+            .Trim();
+    }
+
+    private static string ToFriendlySentence(string? value, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        var text = value.Replace('_', ' ').Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return fallback;
+        }
+
+        return char.ToUpperInvariant(text[0]) + text[1..];
     }
 
     private static string NormalizeText(string? value, string fallback)

@@ -30,22 +30,22 @@
   <ScrollView>
     <VerticalStackLayout Padding="18" Spacing="14">
       <Label Text="Policy Simulator" FontSize="24" FontAttributes="Bold" />
-      <Label Text="Offline-only scenario runner that invokes the Python engine, streams live progress JSONL events, and then surfaces the JSON summary file when one is written." FontSize="13" />
+      <Label Text="Use this page to test one market shock at a time. The summary starts with the main takeaway in plain language." FontSize="13" />
 
       <Frame Padding="14">
         <VerticalStackLayout Spacing="10">
           <Label Text="Scenario" Style="{StaticResource SectionTitleStyle}" />
           <Grid ColumnDefinitions="180,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="10">
-            <Label Grid.Row="0" Grid.Column="0" Text="Config path" Style="{StaticResource FieldLabelStyle}" />
+            <Label Grid.Row="0" Grid.Column="0" Text="Config file" Style="{StaticResource FieldLabelStyle}" />
             <Entry Grid.Row="0" Grid.Column="1" Style="{StaticResource InputEntryStyle}" Text="{Binding ConfigPath}" />
 
             <Label Grid.Row="1" Grid.Column="0" Text="Scenario name" Style="{StaticResource FieldLabelStyle}" />
             <Entry Grid.Row="1" Grid.Column="1" Style="{StaticResource InputEntryStyle}" Text="{Binding ScenarioName}" />
 
-            <Label Grid.Row="2" Grid.Column="0" Text="Output directory" Style="{StaticResource FieldLabelStyle}" />
+            <Label Grid.Row="2" Grid.Column="0" Text="Save results to" Style="{StaticResource FieldLabelStyle}" />
             <Entry Grid.Row="2" Grid.Column="1" Style="{StaticResource InputEntryStyle}" Text="{Binding OutputDirectory}" />
 
-            <Label Grid.Row="3" Grid.Column="0" Text="Python path" Style="{StaticResource FieldLabelStyle}" />
+            <Label Grid.Row="3" Grid.Column="0" Text="Python runner" Style="{StaticResource FieldLabelStyle}" />
             <Entry Grid.Row="3" Grid.Column="1" Style="{StaticResource InputEntryStyle}" Text="{Binding PythonPath}" />
           </Grid>
 
@@ -61,8 +61,8 @@
           <Label Text="Status" Style="{StaticResource SectionTitleStyle}" />
           <Label Text="{Binding Status}" FontSize="14" />
           <Label Text="{Binding SummaryPath, StringFormat='Summary file: {0}'}" FontSize="12" LineBreakMode="TailTruncation" />
-          <Label Text="Live progress appears below while the run is executing. Final JSON summary and fields are appended when available." FontSize="12" />
-          <Editor Text="{Binding SummaryText}" IsReadOnly="True" AutoSize="TextChanges" HeightRequest="260" FontFamily="Consolas" />
+          <Label Text="The top of the summary is the beginner view. Extra progress and file details stay lower down." FontSize="12" />
+          <Editor Text="{Binding SummaryText}" IsReadOnly="True" AutoSize="TextChanges" HeightRequest="260" />
         </VerticalStackLayout>
       </Frame>
     </VerticalStackLayout>

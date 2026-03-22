@@ -18,6 +18,8 @@ public class SampleDataServiceTests
         Assert.True(dashboard.LastRun.WorstLagDays >= 0);
         Assert.NotEmpty(dashboard.TopSymbols);
         Assert.All(dashboard.TopSymbols, s => Assert.False(string.IsNullOrWhiteSpace(s.LastDate)));
+        Assert.NotNull(dashboard.DataSource);
+        Assert.NotNull(dashboard.DataReadiness);
     }
 
     [Fact]
@@ -44,6 +46,8 @@ public class SampleDataServiceTests
         Assert.NotEmpty(viewModel.MarketOverviewTiles);
         Assert.NotEmpty(viewModel.TrainingChecklist);
         Assert.NotEmpty(viewModel.QuickHelp);
+        Assert.NotEmpty(viewModel.DataReadinessItems);
+        Assert.False(string.IsNullOrWhiteSpace(viewModel.DataSourceMessage));
         Assert.NotEmpty(viewModel.PricePreview.Values);
         var forecast = Assert.IsType<ForecastOverlayModel>(viewModel.ForecastPreview);
         Assert.Equal(forecast.HorizonPoints, forecast.YHat.Count);
@@ -144,6 +148,9 @@ public class SampleDataServiceTests
                 Assert.NotNull(dashboard.QualitySnapshot);
                 Assert.Equal("run_test", dashboard.QualitySnapshot!.RunId);
                 Assert.NotEmpty(dashboard.QualitySnapshot.Metrics);
+                Assert.NotNull(dashboard.DataSource);
+                Assert.False(dashboard.DataSource!.IsSampleData);
+                Assert.NotEmpty(dashboard.DataReadiness!.Items);
             }
             finally
             {
@@ -154,6 +161,50 @@ public class SampleDataServiceTests
                 }
             }
         }
+    }
+
+    [Fact]
+    public void Dashboard_ReportsSampleModeWhenNoCompletedRunExists()
+    {
+        lock (EnvLock)
+        {
+            var tempRoot = Path.Combine(Path.GetTempPath(), "marketapp_gui_empty_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempRoot);
+            var previous = Environment.GetEnvironmentVariable("MARKETAPP_OUTPUTS_DIR");
+
+            try
+            {
+                Environment.SetEnvironmentVariable("MARKETAPP_OUTPUTS_DIR", tempRoot);
+                var service = new SampleDataService();
+
+                var dashboard = service.GetDashboard();
+
+                Assert.True(dashboard.DataSource!.IsSampleData);
+                Assert.Contains("sample", dashboard.DataSource.Title, StringComparison.OrdinalIgnoreCase);
+                Assert.NotEmpty(dashboard.DataReadiness!.Items);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("MARKETAPP_OUTPUTS_DIR", previous);
+                if (Directory.Exists(tempRoot))
+                {
+                    Directory.Delete(tempRoot, recursive: true);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void UniverseViewModel_UsesPlainLanguageSummaries()
+    {
+        var viewModel = new UniverseViewModel(new SampleDataService(), new FakeChartProvider());
+
+        Assert.Contains("fit score", viewModel.ExplainSummary, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("score=", viewModel.ExplainSummary, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("lag_days", viewModel.QualitySummary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("newer prices", viewModel.QualitySummary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Why it ranked", viewModel.DetailTabs);
+        Assert.Contains("Data health", viewModel.DetailTabs);
     }
 
     private sealed class FakeEngineBridgeService : IEngineBridgeService
@@ -234,6 +285,19 @@ public class SampleDataServiceTests
         public Task<RunDiffResult> DiffRunsAsync(string runA, string runB, string? pythonPath, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new RunDiffResult("a", "b", new RunDiffSummary(0, 0, 0, 0), Array.Empty<RunDiffRow>()));
+        }
+    }
+
+    private sealed class FakeChartProvider : IChartProvider
+    {
+        public Microsoft.Maui.Controls.View CreatePriceChart(PriceSeriesModel model, ForecastOverlayModel? forecast)
+        {
+            return new Microsoft.Maui.Controls.ContentView();
+        }
+
+        public Microsoft.Maui.Controls.View CreateIndicatorChart(IndicatorSeriesModel model)
+        {
+            return new Microsoft.Maui.Controls.ContentView();
         }
     }
 

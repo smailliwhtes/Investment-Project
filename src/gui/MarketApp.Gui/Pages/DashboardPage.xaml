@@ -108,12 +108,80 @@
               <Border.StrokeShape>
                 <RoundRectangle CornerRadius="18" />
               </Border.StrokeShape>
-              <Label Text="{Binding LastRun.WorstLagDays, StringFormat='Worst lag {0}d'}"
+              <Label Text="{Binding LastRun.WorstLagDays, StringFormat='Oldest data {0}d old'}"
                      TextColor="White"
                      FontSize="12" />
             </Border>
           </VerticalStackLayout>
         </Grid>
+      </Border>
+
+      <Border IsVisible="{Binding ShowDataSourceBanner}"
+              Padding="16"
+              Stroke="#D5DEE8"
+              StrokeThickness="1"
+              Background="#FFF8E8">
+        <Border.StrokeShape>
+          <RoundRectangle CornerRadius="18" />
+        </Border.StrokeShape>
+        <VerticalStackLayout Spacing="4">
+          <Label Text="{Binding DataSourceTitle}"
+                 Style="{StaticResource BodyTitleStyle}"
+                 FontSize="18" />
+          <Label Text="{Binding DataSourceMessage}"
+                 Style="{StaticResource BodyTextStyle}"
+                 TextColor="{StaticResource DashboardText}" />
+        </VerticalStackLayout>
+      </Border>
+
+      <Border Padding="18"
+              Stroke="#D5DEE8"
+              StrokeThickness="1"
+              Background="{StaticResource DashboardSurfaceStrong}">
+        <Border.StrokeShape>
+          <RoundRectangle CornerRadius="22" />
+        </Border.StrokeShape>
+        <VerticalStackLayout Spacing="14">
+          <Label Text="{Binding DataReadinessTitle}"
+                 Style="{StaticResource BodyTitleStyle}" />
+          <Label Text="{Binding DataReadinessMessage}"
+                 Style="{StaticResource BodyTextStyle}"
+                 TextColor="{StaticResource DashboardText}" />
+          <FlexLayout Direction="Row"
+                      Wrap="Wrap"
+                      AlignItems="Start"
+                      BindableLayout.ItemsSource="{Binding DataReadinessItems}">
+            <BindableLayout.ItemTemplate>
+              <DataTemplate>
+                <Border Margin="0,0,12,12"
+                        FlexLayout.Basis="210"
+                        FlexLayout.Grow="1"
+                        Padding="14"
+                        Stroke="#D5DEE8"
+                        StrokeThickness="1"
+                        Background="{StaticResource DashboardSurface}">
+                  <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="18" />
+                  </Border.StrokeShape>
+                  <VerticalStackLayout Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <Label Text="{Binding Label}"
+                             Style="{StaticResource SectionHeaderStyle}" />
+                      <Label Grid.Column="1"
+                             Text="{Binding Status}"
+                             FontSize="13"
+                             FontAttributes="Bold"
+                             TextColor="{StaticResource DashboardText}" />
+                    </Grid>
+                    <Label Text="{Binding Detail}"
+                           Style="{StaticResource BodyTextStyle}"
+                           TextColor="{StaticResource DashboardText}" />
+                  </VerticalStackLayout>
+                </Border>
+              </DataTemplate>
+            </BindableLayout.ItemTemplate>
+          </FlexLayout>
+        </VerticalStackLayout>
       </Border>
 
       <FlexLayout Direction="Row"
@@ -146,7 +214,7 @@
                        Style="{StaticResource CardTitleStyle}" />
               </Border>
               <VerticalStackLayout Padding="18" Spacing="12">
-                <Label Text="Use the dashboard to practice reading signals, freshness, and scenario risk before you act."
+                <Label Text="Use this page to learn the main takeaway first: score, data age, and what-if risk."
                        Style="{StaticResource BodyTitleStyle}"
                        FontSize="17" />
                 <VerticalStackLayout BindableLayout.ItemsSource="{Binding TrainingDeskItems}"
@@ -229,7 +297,7 @@
                   <Border.StrokeShape>
                     <RoundRectangle CornerRadius="22,22,0,0" />
                   </Border.StrokeShape>
-                  <Label Text="Trading Signals"
+                  <Label Text="Quick Read"
                          Style="{StaticResource CardTitleStyle}" />
                 </Border>
                 <VerticalStackLayout Padding="18" Spacing="12"
@@ -313,7 +381,7 @@
                 </FlexLayout>
 
                 <VerticalStackLayout Spacing="10">
-                  <Label Text="Trend Preview"
+                  <Label Text="Price path"
                          Style="{StaticResource BodyTitleStyle}" />
                   <ContentView x:Name="TrendChartHost"
                                MinimumHeightRequest="270" />
@@ -350,11 +418,11 @@
                       <Label Text="{Binding SentimentSummary}"
                              FontSize="14"
                              TextColor="{StaticResource DashboardText}" />
-                      <Label Text="Higher score means the symbol fits the current rule set better."
+                      <Label Text="Higher fit score usually means a stronger match to the current checks."
                              Style="{StaticResource BodyTextStyle}" />
-                      <Label Text="Lag tells you how old the newest data is."
+                      <Label Text="Older data lowers confidence."
                              Style="{StaticResource BodyTextStyle}" />
-                      <Label Text="Forecasts are scenario estimates, not guarantees."
+                      <Label Text="Forecasts are practice estimates, not certainties."
                              Style="{StaticResource BodyTextStyle}" />
                     </VerticalStackLayout>
                   </Border>
@@ -380,7 +448,7 @@
                 <Border.StrokeShape>
                   <RoundRectangle CornerRadius="22,22,0,0" />
                 </Border.StrokeShape>
-                <Label Text="Scenario &amp; Forecast"
+                <Label Text="What-If &amp; Forecast"
                        Style="{StaticResource CardTitleStyle}" />
               </Border>
               <VerticalStackLayout Padding="18" Spacing="12">
@@ -455,20 +523,20 @@
                 <Border.StrokeShape>
                   <RoundRectangle CornerRadius="22,22,0,0" />
                 </Border.StrokeShape>
-                <Label Text="Plain-Language Guide"
+                <Label Text="Quick Guide"
                        Style="{StaticResource CardTitleStyle}" />
               </Border>
               <VerticalStackLayout Padding="18" Spacing="10">
-                <Label Text="Score: higher usually means a stronger fit to the model rules."
+                <Label Text="Fit score: higher usually means the idea matches the current checks better."
                        Style="{StaticResource BodyTextStyle}"
                        TextColor="{StaticResource DashboardText}" />
-                <Label Text="Lag: how many days old the newest market data is."
+                <Label Text="Data age: how many days old the newest saved price is."
                        Style="{StaticResource BodyTextStyle}"
                        TextColor="{StaticResource DashboardText}" />
-                <Label Text="Scenario: a structured what-if test, not a prediction of certainty."
+                <Label Text="What-if: a practice test for one market shock."
                        Style="{StaticResource BodyTextStyle}"
                        TextColor="{StaticResource DashboardText}" />
-                <Label Text="Options note: leverage can magnify both gains and losses fast."
+                <Label Text="Options note: gains and losses can both speed up fast."
                        Style="{StaticResource BodyTextStyle}"
                        TextColor="{StaticResource DashboardText}" />
               </VerticalStackLayout>
@@ -500,17 +568,17 @@
                    Style="{StaticResource CardTitleStyle}" />
           </Border>
           <VerticalStackLayout Padding="18" Spacing="14">
-            <Label Text="{Binding WatchlistCaption}"
-                   Style="{StaticResource BodyTextStyle}" />
+              <Label Text="{Binding WatchlistCaption}"
+                     Style="{StaticResource BodyTextStyle}" />
             <Grid ColumnDefinitions="1.1*,0.9*,0.9*,2.1*"
                   ColumnSpacing="12">
               <Label Text="Symbol"
                      Style="{StaticResource SectionHeaderStyle}" />
               <Label Grid.Column="1"
-                     Text="Score"
+                     Text="Fit"
                      Style="{StaticResource SectionHeaderStyle}" />
               <Label Grid.Column="2"
-                     Text="Lag"
+                     Text="Age"
                      Style="{StaticResource SectionHeaderStyle}" />
               <Label Grid.Column="3"
                      Text="Themes"

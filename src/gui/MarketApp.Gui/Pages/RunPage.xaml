@@ -69,32 +69,33 @@
   <ScrollView>
     <VerticalStackLayout Padding="18" Spacing="14">
       <HorizontalStackLayout Spacing="6">
-        <Label Text="Run orchestration" Style="{StaticResource PageTitleStyle}" />
+        <Label Text="Start a run" Style="{StaticResource PageTitleStyle}" />
         <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="run_orchestration" Clicked="OnInfoClicked" />
       </HorizontalStackLayout>
+      <Label Style="{StaticResource FieldLabelStyle}" Text="Most users only need the first section. The other sections are optional setup tools." />
 
       <Frame Padding="14" Margin="0,2,0,0">
         <VerticalStackLayout Spacing="10">
           <HorizontalStackLayout Spacing="6">
-            <Label Text="Run setup" Style="{StaticResource SectionTitleStyle}" />
+            <Label Text="Basic run" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="config_path" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
 
           <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="10">
             <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="6">
-              <Label Text="Config path" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Config file" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="config_path" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Text="{Binding ConfigPath}" Grid.Row="0" Grid.Column="1" />
 
             <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="6">
-              <Label Text="Output directory" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Save results to" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="output_directory" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Text="{Binding OutputDirectory}" Grid.Row="1" Grid.Column="1" />
 
             <HorizontalStackLayout Grid.Row="2" Grid.Column="0" Spacing="6">
-              <Label Text="Python path" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Python runner" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="python_path" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Text="{Binding PythonPath}" Grid.Row="2" Grid.Column="1" />
@@ -102,18 +103,18 @@
             <HorizontalStackLayout Grid.Row="3" Grid.ColumnSpan="2" Spacing="18">
               <HorizontalStackLayout Spacing="6">
                 <CheckBox IsChecked="{Binding RunBuildLinkedAfterRun}" />
-                <Label Text="Run linked corpus" Style="{StaticResource FieldLabelStyle}" />
+                <Label Text="Build event links after the run" Style="{StaticResource FieldLabelStyle}" />
               </HorizontalStackLayout>
               <HorizontalStackLayout Spacing="6">
                 <CheckBox IsChecked="{Binding RunEvaluateAfterRun}" />
-                <Label Text="Run evaluate" Style="{StaticResource FieldLabelStyle}" />
+                <Label Text="Build the model review after the run" Style="{StaticResource FieldLabelStyle}" />
               </HorizontalStackLayout>
             </HorizontalStackLayout>
 
             <FlexLayout Grid.Row="4" Grid.ColumnSpan="2" Direction="Row" Wrap="Wrap" AlignItems="Start" JustifyContent="Start">
-              <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Validate" Command="{Binding ValidateConfigCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
-              <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Start" Command="{Binding StartCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
-              <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Cancel" Command="{Binding CancelCommand}" IsEnabled="{Binding IsRunning}" />
+              <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Check setup" Command="{Binding ValidateConfigCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+              <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Start run" Command="{Binding StartCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+              <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Cancel run" Command="{Binding CancelCommand}" IsEnabled="{Binding IsRunning}" />
             </FlexLayout>
           </Grid>
         </VerticalStackLayout>
@@ -122,42 +123,43 @@
       <Frame Padding="14">
         <VerticalStackLayout Spacing="10">
           <HorizontalStackLayout Spacing="6">
-            <Label Text="Preprocessed snapshot inputs" Style="{StaticResource SectionTitleStyle}" />
+            <Label Text="Advanced path setup" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="preprocessed_snapshot" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
+          <Label Style="{StaticResource FieldLabelStyle}" Text="You can ignore this section unless you already have cleaned files and want the app to use them." />
 
           <HorizontalStackLayout Spacing="6">
             <CheckBox IsChecked="{Binding UsePreprocessedSnapshot}" />
-            <Label Text="Use preprocessed manifest + registries for run paths" Style="{StaticResource FieldLabelStyle}" />
+            <Label Text="Use saved cleaned-file paths" Style="{StaticResource FieldLabelStyle}" />
           </HorizontalStackLayout>
 
           <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="10">
             <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="6">
-              <Label Text="Manifest JSON" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Manifest file" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="manifest_json" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="0" Grid.Column="1" Text="{Binding PreprocessorManifestPath}" />
 
             <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="6">
-              <Label Text="Market registry JSON" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Price registry file" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="market_registry_json" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="1" Grid.Column="1" Text="{Binding MarketRegistryPath}" />
 
             <HorizontalStackLayout Grid.Row="2" Grid.Column="0" Spacing="6">
-              <Label Text="GDELT registry JSON" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Event registry file" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="gdelt_registry_json" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="2" Grid.Column="1" Text="{Binding GdeltRegistryPath}" />
 
             <HorizontalStackLayout Grid.Row="3" Grid.Column="0" Spacing="6">
-              <Label Text="GDELT join-ready CSV" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Joined event file" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="gdelt_join_ready_csv" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="3" Grid.Column="1" Text="{Binding GdeltJoinReadyCsvPath}" />
           </Grid>
 
-          <Button Style="{StaticResource ActionButtonStyle}" Text="Apply Preprocessed Snapshot" Command="{Binding ApplyPreprocessedSnapshotCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+          <Button Style="{StaticResource ActionButtonStyle}" Text="Use advanced paths" Command="{Binding ApplyPreprocessedSnapshotCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
           <Label Text="{Binding PreprocessedStatus}" FontSize="13" LineBreakMode="WordWrap" />
         </VerticalStackLayout>
       </Frame>
@@ -165,46 +167,47 @@
       <Frame Padding="14">
         <VerticalStackLayout Spacing="10">
           <HorizontalStackLayout Spacing="6">
-            <Label Text="Data ingestion and processing" Style="{StaticResource SectionTitleStyle}" />
+            <Label Text="Optional data import and processing" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="ingest_process" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
+          <Label Style="{StaticResource FieldLabelStyle}" Text="Use this only when you want to pull in new price or event files." />
 
           <Grid ColumnDefinitions="220,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="10">
             <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="6">
-              <Label Text="Market source folder" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Price-data source folder" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="market_source" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="0" Grid.Column="1" Text="{Binding MarketDataSourceDirectory}" />
 
             <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="6">
-              <Label Text="Market app folder" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Price-data app folder" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="market_dest" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="1" Grid.Column="1" Text="{Binding MarketDataDestinationDirectory}" />
 
             <HorizontalStackLayout Grid.Row="2" Grid.Column="0" Spacing="6">
-              <Label Text="Corpus source folder" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Event-data source folder" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="corpus_source" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="2" Grid.Column="1" Text="{Binding CorpusDataSourceDirectory}" />
 
             <HorizontalStackLayout Grid.Row="3" Grid.Column="0" Spacing="6">
-              <Label Text="Corpus app folder" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Event-data app folder" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="corpus_dest" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="3" Grid.Column="1" Text="{Binding CorpusDataDestinationDirectory}" />
 
             <HorizontalStackLayout Grid.Row="4" Grid.Column="0" Spacing="6">
-              <Label Text="Corpus normalized" Style="{StaticResource FieldLabelStyle}" />
+              <Label Text="Cleaned event folder" Style="{StaticResource FieldLabelStyle}" />
               <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="corpus_normalized" Clicked="OnInfoClicked" />
             </HorizontalStackLayout>
             <Entry Style="{StaticResource InputEntryStyle}" Grid.Row="4" Grid.Column="1" Text="{Binding CorpusNormalizedDirectory}" />
           </Grid>
 
           <FlexLayout Direction="Row" Wrap="Wrap" AlignItems="Start" JustifyContent="Start">
-            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Ingest Market Data" Command="{Binding IngestMarketDataCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
-            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Ingest Corpus Data" Command="{Binding IngestCorpusDataCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
-            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Process Latest Data" Command="{Binding ProcessLatestDataCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Import price files" Command="{Binding IngestMarketDataCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Import event files" Command="{Binding IngestCorpusDataCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+            <Button Style="{StaticResource ActionButtonStyle}" Margin="0,0,8,8" Text="Run optional processing" Command="{Binding ProcessLatestDataCommand}" IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
           </FlexLayout>
         </VerticalStackLayout>
       </Frame>
@@ -215,9 +218,10 @@
       <Frame Padding="14">
         <VerticalStackLayout Spacing="8">
           <HorizontalStackLayout Spacing="6">
-            <Label Text="Progress events" Style="{StaticResource SectionTitleStyle}" />
+            <Label Text="Run progress" Style="{StaticResource SectionTitleStyle}" />
             <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="progress_events" Clicked="OnInfoClicked" />
           </HorizontalStackLayout>
+          <Label Style="{StaticResource FieldLabelStyle}" Text="Use this list only if you want to watch each step or troubleshoot a failure." />
 
           <ScrollView HeightRequest="320">
             <VerticalStackLayout BindableLayout.ItemsSource="{Binding ProgressEvents}" Spacing="2">

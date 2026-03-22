@@ -23,9 +23,9 @@ public class RunViewModel : ViewModelBase
     private string _gdeltRegistryPath;
     private string _gdeltJoinReadyCsvPath;
     private bool _usePreprocessedSnapshot = true;
-    private string _preprocessedStatus = "Preprocessed snapshot not applied yet.";
+    private string _preprocessedStatus = "Advanced path setup not applied yet.";
     private double _progress;
-    private string _status = "Idle";
+    private string _status = "Ready";
     private bool _isRunning;
     private bool _runBuildLinkedAfterRun = true;
     private bool _runEvaluateAfterRun = true;
@@ -51,7 +51,7 @@ public class RunViewModel : ViewModelBase
         _gdeltRegistryPath = Path.Combine(workingCsvDir, "_preprocessor_state", "gdelt_processed_registry.json");
         _gdeltJoinReadyCsvPath = Path.Combine(workingCsvDir, "_preprocessor_state", "gdelt_daily_join_ready.csv");
 
-        Title = "Run Orchestration";
+        Title = "Start Run";
         StartCommand = new AsyncRelayCommand(StartRunAsync, () => !IsRunning);
         ValidateConfigCommand = new AsyncRelayCommand(ValidateConfigAsync, () => !IsRunning);
         IngestMarketDataCommand = new AsyncRelayCommand(IngestMarketDataAsync, () => !IsRunning);
@@ -213,7 +213,7 @@ public class RunViewModel : ViewModelBase
         _cts = new CancellationTokenSource();
         ProgressEvents.Clear();
         Progress = 0;
-        Status = "Starting engine run";
+        Status = "Starting run";
         IsRunning = true;
 
         var sawError = false;
@@ -247,7 +247,7 @@ public class RunViewModel : ViewModelBase
 
             if (!sawError)
             {
-                Status = "Completed";
+                Status = "Run complete";
                 Progress = 1;
             }
         }
@@ -275,7 +275,7 @@ public class RunViewModel : ViewModelBase
             ApplyPreprocessedSnapshotEnvironment(emitProgressEvents: true);
         }
 
-        Status = "Validating config";
+            Status = "Checking setup";
         try
         {
             var validation = await _engineBridge.ValidateConfigAsync(
@@ -284,7 +284,7 @@ public class RunViewModel : ViewModelBase
 
             if (validation.Valid)
             {
-                Status = "Config is valid";
+                Status = "Setup looks valid";
                 AppendProgressEvent(new ProgressEvent(
                     Type: "stage_end",
                     Stage: "validate_config",
@@ -294,7 +294,7 @@ public class RunViewModel : ViewModelBase
                 return;
             }
 
-            Status = $"Config invalid ({validation.Errors.Count} issue(s))";
+            Status = $"Setup has {validation.Errors.Count} issue(s)";
             foreach (var issue in validation.Errors)
             {
                 AppendProgressEvent(new ProgressEvent(
@@ -310,7 +310,7 @@ public class RunViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Status = "Config validation failed";
+            Status = "Setup check failed";
             AppendProgressEvent(new ProgressEvent(
                 Type: "error",
                 Stage: "validate_config",
@@ -325,7 +325,7 @@ public class RunViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(MarketDataSourceDirectory) || !Directory.Exists(Path.GetFullPath(MarketDataSourceDirectory)))
         {
-            Status = "Market source folder not found";
+            Status = "Price-data source folder not found";
             AppendProgressEvent(new ProgressEvent(
                 Type: "error",
                 Stage: "ingest_market",
@@ -338,14 +338,14 @@ public class RunViewModel : ViewModelBase
 
         if (string.IsNullOrWhiteSpace(MarketDataDestinationDirectory))
         {
-            Status = "Market destination folder is required";
+            Status = "Price-data app folder is required";
             return;
         }
 
         await ExecuteSingleCommandAsync(
             stage: "ingest_market",
-            startMessage: "Ingesting market data",
-            successMessage: "Market data ingestion complete",
+            startMessage: "Importing price files",
+            successMessage: "Price-file import complete",
             command: token => _engineBridge.ImportOhlcvAsync(
                 sourceDirectory: MarketDataSourceDirectory,
                 destinationDirectory: MarketDataDestinationDirectory,
@@ -358,7 +358,7 @@ public class RunViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(CorpusDataSourceDirectory) || !Directory.Exists(Path.GetFullPath(CorpusDataSourceDirectory)))
         {
-            Status = "Corpus source folder not found";
+            Status = "Event-data source folder not found";
             AppendProgressEvent(new ProgressEvent(
                 Type: "error",
                 Stage: "ingest_corpus",
@@ -371,14 +371,14 @@ public class RunViewModel : ViewModelBase
 
         if (string.IsNullOrWhiteSpace(CorpusDataDestinationDirectory))
         {
-            Status = "Corpus destination folder is required";
+            Status = "Event-data app folder is required";
             return;
         }
 
         await ExecuteSingleCommandAsync(
             stage: "ingest_corpus",
-            startMessage: "Ingesting corpus data",
-            successMessage: "Corpus ingestion complete",
+            startMessage: "Importing event files",
+            successMessage: "Event-file import complete",
             command: token => _engineBridge.ImportExogenousAsync(
                 sourceDirectory: CorpusDataSourceDirectory,
                 destinationDirectory: CorpusDataDestinationDirectory,
@@ -397,11 +397,11 @@ public class RunViewModel : ViewModelBase
 
         if (!RunBuildLinkedAfterRun && !RunEvaluateAfterRun)
         {
-            Status = "Enable at least one processing checkbox";
+            Status = "Choose at least one optional processing step";
             AppendProgressEvent(new ProgressEvent(
                 Type: "warning",
                 Stage: "process_latest",
-                Message: "Nothing selected. Enable 'Run linked corpus' and/or 'Run evaluate'.",
+                Message: "Nothing selected. Turn on event links and/or the model review step.",
                 Pct: null,
                 Timestamp: DateTime.UtcNow));
             return;
@@ -410,7 +410,7 @@ public class RunViewModel : ViewModelBase
         _cts = new CancellationTokenSource();
         IsRunning = true;
         Progress = 0;
-        Status = "Processing latest ingested data";
+        Status = "Running optional processing";
 
         var python = string.IsNullOrWhiteSpace(PythonPath) ? null : PythonPath;
         var runDir = Path.GetFullPath(OutputDirectory);
@@ -423,7 +423,7 @@ public class RunViewModel : ViewModelBase
                 AppendProgressEvent(new ProgressEvent(
                     Type: "stage_start",
                     Stage: "corpus_build_linked",
-                    Message: "Building linked market + corpus features",
+                    Message: "Building event links",
                     Pct: 0.1,
                     Timestamp: DateTime.UtcNow));
 
@@ -445,7 +445,7 @@ public class RunViewModel : ViewModelBase
                 AppendProgressEvent(new ProgressEvent(
                     Type: "stage_start",
                     Stage: "evaluate",
-                    Message: "Running evaluation artifacts",
+                    Message: "Building the model review",
                     Pct: 0.65,
                     Timestamp: DateTime.UtcNow));
 
@@ -461,7 +461,7 @@ public class RunViewModel : ViewModelBase
                 }
             }
 
-            Status = "Processing complete";
+            Status = "Optional processing complete";
             Progress = 1.0;
         }
         catch (OperationCanceledException)
@@ -491,7 +491,7 @@ public class RunViewModel : ViewModelBase
     {
         if (!UsePreprocessedSnapshot)
         {
-            PreprocessedStatus = "Preprocessed snapshot disabled.";
+            PreprocessedStatus = "Advanced path setup is turned off.";
             return;
         }
 
@@ -545,7 +545,7 @@ public class RunViewModel : ViewModelBase
 
         if (messages.Count == 0)
         {
-            PreprocessedStatus = "Preprocessed snapshot applied (OHLCV + GDELT overrides active).";
+            PreprocessedStatus = "Advanced path setup applied.";
             if (emitProgressEvents)
             {
                 AppendProgressEvent(new ProgressEvent(
@@ -558,7 +558,7 @@ public class RunViewModel : ViewModelBase
         }
         else
         {
-            PreprocessedStatus = "Preprocessed snapshot applied with warnings: " + string.Join("; ", messages) + ".";
+            PreprocessedStatus = "Advanced path setup applied with warnings: " + string.Join("; ", messages) + ".";
             if (emitProgressEvents)
             {
                 AppendProgressEvent(new ProgressEvent(

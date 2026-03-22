@@ -48,11 +48,12 @@ public class PolicySimulatorViewModelTests
 
             await viewModel.RunSimulationAsync();
 
-            Assert.Equal("Policy simulation complete", viewModel.Status);
+            Assert.Equal("What-if test complete", viewModel.Status);
             Assert.NotNull(viewModel.SummaryPath);
             Assert.Contains("Policy scenario complete", viewModel.SummaryText);
-            Assert.Contains("median_return", viewModel.SummaryText);
-            Assert.Contains("Progress log:", viewModel.SummaryText);
+            Assert.Contains("Median return", viewModel.SummaryText);
+            Assert.Contains("Main takeaways:", viewModel.SummaryText);
+            Assert.Contains("Progress details:", viewModel.SummaryText);
             Assert.NotNull(bridge.LastRequest);
             Assert.True(bridge.LastRequest!.Offline);
             Assert.Equal("tariff-shock", bridge.LastRequest.ScenarioName);
@@ -95,10 +96,10 @@ public class PolicySimulatorViewModelTests
 
             await viewModel.RunSimulationAsync();
 
-            Assert.Equal("Policy simulation complete", viewModel.Status);
+            Assert.Equal("What-if test complete", viewModel.Status);
             Assert.Null(viewModel.SummaryPath);
-            Assert.Contains("No JSON summary file was found", viewModel.SummaryText);
-            Assert.Contains("Progress log:", viewModel.SummaryText);
+            Assert.Contains("No saved summary file was found", viewModel.SummaryText);
+            Assert.Contains("Progress details:", viewModel.SummaryText);
         }
         finally
         {

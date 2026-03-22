@@ -14,7 +14,7 @@ public partial class LogsPage : ContentPage
     {
         await DisplayAlert(
             "Engine and UI Logs",
-            "This box shows what the app and engine did step by step, so you can troubleshoot problems quickly.",
+            "Use this page when something fails. Warnings are caution notes, and errors mean a step stopped.",
             "Got it");
     }
 }
