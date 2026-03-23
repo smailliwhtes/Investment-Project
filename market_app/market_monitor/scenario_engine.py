@@ -10,6 +10,7 @@ import pandas as pd
 import yaml
 
 from market_monitor.etf_holdings import load_etf_holdings
+from market_monitor.features.io import iter_ohlcv_paths, symbol_from_ohlcv_path
 from market_monitor.fred import load_fred_cache
 from market_monitor.manifest import resolve_git_commit
 from market_monitor.paths import resolve_path
@@ -21,6 +22,7 @@ from market_monitor.policy_features import build_policy_event_frame
 from market_monitor.policy_manifest import build_policy_manifest, write_policy_manifest
 from market_monitor.policy_regimes import classify_policy_regime
 from market_monitor.policy_score import rank_policy_impacts
+from market_monitor.tabular_io import read_tabular
 from market_monitor.timebase import utcnow
 
 ProgressCallback = Callable[[str, str, str, float | None], None]
@@ -118,13 +120,13 @@ def _load_available_symbols(provider) -> set[str]:
     base_dir = getattr(directory, "directory", None)
     if base_dir is None:
         return set()
-    return {path.stem.upper() for path in Path(base_dir).glob("*.csv")}
+    return {symbol_from_ohlcv_path(path) for path in iter_ohlcv_paths(Path(base_dir))}
 
 
 def _ensure_gdelt_daily_features(path: Path) -> pd.DataFrame:
     if not path.exists():
         raise PolicyMissingInputError(f"GDELT daily feature cache not found: {path}")
-    frame = pd.read_csv(path)
+    frame = read_tabular(path)
     if "Date" not in frame.columns and "date" in frame.columns:
         frame = frame.rename(columns={"date": "Date"})
     if "Date" not in frame.columns:

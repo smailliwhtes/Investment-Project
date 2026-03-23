@@ -25,7 +25,7 @@ def _print_ohlcv_remediation() -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Assert every watchlist symbol has a NASDAQ daily OHLCV CSV."
+        description="Assert every watchlist symbol has a NASDAQ daily OHLCV file."
     )
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--watchlist", default=None)
@@ -76,13 +76,13 @@ def main() -> int:
     ]
 
     if missing:
-        print("[error] Missing OHLCV CSV files for watchlist symbols:")
+        print("[error] Missing OHLCV files for watchlist symbols:")
         for symbol in missing:
             print(f"  - {symbol}")
         return 1
 
     print(
-        f"[ok] Found OHLCV CSV files for {len(watchlist_df)} watchlist symbols in {data_paths.nasdaq_daily_dir}."
+        f"[ok] Found OHLCV files for {len(watchlist_df)} watchlist symbols in {data_paths.nasdaq_daily_dir}."
     )
     return 0
 

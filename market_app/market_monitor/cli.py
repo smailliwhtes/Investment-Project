@@ -36,7 +36,7 @@ from market_monitor.io import (
     build_scored_columns,
     write_csv,
 )
-from market_monitor.features.io import read_ohlcv
+from market_monitor.features.io import read_ohlcv, resolve_ohlcv_path
 from market_monitor.gdelt.doctor import normalize_corpus
 from market_monitor.hash_utils import hash_file
 from market_monitor.logging_utils import get_console_logger
@@ -57,8 +57,10 @@ from market_monitor.scenario_engine import (
     PolicyScenarioError,
     run_policy_scenario,
 )
+from market_monitor.storage_parquet import audit_parquet_storage, migrate_parquet_storage
 from market_monitor.provision import import_exogenous, import_ohlcv, init_dirs
 from market_monitor.run_watchlist import run_watchlist as run_watchlist_pipeline
+from market_monitor.tabular_io import resolve_named_table_path
 from market_monitor.themes import tag_themes
 from market_monitor.universe import (
     fetch_universe,
@@ -208,9 +210,9 @@ def _derive_quality_from_ohlcv(run_dir: Path, scored_df: pd.DataFrame) -> pd.Dat
     for symbol in symbols:
         if not symbol:
             continue
-        file_path = ohlcv_daily_dir / f"{symbol}.csv"
-        if not file_path.exists():
-            raise RuntimeError(f"Missing OHLCV file for symbol {symbol}: {file_path}")
+        file_path = resolve_ohlcv_path(symbol, ohlcv_daily_dir)
+        if file_path is None or not file_path.exists():
+            raise RuntimeError(f"Missing OHLCV file for symbol {symbol} under {ohlcv_daily_dir}")
 
         df = read_ohlcv(file_path)
         if df.empty or "date" not in df.columns:
@@ -596,8 +598,8 @@ def run_validate_data(args: argparse.Namespace) -> int:
         watchlist_df, _ = validate_watchlist(watchlist_path)
         max_dates = []
         for symbol in watchlist_df["symbol"].tolist():
-            path = ohlcv_daily_dir / f"{symbol}.csv"
-            if not path.exists():
+            path = resolve_ohlcv_path(symbol, ohlcv_daily_dir)
+            if path is None or not path.exists():
                 continue
             df = read_ohlcv(path)
             if df.empty:
@@ -676,10 +678,15 @@ def run_validate_config_json(args: argparse.Namespace) -> int:
                         "message": f"Exogenous daily dir missing: {exog_path} (exogenous.enabled=true)",
                         "severity": "error",
                     })
-                elif not list(exog_path.glob("*.csv")):
+                elif (
+                    resolve_named_table_path(exog_path, ["gdelt_daily_join_ready"]) is None
+                    and not list(exog_path.glob("*.csv"))
+                    and not list(exog_path.glob("*.parquet"))
+                    and not list(exog_path.glob("day=*"))
+                ):
                     runtime_errors.append({
                         "path": "paths.exogenous_daily_dir",
-                        "message": f"Exogenous daily dir has no CSVs: {exog_path}",
+                        "message": f"Exogenous daily dir has no supported CSV/Parquet inputs: {exog_path}",
                         "severity": "error",
                     })
 
@@ -854,6 +861,7 @@ def run_provision_import_ohlcv(args: argparse.Namespace) -> int:
         normalize=args.normalize,
         date_col=args.date_col,
         delimiter=args.delimiter,
+        write_format=args.write_format,
     )
     print(json.dumps(result, indent=2))
     return 0
@@ -1527,6 +1535,52 @@ def _load_bulk_symbols(config: dict[str, Any], base_dir: Path, args: argparse.Na
     return universe_df["symbol"]
 
 
+def run_storage_audit(args: argparse.Namespace) -> int:
+    try:
+        summary = audit_parquet_storage(
+            market_root=Path(args.market_root),
+            corpus_root=Path(args.corpus_root),
+            working_root=Path(args.working_root),
+            out_dir=Path(args.out_dir),
+        )
+    except FileNotFoundError as exc:
+        print(f"[error] {exc}")
+        return 3
+    except ValueError as exc:
+        print(f"[error] {exc}")
+        return 2
+    except RuntimeError as exc:
+        print(f"[error] {exc}")
+        return 4
+
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
+
+
+def run_storage_migrate(args: argparse.Namespace) -> int:
+    try:
+        summary = migrate_parquet_storage(
+            market_root=Path(args.market_root),
+            corpus_root=Path(args.corpus_root),
+            working_root=Path(args.working_root),
+            out_dir=Path(args.out_dir),
+            archive_root=Path(args.archive_root) if args.archive_root else None,
+            apply_changes=bool(args.apply),
+        )
+    except FileNotFoundError as exc:
+        print(f"[error] {exc}")
+        return 3
+    except ValueError as exc:
+        print(f"[error] {exc}")
+        return 2
+    except RuntimeError as exc:
+        print(f"[error] {exc}")
+        return 4
+
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser("market-monitor")
     parser.add_argument(
@@ -1718,6 +1772,30 @@ def build_parser() -> argparse.ArgumentParser:
     ml_benchmark_parser.add_argument("--min-rmse-improvement", type=float, default=0.01)
     ml_benchmark_parser.add_argument("--max-mae-regression", type=float, default=0.005)
 
+    storage_parser = sub.add_parser("storage", help="Parquet storage audit and migration utilities")
+    storage_sub = storage_parser.add_subparsers(dest="storage_command")
+    storage_audit_parser = storage_sub.add_parser(
+        "audit-parquet",
+        help="Inventory Desktop data roots and write a deterministic Parquet migration plan",
+    )
+    storage_audit_parser.add_argument("--market-root", required=True)
+    storage_audit_parser.add_argument("--corpus-root", required=True)
+    storage_audit_parser.add_argument("--working-root", required=True)
+    storage_audit_parser.add_argument("--out-dir", required=True)
+
+    storage_migrate_parser = storage_sub.add_parser(
+        "migrate-parquet",
+        help="Dry-run or apply the deterministic Parquet migration plan",
+    )
+    storage_migrate_parser.add_argument("--market-root", required=True)
+    storage_migrate_parser.add_argument("--corpus-root", required=True)
+    storage_migrate_parser.add_argument("--working-root", required=True)
+    storage_migrate_parser.add_argument("--out-dir", required=True)
+    storage_migrate_parser.add_argument("--archive-root")
+    storage_mode = storage_migrate_parser.add_mutually_exclusive_group(required=True)
+    storage_mode.add_argument("--dry-run", action="store_true", default=False)
+    storage_mode.add_argument("--apply", action="store_true", default=False)
+
     evaluate_parser = sub.add_parser("evaluate", help="Run offline evaluation harness")
     evaluate_parser.add_argument("--config", default="config.yaml")
     evaluate_parser.add_argument("--outdir")
@@ -1755,6 +1833,7 @@ def build_parser() -> argparse.ArgumentParser:
     ohlcv_norm_parser.add_argument("--delimiter", default=None)
     ohlcv_norm_parser.add_argument("--streaming", action="store_true", default=True)
     ohlcv_norm_parser.add_argument("--chunk-rows", type=int, default=200_000)
+    ohlcv_norm_parser.add_argument("--write-format", choices=["csv", "parquet"], default="csv")
 
     exogenous_parser = sub.add_parser("exogenous", help="Exogenous data utilities")
     exogenous_sub = exogenous_parser.add_subparsers(dest="exogenous_command")
@@ -1779,6 +1858,7 @@ def build_parser() -> argparse.ArgumentParser:
     provision_ohlcv.add_argument("--normalize", action="store_true", default=False)
     provision_ohlcv.add_argument("--date-col", default=None)
     provision_ohlcv.add_argument("--delimiter", default=None)
+    provision_ohlcv.add_argument("--write-format", choices=["csv", "parquet"], default="parquet")
     provision_exog = provision_sub.add_parser("import-exogenous", help="Import exogenous data")
     provision_exog.add_argument("--src", required=True)
     provision_exog.add_argument("--dest", required=True)
@@ -1847,6 +1927,13 @@ def main(argv: list[str] | None = None) -> int:
             return run_ml_benchmark_command(args)
         return 2
 
+    if args.command == "storage":
+        if args.storage_command == "audit-parquet":
+            return run_storage_audit(args)
+        if args.storage_command == "migrate-parquet":
+            return run_storage_migrate(args)
+        return 2
+
     if args.command == "bulk-plan":
         return run_bulk_plan(args)
 
@@ -1877,6 +1964,7 @@ def main(argv: list[str] | None = None) -> int:
                 strict=False,
                 streaming=args.streaming,
                 chunk_rows=args.chunk_rows,
+                write_format=args.write_format,
             )
             print(json.dumps({"manifest_path": str(result["manifest_path"])}, indent=2))
             return 0

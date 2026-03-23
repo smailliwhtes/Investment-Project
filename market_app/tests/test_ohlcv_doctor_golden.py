@@ -35,3 +35,28 @@ def test_ohlcv_doctor_golden(tmp_path: Path) -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert "content_hash" in manifest
     assert manifest["content_hash"] == build_content_hash({"symbols": manifest["symbols"]})
+
+
+def test_ohlcv_doctor_can_write_parquet(tmp_path: Path) -> None:
+    raw_dir = Path(__file__).resolve().parent / "fixtures" / "ohlcv_raw"
+    out_dir = tmp_path / "ohlcv_daily_parquet"
+    try:
+        result = normalize_directory(
+            raw_dir=raw_dir,
+            out_dir=out_dir,
+            date_col=None,
+            delimiter=None,
+            symbol_from_filename=True,
+            coerce=True,
+            strict=False,
+            streaming=True,
+            chunk_rows=2,
+            write_format="parquet",
+        )
+    except ImportError:
+        return
+
+    assert result["manifest_path"].exists()
+    assert (out_dir / "AAA.parquet").exists()
+    frame = pd.read_parquet(out_dir / "AAA.parquet")
+    assert list(frame.columns) == ["date", "open", "high", "low", "close", "volume", "adj_close"]

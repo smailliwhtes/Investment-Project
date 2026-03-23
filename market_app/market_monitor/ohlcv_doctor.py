@@ -8,6 +8,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
+from market_monitor.features.io import write_ohlcv
 from market_monitor.ohlcv_utils import (
     REQUIRED_COLUMNS,
     aggregate_ohlcv,
@@ -149,6 +150,7 @@ def normalize_file(
     strict: bool,
     streaming: bool,
     chunk_rows: int,
+    write_format: str,
 ) -> dict:
     sample = _read_sample(path)
     resolved_delimiter = delimiter or detect_delimiter(sample)
@@ -166,8 +168,9 @@ def normalize_file(
     aggregated = aggregated.sort_values("date")
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    output_path = out_dir / f"{symbol}.csv"
-    aggregated.to_csv(output_path, index=False)
+    suffix = ".parquet" if write_format == "parquet" else ".csv"
+    output_path = out_dir / f"{symbol}{suffix}"
+    write_ohlcv(output_path, aggregated)
 
     result = build_result_manifest(
         symbol=symbol,
@@ -195,13 +198,18 @@ def normalize_directory(
     strict: bool,
     streaming: bool,
     chunk_rows: int,
+    write_format: str = "csv",
 ) -> dict:
     results = []
     raw_dir = raw_dir.resolve()
     out_dir = out_dir.resolve()
     # Skip non-OHLCV files (e.g. conversion_errors.csv, ohlcv_manifest.csv)
     _SKIP_STEMS = {"conversion_errors", "ohlcv_manifest"}
-    for file_path in sorted(raw_dir.glob("*.csv")):
+    for file_path in sorted(
+        path
+        for path in raw_dir.iterdir()
+        if path.is_file() and path.suffix.lower() in {".csv", ".txt"}
+    ):
         if file_path.stem.lower() in _SKIP_STEMS:
             continue
         symbol = file_path.stem.upper() if symbol_from_filename else file_path.stem
@@ -215,6 +223,7 @@ def normalize_directory(
             strict=strict,
             streaming=streaming,
             chunk_rows=chunk_rows,
+            write_format=write_format,
         )
         results.append(result_payload["result"])
 
@@ -228,7 +237,7 @@ def normalize_directory(
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Normalize OHLCV CSV files.")
+    parser = argparse.ArgumentParser(description="Normalize OHLCV files.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     normalize_parser = subparsers.add_parser("normalize", help="Normalize OHLCV files")
@@ -241,6 +250,7 @@ def _build_parser() -> argparse.ArgumentParser:
     normalize_parser.add_argument("--strict", action="store_true", default=False)
     normalize_parser.add_argument("--streaming", action="store_true", default=False)
     normalize_parser.add_argument("--chunk-rows", type=int, default=200_000)
+    normalize_parser.add_argument("--write-format", choices=["csv", "parquet"], default="csv")
 
     return parser
 
@@ -259,6 +269,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             strict=args.strict,
             streaming=args.streaming,
             chunk_rows=args.chunk_rows,
+            write_format=args.write_format,
         )
         print(json.dumps({"manifest_path": str(result["manifest_path"])}, indent=2))
         return 0

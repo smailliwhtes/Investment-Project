@@ -40,3 +40,22 @@ def test_load_exogenous_features_accepts_direct_csv_path(tmp_path: Path) -> None
     assert "date" not in row
     assert row["signal_lag_3"] == 3.14
     assert row["signal_roll7_mean"] == 2.72
+
+
+def test_load_exogenous_features_accepts_parquet_partition(tmp_path: Path) -> None:
+    try:
+        partition_dir = tmp_path / "day=2026-03-08"
+        partition_dir.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(
+            [
+                {"day": "2026-03-08", "signal_lag_1": 1.5, "signal_roll7_sum": 4.0},
+            ]
+        ).to_parquet(partition_dir / "part-00000.parquet", index=False)
+    except ImportError:
+        return
+
+    row, meta = _load_exogenous_features(tmp_path, "2026-03-08", include_raw=False)
+
+    assert meta["coverage"] == 1
+    assert row["signal_lag_1"] == 1.5
+    assert row["signal_roll7_sum"] == 4.0

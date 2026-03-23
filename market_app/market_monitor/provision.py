@@ -92,6 +92,7 @@ def import_ohlcv(
     normalize: bool,
     date_col: str | None = None,
     delimiter: str | None = None,
+    write_format: str = "parquet",
 ) -> dict:
     src = src.expanduser().resolve()
     dest = dest.expanduser().resolve()
@@ -110,6 +111,7 @@ def import_ohlcv(
             strict=False,
             streaming=True,
             chunk_rows=200_000,
+            write_format=write_format,
         )
         normalized_manifest = str(normalized["manifest_path"])
 

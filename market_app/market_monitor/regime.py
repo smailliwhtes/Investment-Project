@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from market_monitor.features.io import read_ohlcv
+from market_monitor.features.io import resolve_ohlcv_path, read_ohlcv
 from market_monitor.features.compute_daily_features import _rolling_vol, _sma
 
 
@@ -41,8 +41,8 @@ def compute_regime(
 
     available = []
     for symbol in benchmarks:
-        path = ohlcv_dir / f"{symbol}.csv"
-        if path.exists():
+        path = resolve_ohlcv_path(symbol, ohlcv_dir)
+        if path is not None and path.exists():
             available.append(symbol)
     if not available:
         issues.append("No benchmark symbols available in normalized OHLCV directory.")
@@ -56,7 +56,18 @@ def compute_regime(
         )
 
     benchmark_symbol = available[0]
-    df = read_ohlcv(ohlcv_dir / f"{benchmark_symbol}.csv")
+    benchmark_path = resolve_ohlcv_path(benchmark_symbol, ohlcv_dir)
+    if benchmark_path is None:
+        issues.append("No benchmark symbols available in normalized OHLCV directory.")
+        return RegimeResult(
+            regime_label="unknown",
+            benchmark_symbol=None,
+            benchmark_trend=None,
+            benchmark_vol=None,
+            cross_asset_hint=None,
+            issues=issues,
+        )
+    df = read_ohlcv(benchmark_path)
     df = df[df["date"] <= pd.to_datetime(asof_date)]
     if df.empty or len(df) < 50:
         issues.append("Insufficient benchmark history for regime calculation.")
@@ -79,12 +90,14 @@ def compute_regime(
         regime_label = "risk_on" if benchmark_trend >= 0 else "risk_off"
 
     if len(available) >= 2 and "TLT" in available and benchmark_symbol != "TLT":
-        tlt_df = read_ohlcv(ohlcv_dir / "TLT.csv")
-        tlt_df = tlt_df[tlt_df["date"] <= pd.to_datetime(asof_date)]
-        if len(tlt_df) >= 50:
-            tlt_trend = _trend_50(tlt_df["close"].astype(float))
-            if tlt_trend is not None and not np.isnan(tlt_trend):
-                cross_asset_hint = f"{benchmark_symbol} trend {benchmark_trend:.2%} vs TLT {tlt_trend:.2%}"
+        tlt_path = resolve_ohlcv_path("TLT", ohlcv_dir)
+        if tlt_path is not None:
+            tlt_df = read_ohlcv(tlt_path)
+            tlt_df = tlt_df[tlt_df["date"] <= pd.to_datetime(asof_date)]
+            if len(tlt_df) >= 50:
+                tlt_trend = _trend_50(tlt_df["close"].astype(float))
+                if tlt_trend is not None and not np.isnan(tlt_trend):
+                    cross_asset_hint = f"{benchmark_symbol} trend {benchmark_trend:.2%} vs TLT {tlt_trend:.2%}"
 
     return RegimeResult(
         regime_label=regime_label,

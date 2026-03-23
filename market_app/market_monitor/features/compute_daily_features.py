@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
-from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
 import numpy as np
 import pandas as pd
 
-from market_monitor.features.io import read_ohlcv, write_features, build_features_manifest
-from market_monitor.features.schema import FEATURE_COLUMNS
+from market_monitor.features.io import (
+    build_features_manifest,
+    iter_ohlcv_paths,
+    read_ohlcv,
+    symbol_from_ohlcv_path,
+    write_features,
+)
 
 
 def _pct_return(series: pd.Series, days: int) -> float | None:
@@ -133,13 +137,10 @@ def compute_daily_features(
     asof_date: str,
     workers: int = 1,
 ) -> dict:
-    paths = sorted(ohlcv_dir.glob("*.csv"))
-    # Skip non-OHLCV files (e.g. conversion_errors.csv, ohlcv_manifest.csv)
-    _SKIP_STEMS = {"conversion_errors", "ohlcv_manifest"}
-    paths = [p for p in paths if p.stem.lower() not in _SKIP_STEMS]
+    paths = iter_ohlcv_paths(ohlcv_dir)
 
     def _compute(path: Path) -> dict:
-        symbol = path.stem.upper()
+        symbol = symbol_from_ohlcv_path(path)
         df = read_ohlcv(path)
         return compute_features_for_symbol(symbol, df, asof_date)
 

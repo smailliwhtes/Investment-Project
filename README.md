@@ -88,6 +88,37 @@ python -m market_monitor.cli policy simulate --config .\config\config.yaml --sce
 
 The wrapper entrypoint delegates engine-owned commands, so `python -m market_app.cli policy simulate ...` is also supported when you want one CLI surface for both wrapper and engine tasks.
 
+## Parquet-first desktop storage
+
+The engine now supports a Parquet-first cutover for the three Desktop data roots:
+
+- `C:\Users\micha\OneDrive\Desktop\Market_Files`
+- `C:\Users\micha\OneDrive\Desktop\NLP Corpus`
+- `C:\Users\micha\OneDrive\Desktop\Working CSV Files`
+
+Audit the current layout before changing anything:
+
+```powershell
+cd market_app
+python -m market_monitor.cli storage audit-parquet --market-root "C:\Users\micha\OneDrive\Desktop\Market_Files" --corpus-root "C:\Users\micha\OneDrive\Desktop\NLP Corpus" --working-root "C:\Users\micha\OneDrive\Desktop\Working CSV Files" --out-dir ..\outputs\storage_audit
+```
+
+Plan the migration without moving files:
+
+```powershell
+cd market_app
+python -m market_monitor.cli storage migrate-parquet --market-root "C:\Users\micha\OneDrive\Desktop\Market_Files" --corpus-root "C:\Users\micha\OneDrive\Desktop\NLP Corpus" --working-root "C:\Users\micha\OneDrive\Desktop\Working CSV Files" --out-dir ..\outputs\storage_migrate --dry-run
+```
+
+Apply the migration once the dry-run and parity outputs look correct:
+
+```powershell
+cd market_app
+python -m market_monitor.cli storage migrate-parquet --market-root "C:\Users\micha\OneDrive\Desktop\Market_Files" --corpus-root "C:\Users\micha\OneDrive\Desktop\NLP Corpus" --working-root "C:\Users\micha\OneDrive\Desktop\Working CSV Files" --out-dir ..\outputs\storage_migrate --apply
+```
+
+During the transition release, OHLCV readers prefer `.parquet` and fall back to `.csv`. The canonical normalized OHLCV store is `Working CSV Files`, while duplicate normalized market folders are converted only for parity checks before archive. Raw market sources are mirrored into `raw_market_parquet/symbol=<SYMBOL>/<source_key>.parquet`, and apply mode writes an append-only `conversion_checkpoint.jsonl` so a long migration can be resumed safely with the same `--out-dir`.
+
 ## Audit command
 
 ```bash

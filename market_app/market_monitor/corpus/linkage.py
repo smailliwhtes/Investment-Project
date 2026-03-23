@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from market_monitor.corpus.pipeline import CorpusRun, run_corpus_pipeline
-from market_monitor.features.io import read_ohlcv
+from market_monitor.features.io import read_ohlcv, resolve_ohlcv_path
 from market_monitor.features.join_exogenous import build_joined_features
 from market_monitor.hash_utils import hash_file, hash_manifest
 from market_monitor.timebase import utcnow
@@ -50,8 +50,8 @@ def _pick_column(columns: Iterable[str], candidates: Iterable[str]) -> str | Non
 def _build_market_daily_frame(*, ohlcv_daily_dir: Path, symbols: list[str]) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
     for symbol in symbols:
-        file_path = ohlcv_daily_dir / f"{symbol}.csv"
-        if not file_path.exists():
+        file_path = resolve_ohlcv_path(symbol, ohlcv_daily_dir)
+        if file_path is None or not file_path.exists():
             continue
         df = read_ohlcv(file_path)
         if df.empty:
@@ -364,4 +364,3 @@ def build_market_gdelt_linkage(
         joined_rows=joined_result.rows,
         event_impact_rows=event_impact_rows,
     )
-

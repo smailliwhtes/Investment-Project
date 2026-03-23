@@ -157,3 +157,22 @@ The wrapper entrypoint `python -m market_app.cli ml benchmark ...` should delega
 - `analog_outcomes.csv`
 
 These files must remain deterministic for the same offline inputs and config.
+
+## Storage audit/migration artifacts
+
+`python -m market_monitor.cli storage audit-parquet --market-root <path> --corpus-root <path> --working-root <path> --out-dir <dir>` should produce:
+
+- `inventory.json`
+- `inventory.csv`
+- `migration_plan.json`
+- `migration_report.md`
+
+`python -m market_monitor.cli storage migrate-parquet --market-root <path> --corpus-root <path> --working-root <path> --out-dir <dir> [--archive-root <dir>] --dry-run|--apply` should produce:
+
+- `conversion_manifest.json`
+- `conversion_report.md`
+- `rollback_manifest.json`
+- `parity_checks.json`
+- `conversion_checkpoint.jsonl` (append-only resume/checkpoint log for apply mode)
+
+These storage artifacts are additive and must not change the core run/evaluate/GUI contracts.

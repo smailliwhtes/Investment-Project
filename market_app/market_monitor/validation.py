@@ -6,9 +6,10 @@ from typing import Iterable
 
 import pandas as pd
 
-from market_monitor.features.io import read_ohlcv
+from market_monitor.features.io import resolve_ohlcv_path, read_ohlcv
 from market_monitor.ohlcv_utils import REQUIRED_COLUMNS
 from market_monitor.scoring.gates import GATE_CODES
+from market_monitor.tabular_io import read_tabular, resolve_named_table_path, resolve_partition_part_path
 from market_monitor.universe import read_watchlist
 
 REQUIRED_WATCHLIST_COLUMNS = {"symbol", "theme_bucket", "asset_type"}
@@ -69,8 +70,8 @@ def _validate_ohlcv_symbol(
     symbol: str, ohlcv_daily_dir: Path, asof_date: str, min_history_days: int
 ) -> tuple[list[str], int]:
     issues: list[str] = []
-    path = ohlcv_daily_dir / f"{symbol}.csv"
-    if not path.exists():
+    path = resolve_ohlcv_path(symbol, ohlcv_daily_dir)
+    if path is None or not path.exists():
         return [GATE_CODES["missing_ohlcv"]], 0
     df = read_ohlcv(path)
     if df.empty:
@@ -88,13 +89,21 @@ def _validate_ohlcv_symbol(
 def _exogenous_coverage(exogenous_dir: Path, asof_date: str) -> tuple[bool, list[str]]:
     if not exogenous_dir.exists():
         return False, [f"Exogenous daily dir missing: {exogenous_dir}"]
-    day_partition = exogenous_dir / f"day={asof_date}" / "part-00000.csv"
-    if day_partition.exists():
+    day_partition = resolve_partition_part_path(exogenous_dir, f"day={asof_date}")
+    if day_partition is not None:
         return True, []
-    csv_candidates = list(exogenous_dir.glob("*.csv"))
-    if not csv_candidates:
-        return False, [f"Exogenous daily dir has no CSVs: {exogenous_dir}"]
-    df = pd.read_csv(csv_candidates[0])
+    join_ready = resolve_named_table_path(exogenous_dir, ["gdelt_daily_join_ready"])
+    if join_ready is not None:
+        df = read_tabular(join_ready)
+    else:
+        candidates = sorted(
+            path
+            for path in exogenous_dir.iterdir()
+            if path.is_file() and path.suffix.lower() in {".csv", ".parquet"}
+        )
+        if not candidates:
+            return False, [f"Exogenous daily dir has no tabular files: {exogenous_dir}"]
+        df = read_tabular(candidates[0])
     day_col = None
     for col in df.columns:
         if col.lower() in {"day", "date"}:
@@ -104,7 +113,8 @@ def _exogenous_coverage(exogenous_dir: Path, asof_date: str) -> tuple[bool, list
         if df[df[day_col] == asof_date].empty:
             return False, [f"Exogenous cache missing asof date {asof_date}."]
         return True, []
-    return False, [f"Exogenous cache missing day/date column in {csv_candidates[0].name}."]
+    sample_name = join_ready.name if join_ready is not None else candidates[0].name
+    return False, [f"Exogenous cache missing day/date column in {sample_name}."]
 
 
 def validate_data(
@@ -155,8 +165,8 @@ def validate_data(
 
     if benchmark_symbols:
         for symbol in benchmark_symbols:
-            path = ohlcv_daily_dir / f"{symbol}.csv"
-            if not path.exists():
+            path = resolve_ohlcv_path(symbol, ohlcv_daily_dir)
+            if path is None or not path.exists():
                 benchmark_missing.append(symbol)
         if benchmark_missing:
             warnings.append(

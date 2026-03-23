@@ -1,7 +1,13 @@
 # 10_data_contracts — Data formats, schemas, partitioning, manifests
 
-## A) OHLCV per-symbol CSV (required)
-Location: configured directory (e.g., `data/ohlcv/`) containing one CSV per symbol: `<SYMBOL>.csv`
+## A) OHLCV per-symbol tabular store (required)
+Location: configured directory (e.g., `data/ohlcv/`) containing one file per symbol.
+
+Preferred active format:
+- `<SYMBOL>.parquet`
+
+Transition-compatible fallback:
+- `<SYMBOL>.csv`
 
 Required columns (case-insensitive):
 - Date
@@ -20,6 +26,7 @@ Rules:
 - Sort ascending by Date.
 - Deduplicate same-day rows deterministically.
 - Fail fast if core OHLC missing.
+- Readers must prefer Parquet and fall back to CSV during the transition release.
 
 ## B) Watchlist CSV (required)
 Location: `watchlists/watchlist_core.csv` (default), `watchlists/watchlist_smoke.csv` (tests)
@@ -85,7 +92,7 @@ Normalized cache layout (events):
 - `<gdelt_dir>/events/manifest.json` (coverage, rows, columns/dtypes, content_hash)
 
 Normalized cache layout (precomputed daily features):
-- `<gdelt_dir>/daily_features/day=YYYY-MM-DD/part-00000.parquet` (or `.csv`)
+- `<gdelt_dir>/daily_features/day=YYYY-MM-DD/part-00000.parquet` (or `.csv` during transition)
 - `<gdelt_dir>/daily_features/features_manifest.json`
 
 Canonical daily schema:
@@ -109,7 +116,7 @@ Daily features manifest fields:
 - content_hash
 
 Annual aggregates (if `--allow-annual` is used):
-- `<gdelt_dir>/annual_features/year=YYYY/part-00000.parquet` (or `.csv`)
+- `<gdelt_dir>/annual_features/year=YYYY/part-00000.parquet` (or `.csv` during transition)
 - `<gdelt_dir>/annual_features/annual_features_manifest.json`
 
 Example environment configuration:
@@ -120,6 +127,36 @@ Example environment configuration:
 Join output location:
 - `data/features/joined/day=YYYY-MM-DD/part-00000.parquet`
 - `data/features/joined/manifest.json`
+
+## H) Desktop storage audit/migration artifacts
+
+Audit command:
+- `python -m market_monitor.cli storage audit-parquet --market-root <path> --corpus-root <path> --working-root <path> --out-dir <dir>`
+
+Required outputs:
+- `inventory.json`
+- `inventory.csv`
+- `migration_plan.json`
+- `migration_report.md`
+
+Migration command:
+- `python -m market_monitor.cli storage migrate-parquet --market-root <path> --corpus-root <path> --working-root <path> --out-dir <dir> [--archive-root <dir>] --dry-run|--apply`
+
+Required outputs:
+- `conversion_manifest.json`
+- `conversion_report.md`
+- `rollback_manifest.json`
+- `parity_checks.json`
+
+Resume/support output:
+- `conversion_checkpoint.jsonl`
+
+Desktop cutover rules:
+- `Working CSV Files/*.csv` is the canonical normalized OHLCV store and migrates to `*.parquet`.
+- `Market_Files/ohlcv_daily_csv/*.csv` and `Market_Files/_nasdaq_daily_flat_norm/*.csv` are duplicate normalized OHLCV stores; convert only for parity verification, then archive.
+- `Market_Files/New Daily Files`, `Market_Files/All Files Together`, and `Market_Files/d_us_txt` mirror into `raw_market_parquet/symbol=<SYMBOL>/<source_key>.parquet` so repeated source drops do not overwrite each other.
+- `NLP Corpus/GDELT_Data_1.csv`, `GDELT_Data_1_stable.csv`, and `gdelt_conflict_1_0.csv` become partitioned Parquet tables.
+- `_preprocessor_state`, manifests, logs, scripts, and helper/control files remain text formats.
 
 Canonicalization:
 - Output rows are sorted by `(day, symbol)` and partitions are written in sorted day order.

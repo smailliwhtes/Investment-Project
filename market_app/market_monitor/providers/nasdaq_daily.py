@@ -4,10 +4,10 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from market_monitor.cache import CacheResult
+from market_monitor.features.io import read_ohlcv, resolve_ohlcv_path
 from market_monitor.hash_utils import hash_file
 from market_monitor.providers.base import HistoryProvider, ProviderCapabilities, ProviderError
 from market_monitor.timebase import utcnow
@@ -126,8 +126,7 @@ class NasdaqDailyProvider(HistoryProvider):
         return normalized, source_file
 
     def _load_symbol_from_path(self, symbol: str, source_file: Path) -> pd.DataFrame:
-        df = pd.read_csv(source_file)
-        normalized = self._normalize_ohlc(df, symbol)
+        normalized = self._normalize_ohlc(source_file, symbol)
         min_date = None
         max_date = None
         if not normalized.empty and "Date" in normalized.columns:
@@ -146,85 +145,29 @@ class NasdaqDailyProvider(HistoryProvider):
         return normalized
 
     def _find_symbol_file(self, symbol: str) -> Path | None:
-        candidates = []
-        for variant in _symbol_variants(symbol):
-            candidates.append(self.source.directory / f"{variant}.csv")
-            candidates.append(self.source.directory / f"{variant}.CSV")
-        for candidate in candidates:
-            if candidate.exists():
-                return candidate
-
-        normalized_target = _normalize_symbol(symbol)
-        for path in self.source.directory.glob("*.csv"):
-            if _normalize_symbol(path.stem) == normalized_target:
-                return path
-        for path in self.source.directory.glob("*.CSV"):
-            if _normalize_symbol(path.stem) == normalized_target:
-                return path
-        return None
+        return resolve_ohlcv_path(symbol, self.source.directory)
 
     @staticmethod
-    def _normalize_ohlc(df: pd.DataFrame, symbol: str) -> pd.DataFrame:
-        cols = {c.lower().strip(): c for c in df.columns}
-        date_col = cols.get("date") or cols.get("timestamp") or cols.get("time")
-        open_col = cols.get("open")
-        high_col = cols.get("high")
-        low_col = cols.get("low")
-        close_col = cols.get("close")
-        adj_close_col = (
-            cols.get("adj close")
-            or cols.get("adj_close")
-            or cols.get("adjusted close")
-            or cols.get("adjusted_close")
-        )
-        volume_col = cols.get("volume") or cols.get("vol")
-
-        missing = []
-        for key, value in {
-            "date": date_col,
-            "open": open_col,
-            "high": high_col,
-            "low": low_col,
-            "close": close_col,
-        }.items():
-            if value is None:
-                missing.append(key)
-        if missing:
-            raise ProviderError(f"NASDAQ_DAILY_SCHEMA_MISSING:{symbol}:{','.join(missing)}")
+    def _normalize_ohlc(source_file: Path, symbol: str) -> pd.DataFrame:
+        try:
+            df = read_ohlcv(source_file)
+        except ValueError as exc:
+            raise ProviderError(f"NASDAQ_DAILY_SCHEMA_MISSING:{symbol}:{exc}") from exc
 
         normalized = pd.DataFrame(
             {
-                "Date": pd.to_datetime(df[date_col], errors="coerce"),
-                "Open": pd.to_numeric(df[open_col], errors="coerce"),
-                "High": pd.to_numeric(df[high_col], errors="coerce"),
-                "Low": pd.to_numeric(df[low_col], errors="coerce"),
-                "Close": pd.to_numeric(df[close_col], errors="coerce"),
+                "Date": pd.to_datetime(df["date"], errors="coerce"),
+                "Open": pd.to_numeric(df["open"], errors="coerce"),
+                "High": pd.to_numeric(df["high"], errors="coerce"),
+                "Low": pd.to_numeric(df["low"], errors="coerce"),
+                "Close": pd.to_numeric(df["close"], errors="coerce"),
+                "Volume": pd.to_numeric(df["volume"], errors="coerce"),
             }
         )
-        if adj_close_col is not None:
-            normalized["Adjusted_Close"] = pd.to_numeric(df[adj_close_col], errors="coerce")
-        if volume_col is not None:
-            normalized["Volume"] = pd.to_numeric(df[volume_col], errors="coerce")
-        else:
-            normalized["Volume"] = np.nan
+        if "adj_close" in df.columns and not pd.to_numeric(df["adj_close"], errors="coerce").isna().all():
+            normalized["Adjusted_Close"] = pd.to_numeric(df["adj_close"], errors="coerce")
 
         normalized = normalized.dropna(subset=["Date"]).sort_values("Date")
         normalized = normalized.drop_duplicates(subset=["Date"], keep="last")
         normalized = normalized.dropna(subset=["Close"])
         return normalized.reset_index(drop=True)
-
-
-def _symbol_variants(symbol: str) -> set[str]:
-    base = symbol.strip()
-    variants = {base, base.upper(), base.lower()}
-    variants.add(base.replace(".", "-"))
-    variants.add(base.replace("-", "."))
-    variants.add(base.replace("/", "-"))
-    variants.add(base.replace("/", "."))
-    variants.add(base.replace(".", ""))
-    variants.add(base.replace("-", ""))
-    return {v for v in variants if v}
-
-
-def _normalize_symbol(symbol: str) -> str:
-    return symbol.replace("-", "").replace(".", "").replace("/", "").strip().upper()

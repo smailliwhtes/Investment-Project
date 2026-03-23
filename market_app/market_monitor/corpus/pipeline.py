@@ -1035,10 +1035,13 @@ def build_corpus_daily_store(
     cache_path = outputs_dir / "corpus_cache.json"
     daily_path = outputs_dir / "daily_features.csv"
     parquet_path = outputs_dir / "daily_features.parquet"
-    cache_hit = _load_cache_key(cache_path) == cache_key and daily_path.exists()
+    cache_hit = _load_cache_key(cache_path) == cache_key and (parquet_path.exists() or daily_path.exists())
 
     if cache_hit:
-        daily_features = pd.read_csv(daily_path)
+        if parquet_path.exists():
+            daily_features = pd.read_parquet(parquet_path)
+        else:
+            daily_features = pd.read_csv(daily_path)
         infos = [
             CorpusFileInfo(
                 path=Path(entry["path"]),

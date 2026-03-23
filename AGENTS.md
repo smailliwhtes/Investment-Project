@@ -163,7 +163,17 @@ Supported flags:
 - `--offline`: enforce offline-only inputs and execution
 - `--progress-jsonl`: emit JSONL progress events to stdout
 
-5) Benchmark additive ML backends (optional but supported):
+5) Audit and migrate Desktop tabular storage (optional but supported):
+- `python -m market_monitor.cli storage audit-parquet --market-root <path> --corpus-root <path> --working-root <path> --out-dir <dir>`
+- `python -m market_monitor.cli storage migrate-parquet --market-root <path> --corpus-root <path> --working-root <path> --out-dir <dir> [--archive-root <dir>] --dry-run`
+- `python -m market_monitor.cli storage migrate-parquet --market-root <path> --corpus-root <path> --working-root <path> --out-dir <dir> [--archive-root <dir>] --apply`
+
+Notes:
+- Active analytical storage is Parquet-first.
+- OHLCV readers must prefer `.parquet` and fall back to `.csv` during the transition release.
+- Control/state/helper files remain in text formats and are not converted.
+
+6) Benchmark additive ML backends (optional but supported):
 - `python -m market_monitor.cli ml benchmark --joined-path <path> --output-dir <run_dir> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42`
 
 Supported flags:
@@ -300,6 +310,9 @@ These are the minimum required outputs for every run (unless explicitly stated o
 - `<out_dir>/policy_report.md` (policy simulation markdown report)
 - `<out_dir>/policy_manifest.json` (policy simulation manifest)
 - `<out_dir>/policy_summary.json` (GUI-friendly policy simulation summary payload)
+- `inventory.json`, `inventory.csv`, `migration_plan.json`, `migration_report.md` (storage audit outputs)
+- `conversion_manifest.json`, `conversion_report.md`, `rollback_manifest.json`, `parity_checks.json` (storage migration outputs)
+- `conversion_checkpoint.jsonl` (append-only storage migration resume log, when `storage migrate-parquet --apply` is used)
 
 ### 6.3 `eligible.csv` minimal columns
 At minimum:

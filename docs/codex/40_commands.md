@@ -68,6 +68,11 @@ python -m market_app.cli policy simulate --config config/config.yaml --scenario 
 python -m market_monitor.cli ml benchmark --joined-path data/features/joined --output-dir outputs/<run_id> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42
 python -m market_app.cli ml benchmark --joined-path data/features/joined --output-dir outputs/<run_id> --model-types sklearn_gb,numpy_mlp --horizon-days 5 --folds 3 --gap 0 --seed 42
 
+### Storage audit / Parquet migration
+python -m market_monitor.cli storage audit-parquet --market-root "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files" --corpus-root "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --working-root "C:\\Users\\micha\\OneDrive\\Desktop\\Working CSV Files" --out-dir outputs/storage_audit
+python -m market_monitor.cli storage migrate-parquet --market-root "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files" --corpus-root "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --working-root "C:\\Users\\micha\\OneDrive\\Desktop\\Working CSV Files" --out-dir outputs/storage_migrate --dry-run
+python -m market_monitor.cli storage migrate-parquet --market-root "C:\\Users\\micha\\OneDrive\\Desktop\\Market_Files" --corpus-root "C:\\Users\\micha\\OneDrive\\Desktop\\NLP Corpus" --working-root "C:\\Users\\micha\\OneDrive\\Desktop\\Working CSV Files" --out-dir outputs/storage_migrate --apply
+
 ### Run comparison
 python -m market_monitor.cli diff-runs --run-a outputs/runs/run_a --run-b outputs/runs/run_b --format json --out outputs/runs/diff.json
 

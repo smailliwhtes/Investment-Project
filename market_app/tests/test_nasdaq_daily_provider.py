@@ -43,6 +43,32 @@ def test_provider_parses_iso_dates_and_quoted_headers(tmp_path: Path) -> None:
     assert dates.iloc[-1].strftime("%Y-%m-%d") == "2026-01-27"
 
 
+def test_provider_loads_parquet_symbol_file(tmp_path: Path) -> None:
+    source_dir = tmp_path / "source"
+    cache_dir = tmp_path / "cache"
+    source_dir.mkdir()
+    cache_dir.mkdir()
+    try:
+        pd.DataFrame(
+            {
+                "date": ["2026-01-25", "2026-01-24"],
+                "open": [101, 100],
+                "high": [102, 101],
+                "low": [100, 99],
+                "close": [101, 100],
+                "volume": [1100, 1000],
+            }
+        ).to_parquet(source_dir / "SPY.parquet", index=False)
+    except ImportError:
+        pytest.skip("Parquet engine not available for parquet source test.")
+
+    provider = NasdaqDailyProvider(NasdaqDailySource(directory=source_dir, cache_dir=cache_dir))
+    df, source_path = provider.load_symbol_data("SPY")
+
+    assert source_path.name == "SPY.parquet"
+    assert pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d").tolist() == ["2026-01-24", "2026-01-25"]
+
+
 def test_cache_invalidation_on_file_change(tmp_path: Path) -> None:
     source_dir = tmp_path / "source"
     cache_dir = tmp_path / "cache"

@@ -12,7 +12,7 @@ import pandas as pd
 
 from market_monitor.config_schema import load_config
 from market_monitor.features.compute_daily_features import compute_daily_features
-from market_monitor.features.io import read_ohlcv
+from market_monitor.features.io import has_ohlcv_data, read_ohlcv, resolve_ohlcv_path
 from market_monitor.hash_utils import hash_file, hash_text
 from market_monitor.logging_utils import LogPaths, configure_logging
 from market_monitor.manifest import resolve_git_commit
@@ -21,6 +21,7 @@ from market_monitor.regime import compute_regime
 from market_monitor.scoring.explain import build_explanations
 from market_monitor.scoring.gates import GateConfig, apply_gates, join_pipe
 from market_monitor.scoring.score import ScoreConfig, compute_score
+from market_monitor.tabular_io import read_tabular, resolve_named_table_path, resolve_partition_part_path
 from market_monitor.validation import validate_data
 from market_monitor.timebase import utcnow
 
@@ -70,8 +71,8 @@ def _load_watchlist(path: Path) -> pd.DataFrame:
 def _latest_common_date(symbols: list[str], ohlcv_dir: Path) -> str:
     max_dates = []
     for symbol in symbols:
-        path = ohlcv_dir / f"{symbol}.csv"
-        if not path.exists():
+        path = resolve_ohlcv_path(symbol, ohlcv_dir)
+        if path is None or not path.exists():
             continue
         df = read_ohlcv(path)
         if df.empty:
@@ -90,20 +91,24 @@ def _load_exogenous_features(
     manifest_hash = hash_file(manifest_path) if manifest_path.exists() else None
 
     df = None
-    if exogenous_dir.is_file() and exogenous_dir.suffix.lower() == ".csv":
-        df = pd.read_csv(exogenous_dir)
+    if exogenous_dir.is_file() and exogenous_dir.suffix.lower() in {".csv", ".parquet"}:
+        df = read_tabular(exogenous_dir)
     else:
-        preferred_join_ready = exogenous_dir / "gdelt_daily_join_ready.csv"
-        day_partition = exogenous_dir / f"day={asof_date}" / "part-00000.csv"
+        preferred_join_ready = resolve_named_table_path(exogenous_dir, ["gdelt_daily_join_ready"])
+        day_partition = resolve_partition_part_path(exogenous_dir, f"day={asof_date}")
 
-        if preferred_join_ready.exists():
-            df = pd.read_csv(preferred_join_ready)
-        elif day_partition.exists():
-            df = pd.read_csv(day_partition)
+        if preferred_join_ready is not None:
+            df = read_tabular(preferred_join_ready)
+        elif day_partition is not None:
+            df = read_tabular(day_partition)
         else:
-            candidates = sorted(exogenous_dir.glob("*.csv"))
+            candidates = sorted(
+                path
+                for path in exogenous_dir.iterdir()
+                if path.is_file() and path.suffix.lower() in {".csv", ".parquet"}
+            )
             if candidates:
-                df = pd.read_csv(candidates[0])
+                df = read_tabular(candidates[0])
 
     if df is None or df.empty:
         return {}, {"manifest_hash": manifest_hash, "coverage": 0, "missing_dates": [asof_date]}
@@ -286,7 +291,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
     )
 
     if config.get("pipeline", {}).get("auto_normalize_ohlcv", True):
-        if not paths.ohlcv_daily_dir.exists() or not list(paths.ohlcv_daily_dir.glob("*.csv")):
+        if not has_ohlcv_data(paths.ohlcv_daily_dir):
             _log_stage(logger, "ohlcv_normalize", "start", f"raw_dir={paths.ohlcv_raw_dir}")
             if not paths.ohlcv_raw_dir.exists():
                 raise FileNotFoundError(f"Raw OHLCV dir not found: {paths.ohlcv_raw_dir}")
@@ -300,6 +305,7 @@ def run_watchlist(args: argparse.Namespace) -> dict:
                 strict=False,
                 streaming=True,
                 chunk_rows=200_000,
+                write_format="parquet",
             )
             _log_stage(logger, "ohlcv_normalize", "end", f"out_dir={paths.ohlcv_daily_dir}")
 

@@ -57,3 +57,32 @@ def test_provision_imports_from_zip(tmp_path: Path) -> None:
     payload_exog = json.loads(result_exog.stdout)
     inventory_path_exog = Path(payload_exog["inventory_path"])
     assert inventory_path_exog.exists()
+
+
+def test_provision_import_ohlcv_normalize_can_write_parquet(tmp_path: Path) -> None:
+    fixtures_dir = Path(__file__).resolve().parent / "fixtures" / "provision" / "ohlcv_raw"
+    ohlcv_dest = tmp_path / "ohlcv_raw"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "market_monitor",
+            "provision",
+            "import-ohlcv",
+            "--src",
+            str(fixtures_dir),
+            "--dest",
+            str(ohlcv_dest),
+            "--normalize",
+            "--write-format",
+            "parquet",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    payload = json.loads(result.stdout)
+    assert payload["normalized_manifest"]
+    assert any((tmp_path / "ohlcv_daily").glob("*.parquet"))
