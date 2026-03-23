@@ -286,6 +286,33 @@ public class SampleDataServiceTests
         {
             return Task.FromResult(new RunDiffResult("a", "b", new RunDiffSummary(0, 0, 0, 0), Array.Empty<RunDiffRow>()));
         }
+
+        public Task<FolderConversionResult> ConvertFolderToParquetAsync(
+            string sourceDirectory,
+            string? outDirectory,
+            string? pythonPath,
+            bool strict = false,
+            CancellationToken cancellationToken = default)
+        {
+            var resolvedOutput = string.IsNullOrWhiteSpace(outDirectory)
+                ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(sourceDirectory)) ?? Path.GetFullPath(sourceDirectory), $"{Path.GetFileName(Path.GetFullPath(sourceDirectory))}_parquet")
+                : Path.GetFullPath(outDirectory);
+
+            return Task.FromResult(new FolderConversionResult(
+                ExitCode: 0,
+                Stdout: string.Empty,
+                Stderr: string.Empty,
+                SourceRoot: Path.GetFullPath(sourceDirectory),
+                OutputDirectory: resolvedOutput,
+                Strict: strict,
+                FilesScanned: 0,
+                FilesConverted: 0,
+                FilesSkipped: 0,
+                FilesWithErrors: 0,
+                ManifestPath: null,
+                InventoryCsvPath: null,
+                ReportPath: null));
+        }
     }
 
     private sealed class FakeChartProvider : IChartProvider

@@ -119,6 +119,20 @@ python -m market_monitor.cli storage migrate-parquet --market-root "C:\Users\mic
 
 During the transition release, OHLCV readers prefer `.parquet` and fall back to `.csv`. The canonical normalized OHLCV store is `Working CSV Files`, while duplicate normalized market folders are converted only for parity checks before archive. Raw market sources are mirrored into `raw_market_parquet/symbol=<SYMBOL>/<source_key>.parquet`, and apply mode writes an append-only `conversion_checkpoint.jsonl` so a long migration can be resumed safely with the same `--out-dir`.
 
+For a generic Windows folder path that is not one of the three Desktop storage roots, you can recursively convert supported tabular files into a mirrored Parquet tree without touching the source folder:
+
+```powershell
+cd market_app
+python -m market_monitor.cli storage convert-folder-parquet --source-root "C:\path\to\folder"
+```
+
+Optional:
+
+- `--out-dir "C:\path\to\folder_parquet"` to choose the output root explicitly
+- `--strict` to fail if any file is skipped instead of converted
+
+The Windows GUI also exposes this as a standalone converter window from the Run page so you can pick the source/output folders with the native folder picker instead of typing paths manually.
+
 ## Audit command
 
 ```bash

@@ -1,13 +1,17 @@
 using MarketApp.Gui.Core;
+using MarketApp.Gui.Services;
 
 namespace MarketApp.Gui.Pages;
 
 public partial class RunPage : ContentPage
 {
-    public RunPage(RunViewModel viewModel)
+    private readonly ParquetConverterWindowLauncher _parquetConverterWindowLauncher;
+
+    public RunPage(RunViewModel viewModel, ParquetConverterWindowLauncher parquetConverterWindowLauncher)
     {
         InitializeComponent();
         BindingContext = viewModel;
+        _parquetConverterWindowLauncher = parquetConverterWindowLauncher;
     }
 
     private async void OnInfoClicked(object? sender, EventArgs e)
@@ -68,11 +72,26 @@ public partial class RunPage : ContentPage
             "progress_events" => (
                 "Run Progress",
                 "This shows the step-by-step timeline. You only need it if you want to watch the run live or troubleshoot a failure."),
+            "parquet_converter" => (
+                "Standalone Parquet Converter",
+                "This opens a separate window where you can pick any Windows folder and convert supported CSV, TXT, JSON, or Parquet files into a Parquet output tree."),
             _ => (
                 "Info",
                 "This setting controls part of the run workflow for importing, processing, or executing analysis.")
         };
 
         await DisplayAlert(title, message, "Got it");
+    }
+
+    private async void OnOpenParquetConverterClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            _parquetConverterWindowLauncher.OpenWindow();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Converter Window Error", ex.Message, "Close");
+        }
     }
 }

@@ -13,6 +13,22 @@ public sealed record EngineRunRequest(
 
 public sealed record EngineCommandResult(int ExitCode, string Stdout, string Stderr);
 
+public sealed record FolderConversionResult(
+    int ExitCode,
+    string Stdout,
+    string Stderr,
+    string SourceRoot,
+    string OutputDirectory,
+    bool Strict,
+    int? FilesScanned,
+    int? FilesConverted,
+    int? FilesSkipped,
+    int? FilesWithErrors,
+    string? ManifestPath,
+    string? InventoryCsvPath,
+    string? ReportPath
+);
+
 public sealed record ConfigValidationIssue(string Path, string Message, string Severity);
 
 public sealed record ConfigValidationResult(bool Valid, IReadOnlyList<ConfigValidationIssue> Errors, string RawJson);
@@ -67,6 +83,13 @@ public interface IEngineBridgeService
         string writeFormat = "csv",
         CancellationToken cancellationToken = default);
 
+    Task<FolderConversionResult> ConvertFolderToParquetAsync(
+        string sourceDirectory,
+        string? outDirectory,
+        string? pythonPath,
+        bool strict = false,
+        CancellationToken cancellationToken = default);
+
     Task<RunDiffResult> DiffRunsAsync(
         string runA,
         string runB,
@@ -101,4 +124,12 @@ public interface IUserSettingsService
 {
     string? GetPythonPath();
     void SetPythonPath(string? pythonPath);
+}
+
+public interface IFolderPickerService
+{
+    Task<string?> PickFolderAsync(
+        string title,
+        string? initialPath = null,
+        CancellationToken cancellationToken = default);
 }

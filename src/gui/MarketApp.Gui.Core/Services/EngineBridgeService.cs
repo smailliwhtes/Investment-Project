@@ -405,6 +405,29 @@ public sealed class EngineBridgeService : IEngineBridgeService
             ResolveMarketAppRoot(),
             cancellationToken);
     }
+
+    public async Task<FolderConversionResult> ConvertFolderToParquetAsync(
+        string sourceDirectory,
+        string? outDirectory,
+        string? pythonPath,
+        bool strict = false,
+        CancellationToken cancellationToken = default)
+    {
+        var resolvedSourceDirectory = Path.GetFullPath(sourceDirectory);
+        var resolvedOutputDirectory = ResolveFolderConversionOutputDirectory(sourceDirectory, outDirectory);
+        var result = await RunCommandCaptureAsync(
+            ResolvePythonPath(pythonPath),
+            BuildFolderConversionArguments(sourceDirectory, outDirectory, strict),
+            ResolveMarketAppRoot(),
+            cancellationToken).ConfigureAwait(false);
+
+        return ParseFolderConversionResult(
+            result,
+            resolvedSourceDirectory,
+            resolvedOutputDirectory,
+            strict);
+    }
+
     public async Task<RunDiffResult> DiffRunsAsync(
         string runA,
         string runB,
@@ -707,6 +730,84 @@ public sealed class EngineBridgeService : IEngineBridgeService
         return args;
     }
 
+    internal static IReadOnlyList<string> BuildFolderConversionArguments(
+        string sourceDirectory,
+        string? outDirectory,
+        bool strict)
+    {
+        var args = new List<string>
+        {
+            "-m", "market_monitor.cli", "storage", "convert-folder-parquet",
+            "--source-root", Path.GetFullPath(sourceDirectory),
+        };
+        if (!string.IsNullOrWhiteSpace(outDirectory))
+        {
+            args.Add("--out-dir");
+            args.Add(Path.GetFullPath(outDirectory));
+        }
+        if (strict)
+        {
+            args.Add("--strict");
+        }
+
+        return args;
+    }
+
+    internal static FolderConversionResult ParseFolderConversionResult(
+        EngineCommandResult result,
+        string sourceDirectory,
+        string outputDirectory,
+        bool strict)
+    {
+        var parsed = TryParseFolderConversionPayload(
+            ExtractJsonPayload(result.Stdout),
+            result,
+            sourceDirectory,
+            outputDirectory,
+            strict);
+        if (parsed is not null)
+        {
+            return parsed;
+        }
+
+        var manifestPath = Path.Combine(outputDirectory, "folder_conversion_manifest.json");
+        if (File.Exists(manifestPath))
+        {
+            try
+            {
+                parsed = TryParseFolderConversionPayload(
+                    File.ReadAllText(manifestPath, Encoding.UTF8),
+                    result,
+                    sourceDirectory,
+                    outputDirectory,
+                    strict);
+                if (parsed is not null)
+                {
+                    return parsed;
+                }
+            }
+            catch
+            {
+                // Best-effort manifest hydration.
+            }
+        }
+
+        return new FolderConversionResult(
+            result.ExitCode,
+            result.Stdout,
+            result.Stderr,
+            sourceDirectory,
+            outputDirectory,
+            strict,
+            FilesScanned: null,
+            FilesConverted: null,
+            FilesSkipped: null,
+            FilesWithErrors: null,
+            ManifestPath: File.Exists(manifestPath) ? manifestPath : null,
+            InventoryCsvPath: null,
+            ReportPath: null);
+    }
+
     internal static bool ShouldRunPostRunActions(bool cancellationRequested, bool runHadError, bool runCompleted)
     {
         return !cancellationRequested && runCompleted && !runHadError;
@@ -960,6 +1061,79 @@ public sealed class EngineBridgeService : IEngineBridgeService
         return Path.GetFullPath(path, marketAppRoot);
     }
 
+    private static FolderConversionResult? TryParseFolderConversionPayload(
+        string? json,
+        EngineCommandResult result,
+        string sourceDirectory,
+        string outputDirectory,
+        bool strict)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var root = doc.RootElement;
+            var resolvedSource = GetString(root, "source_root") ?? sourceDirectory;
+            var resolvedOutput = GetString(root, "out_dir") ?? outputDirectory;
+            var resolvedStrict = GetBoolean(root, "strict") ?? strict;
+
+            int? scanned = null;
+            int? converted = null;
+            int? skipped = null;
+            int? errors = null;
+            if (root.TryGetProperty("summary", out var summaryNode) && summaryNode.ValueKind == JsonValueKind.Object)
+            {
+                scanned = GetInt(summaryNode, "scanned");
+                converted = GetInt(summaryNode, "converted");
+                skipped = GetInt(summaryNode, "skipped");
+                errors = GetInt(summaryNode, "errors");
+            }
+
+            return new FolderConversionResult(
+                result.ExitCode,
+                result.Stdout,
+                result.Stderr,
+                resolvedSource,
+                resolvedOutput,
+                resolvedStrict,
+                FilesScanned: scanned,
+                FilesConverted: converted,
+                FilesSkipped: skipped,
+                FilesWithErrors: errors,
+                ManifestPath: GetString(root, "manifest_path"),
+                InventoryCsvPath: GetString(root, "inventory_csv_path"),
+                ReportPath: GetString(root, "report_path"));
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string ResolveFolderConversionOutputDirectory(string sourceDirectory, string? outDirectory)
+    {
+        if (!string.IsNullOrWhiteSpace(outDirectory))
+        {
+            return Path.GetFullPath(outDirectory);
+        }
+
+        var sourceInfo = new DirectoryInfo(Path.GetFullPath(sourceDirectory));
+        var parentDirectory = sourceInfo.Parent?.FullName ?? sourceInfo.FullName;
+        var folderName = string.IsNullOrWhiteSpace(sourceInfo.Name)
+            ? "_parquet"
+            : $"{sourceInfo.Name}_parquet";
+        return Path.GetFullPath(Path.Combine(parentDirectory, folderName));
+    }
+
     private static string ResolveMarketAppRoot()
     {
         var repoRoot = ResolveRepoRoot();
@@ -1064,6 +1238,22 @@ public sealed class EngineBridgeService : IEngineBridgeService
         }
 
         return null;
+    }
+
+    private static bool? GetBoolean(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var node))
+        {
+            return null;
+        }
+
+        return node.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(node.GetString(), out var parsed) => parsed,
+            _ => null
+        };
     }
 }
 

@@ -138,6 +138,22 @@ public class EngineBridgeServiceTests
     }
 
     [Fact]
+    public void BuildFolderConversionArguments_IncludesSourceOutputAndStrict()
+    {
+        var args = EngineBridgeService.BuildFolderConversionArguments(
+            sourceDirectory: "input-folder",
+            outDirectory: "output-folder",
+            strict: true);
+
+        Assert.Equal(new[] { "-m", "market_monitor.cli", "storage", "convert-folder-parquet" }, args.Take(4));
+        Assert.Contains("--source-root", args);
+        Assert.Contains(Path.GetFullPath("input-folder"), args);
+        Assert.Contains("--out-dir", args);
+        Assert.Contains(Path.GetFullPath("output-folder"), args);
+        Assert.Contains("--strict", args);
+    }
+
+    [Fact]
     public void ResolveConfigPath_UsesMarketAppRelativePathWhenRepoRelativeMissing()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "engine_bridge_cfg_" + Guid.NewGuid().ToString("N"));
@@ -208,6 +224,7 @@ public class EngineBridgeServiceTests
 
         Assert.Equal(expected, actual);
     }
+
     [Fact]
     public void BuildStartInfo_SetsPythonUtf8Environment()
     {
@@ -218,6 +235,83 @@ public class EngineBridgeServiceTests
 
         Assert.Equal("1", info.Environment["PYTHONUTF8"]);
         Assert.Equal("utf-8", info.Environment["PYTHONIOENCODING"]);
+    }
+
+    [Fact]
+    public void ParseFolderConversionResult_UsesStdoutJsonSummary()
+    {
+        var result = new EngineCommandResult(
+            0,
+            "{" +
+            "\"source_root\":\"C:/input\"," +
+            "\"out_dir\":\"C:/output\"," +
+            "\"strict\":true," +
+            "\"summary\":{\"scanned\":5,\"converted\":4,\"skipped\":1,\"errors\":0}," +
+            "\"manifest_path\":\"C:/output/folder_conversion_manifest.json\"," +
+            "\"inventory_csv_path\":\"C:/output/folder_conversion_inventory.csv\"," +
+            "\"report_path\":\"C:/output/folder_conversion_report.md\"" +
+            "}",
+            string.Empty);
+
+        var parsed = EngineBridgeService.ParseFolderConversionResult(
+            result,
+            sourceDirectory: @"C:\fallback-input",
+            outputDirectory: @"C:\fallback-output",
+            strict: false);
+
+        Assert.Equal("C:/input", parsed.SourceRoot);
+        Assert.Equal("C:/output", parsed.OutputDirectory);
+        Assert.True(parsed.Strict);
+        Assert.Equal(5, parsed.FilesScanned);
+        Assert.Equal(4, parsed.FilesConverted);
+        Assert.Equal(1, parsed.FilesSkipped);
+        Assert.Equal(0, parsed.FilesWithErrors);
+        Assert.Equal("C:/output/folder_conversion_manifest.json", parsed.ManifestPath);
+    }
+
+    [Fact]
+    public void ParseFolderConversionResult_FallsBackToManifestFile()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "engine_bridge_folder_conv_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var manifestPath = Path.Combine(tempDir, "folder_conversion_manifest.json");
+            File.WriteAllText(
+                manifestPath,
+                "{" +
+                "\"source_root\":\"C:/from-manifest\"," +
+                "\"out_dir\":\"" + tempDir.Replace("\\", "/") + "\"," +
+                "\"strict\":false," +
+                "\"summary\":{\"scanned\":2,\"converted\":1,\"skipped\":1,\"errors\":0}," +
+                "\"manifest_path\":\"" + manifestPath.Replace("\\", "/") + "\"," +
+                "\"inventory_csv_path\":\"" + Path.Combine(tempDir, "folder_conversion_inventory.csv").Replace("\\", "/") + "\"," +
+                "\"report_path\":\"" + Path.Combine(tempDir, "folder_conversion_report.md").Replace("\\", "/") + "\"" +
+                "}",
+                System.Text.Encoding.UTF8);
+
+            var parsed = EngineBridgeService.ParseFolderConversionResult(
+                new EngineCommandResult(4, string.Empty, "strict failure"),
+                sourceDirectory: @"C:\fallback-input",
+                outputDirectory: tempDir,
+                strict: true);
+
+            Assert.Equal(4, parsed.ExitCode);
+            Assert.Equal("C:/from-manifest", parsed.SourceRoot);
+            Assert.Equal(2, parsed.FilesScanned);
+            Assert.Equal(1, parsed.FilesConverted);
+            Assert.Equal(1, parsed.FilesSkipped);
+            Assert.Equal(0, parsed.FilesWithErrors);
+            Assert.Equal(manifestPath.Replace("\\", "/"), parsed.ManifestPath);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
     }
 }
 

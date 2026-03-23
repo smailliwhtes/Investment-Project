@@ -176,3 +176,31 @@ These files must remain deterministic for the same offline inputs and config.
 - `conversion_checkpoint.jsonl` (append-only resume/checkpoint log for apply mode)
 
 These storage artifacts are additive and must not change the core run/evaluate/GUI contracts.
+
+## Generic folder-to-Parquet artifacts
+
+`python -m market_monitor.cli storage convert-folder-parquet --source-root <path> [--out-dir <dir>] [--strict]` should:
+
+- recurse through the selected source folder
+- convert supported tabular inputs to Parquet under the mirrored output tree
+- leave source files unchanged
+
+Supported input suffixes:
+
+- `.csv`
+- `.tsv`
+- `.tab`
+- `.psv`
+- `.txt` (tabular only)
+- `.json`
+- `.jsonl`
+- `.ndjson`
+- `.parquet`
+
+It should produce at the output root:
+
+- `folder_conversion_manifest.json`
+- `folder_conversion_inventory.csv`
+- `folder_conversion_report.md`
+
+These conversion artifacts are additive and must not change the core run/evaluate/GUI contracts.

@@ -16,6 +16,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IRunDiscoveryService, RunDiscoveryService>();
         builder.Services.AddSingleton<IRunCompareService, RunCompareService>();
         builder.Services.AddSingleton<IQualityMetricsService, QualityMetricsService>();
+        builder.Services.AddSingleton<IFolderPickerService, WindowsFolderPickerService>();
+        builder.Services.AddSingleton<ParquetConverterWindowLauncher>();
 
         builder.Services.AddSingleton<SampleDataService>();
         builder.Services.AddSingleton<ISecretsStore, SecureSecretsStore>();
@@ -28,6 +30,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<UniverseViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
         builder.Services.AddSingleton<LogsViewModel>();
+        builder.Services.AddTransient<ParquetConverterViewModel>();
 
         builder.Services.AddSingleton<Pages.DashboardPage>();
         builder.Services.AddSingleton<Pages.RunPage>();
@@ -36,6 +39,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<Pages.UniversePage>();
         builder.Services.AddSingleton<Pages.SettingsPage>();
         builder.Services.AddSingleton<Pages.LogsPage>();
+        builder.Services.AddTransient<Pages.ParquetConverterPage>();
         builder.Services.AddSingleton<AppShell>();
 
         return builder.Build();

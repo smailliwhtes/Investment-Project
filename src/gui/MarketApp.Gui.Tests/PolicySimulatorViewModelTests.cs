@@ -168,6 +168,9 @@ public class PolicySimulatorViewModelTests
         public Task<EngineCommandResult> ImportExogenousAsync(string sourceDirectory, string destinationDirectory, string? pythonPath, bool normalize = true, string? normalizedDestinationDirectory = null, string fileGlob = "*.csv", string formatHint = "auto", string writeFormat = "csv", CancellationToken cancellationToken = default)
             => throw new NotImplementedException();
 
+        public Task<FolderConversionResult> ConvertFolderToParquetAsync(string sourceDirectory, string? outDirectory, string? pythonPath, bool strict = false, CancellationToken cancellationToken = default)
+            => throw new NotImplementedException();
+
         public Task<RunDiffResult> DiffRunsAsync(string runA, string runB, string? pythonPath, CancellationToken cancellationToken = default)
             => throw new NotImplementedException();
     }

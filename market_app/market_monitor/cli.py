@@ -37,6 +37,7 @@ from market_monitor.io import (
     write_csv,
 )
 from market_monitor.features.io import read_ohlcv, resolve_ohlcv_path
+from market_monitor.folder_to_parquet import convert_folder_to_parquet
 from market_monitor.gdelt.doctor import normalize_corpus
 from market_monitor.hash_utils import hash_file
 from market_monitor.logging_utils import get_console_logger
@@ -1581,6 +1582,27 @@ def run_storage_migrate(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_storage_convert_folder(args: argparse.Namespace) -> int:
+    try:
+        summary = convert_folder_to_parquet(
+            source_root=Path(args.source_root),
+            out_dir=Path(args.out_dir) if args.out_dir else None,
+            strict=bool(args.strict),
+        )
+    except FileNotFoundError as exc:
+        print(f"[error] {exc}")
+        return 3
+    except ValueError as exc:
+        print(f"[error] {exc}")
+        return 2
+    except RuntimeError as exc:
+        print(f"[error] {exc}")
+        return 4
+
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser("market-monitor")
     parser.add_argument(
@@ -1796,6 +1818,19 @@ def build_parser() -> argparse.ArgumentParser:
     storage_mode.add_argument("--dry-run", action="store_true", default=False)
     storage_mode.add_argument("--apply", action="store_true", default=False)
 
+    storage_convert_parser = storage_sub.add_parser(
+        "convert-folder-parquet",
+        help="Recursively convert supported tabular files in an arbitrary folder tree to Parquet",
+    )
+    storage_convert_parser.add_argument("--source-root", required=True)
+    storage_convert_parser.add_argument("--out-dir")
+    storage_convert_parser.add_argument(
+        "--strict",
+        action="store_true",
+        default=False,
+        help="Fail if any file is skipped instead of converted.",
+    )
+
     evaluate_parser = sub.add_parser("evaluate", help="Run offline evaluation harness")
     evaluate_parser.add_argument("--config", default="config.yaml")
     evaluate_parser.add_argument("--outdir")
@@ -1932,6 +1967,8 @@ def main(argv: list[str] | None = None) -> int:
             return run_storage_audit(args)
         if args.storage_command == "migrate-parquet":
             return run_storage_migrate(args)
+        if args.storage_command == "convert-folder-parquet":
+            return run_storage_convert_folder(args)
         return 2
 
     if args.command == "bulk-plan":

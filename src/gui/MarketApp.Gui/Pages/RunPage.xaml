@@ -212,6 +212,20 @@
         </VerticalStackLayout>
       </Frame>
 
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="10">
+          <HorizontalStackLayout Spacing="6">
+            <Label Text="Standalone Parquet converter" Style="{StaticResource SectionTitleStyle}" />
+            <Button Style="{StaticResource InfoIconButtonStyle}" CommandParameter="parquet_converter" Clicked="OnInfoClicked" />
+          </HorizontalStackLayout>
+          <Label Style="{StaticResource FieldLabelStyle}" Text="Open a separate converter window when you want to pick any Windows folder and rewrite its supported files into a Parquet tree." />
+          <Button Style="{StaticResource ActionButtonStyle}"
+                  Text="Open Parquet converter"
+                  Clicked="OnOpenParquetConverterClicked"
+                  IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+        </VerticalStackLayout>
+      </Frame>
+
       <ProgressBar Progress="{Binding Progress}" />
       <Label Text="{Binding Status}" FontSize="14" />
 

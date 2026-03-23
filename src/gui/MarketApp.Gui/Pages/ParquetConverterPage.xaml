@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MarketApp.Gui.Pages.ParquetConverterPage"
+             Title="Folder To Parquet">
+  <ContentPage.Resources>
+    <ResourceDictionary>
+      <Style x:Key="PageTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontAttributes" Value="Bold" />
+      </Style>
+
+      <Style x:Key="SectionTitleStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontAttributes" Value="Bold" />
+      </Style>
+
+      <Style x:Key="FieldLabelStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="VerticalTextAlignment" Value="Center" />
+      </Style>
+
+      <Style x:Key="InputEntryStyle" TargetType="Entry">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinimumHeightRequest" Value="40" />
+      </Style>
+
+      <Style x:Key="ActionButtonStyle" TargetType="Button">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinimumHeightRequest" Value="38" />
+        <Setter Property="Padding" Value="14,8" />
+      </Style>
+
+      <Style x:Key="BodyTextStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="LineBreakMode" Value="WordWrap" />
+      </Style>
+    </ResourceDictionary>
+  </ContentPage.Resources>
+
+  <ScrollView>
+    <VerticalStackLayout Padding="18" Spacing="14">
+      <Label Text="Folder To Parquet Converter" Style="{StaticResource PageTitleStyle}" />
+      <Label Style="{StaticResource BodyTextStyle}"
+             Text="Pick a Windows folder, convert every supported tabular file in that tree to Parquet, and keep the source files untouched." />
+
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="12">
+          <Label Text="Conversion Setup" Style="{StaticResource SectionTitleStyle}" />
+
+          <Grid ColumnDefinitions="180,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="10">
+            <Label Grid.Row="0" Grid.Column="0" Text="Source folder" Style="{StaticResource FieldLabelStyle}" />
+            <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <Entry Grid.Column="0"
+                     Style="{StaticResource InputEntryStyle}"
+                     Placeholder="Choose the folder to convert"
+                     Text="{Binding SourceDirectory}" />
+              <Button Grid.Column="1"
+                      Style="{StaticResource ActionButtonStyle}"
+                      Text="Browse"
+                      Command="{Binding BrowseSourceFolderCommand}"
+                      IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+            </Grid>
+
+            <Label Grid.Row="1" Grid.Column="0" Text="Output folder" Style="{StaticResource FieldLabelStyle}" />
+            <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <Entry Grid.Column="0"
+                     Style="{StaticResource InputEntryStyle}"
+                     Placeholder="Leave blank to use the default sibling folder"
+                     Text="{Binding OutputDirectory}" />
+              <Button Grid.Column="1"
+                      Style="{StaticResource ActionButtonStyle}"
+                      Text="Browse"
+                      Command="{Binding BrowseOutputFolderCommand}"
+                      IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+            </Grid>
+
+            <Label Grid.Row="2" Grid.Column="0" Text="Python runner" Style="{StaticResource FieldLabelStyle}" />
+            <Entry Grid.Row="2"
+                   Grid.Column="1"
+                   Style="{StaticResource InputEntryStyle}"
+                   Placeholder="python"
+                   Text="{Binding PythonPath}" />
+
+            <Label Grid.Row="3"
+                   Grid.Column="1"
+                   Style="{StaticResource BodyTextStyle}"
+                   Text="{Binding OutputDirectoryHint}" />
+
+            <HorizontalStackLayout Grid.Row="4" Grid.Column="1" Spacing="8">
+              <CheckBox IsChecked="{Binding StrictMode}" />
+              <Label Style="{StaticResource FieldLabelStyle}"
+                     Text="Strict mode: fail the run if any file is skipped instead of converted." />
+            </HorizontalStackLayout>
+          </Grid>
+
+          <HorizontalStackLayout Spacing="8">
+            <Button Style="{StaticResource ActionButtonStyle}"
+                    Text="Start conversion"
+                    Command="{Binding StartConversionCommand}"
+                    IsEnabled="{Binding IsRunning, Converter={StaticResource InverseBoolConverter}}" />
+            <Button Style="{StaticResource ActionButtonStyle}"
+                    Text="Cancel"
+                    Command="{Binding CancelCommand}"
+                    IsEnabled="{Binding IsRunning}" />
+          </HorizontalStackLayout>
+        </VerticalStackLayout>
+      </Frame>
+
+      <Frame Padding="14">
+        <VerticalStackLayout Spacing="8">
+          <Label Text="Status" Style="{StaticResource SectionTitleStyle}" />
+          <Label Text="{Binding Status}" FontSize="14" FontAttributes="Bold" />
+          <Label Text="{Binding ResultDetail}" Style="{StaticResource BodyTextStyle}" />
+        </VerticalStackLayout>
+      </Frame>
+
+      <Frame Padding="14" IsVisible="{Binding HasSummary}">
+        <VerticalStackLayout Spacing="12">
+          <Label Text="Last Conversion Summary" Style="{StaticResource SectionTitleStyle}" />
+
+          <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="6">
+            <Label Grid.Row="0" Grid.Column="0" Text="Scanned" Style="{StaticResource FieldLabelStyle}" />
+            <Label Grid.Row="0" Grid.Column="1" Text="Converted" Style="{StaticResource FieldLabelStyle}" />
+            <Label Grid.Row="0" Grid.Column="2" Text="Skipped" Style="{StaticResource FieldLabelStyle}" />
+            <Label Grid.Row="0" Grid.Column="3" Text="Errors" Style="{StaticResource FieldLabelStyle}" />
+
+            <Label Grid.Row="1" Grid.Column="0" Text="{Binding FilesScanned, StringFormat='{}{0:N0}'}" FontSize="18" FontAttributes="Bold" />
+            <Label Grid.Row="1" Grid.Column="1" Text="{Binding FilesConverted, StringFormat='{}{0:N0}'}" FontSize="18" FontAttributes="Bold" />
+            <Label Grid.Row="1" Grid.Column="2" Text="{Binding FilesSkipped, StringFormat='{}{0:N0}'}" FontSize="18" FontAttributes="Bold" />
+            <Label Grid.Row="1" Grid.Column="3" Text="{Binding FilesWithErrors, StringFormat='{}{0:N0}'}" FontSize="18" FontAttributes="Bold" />
+          </Grid>
+
+          <VerticalStackLayout Spacing="6">
+            <Label Text="Artifacts" Style="{StaticResource FieldLabelStyle}" />
+            <Label IsVisible="{Binding HasManifestPath}"
+                   Style="{StaticResource BodyTextStyle}"
+                   Text="{Binding ManifestPath, StringFormat='Manifest: {0}'}" />
+            <Label IsVisible="{Binding HasInventoryCsvPath}"
+                   Style="{StaticResource BodyTextStyle}"
+                   Text="{Binding InventoryCsvPath, StringFormat='Inventory CSV: {0}'}" />
+            <Label IsVisible="{Binding HasReportPath}"
+                   Style="{StaticResource BodyTextStyle}"
+                   Text="{Binding ReportPath, StringFormat='Report: {0}'}" />
+          </VerticalStackLayout>
+        </VerticalStackLayout>
+      </Frame>
+    </VerticalStackLayout>
+  </ScrollView>
+</ContentPage>

@@ -188,6 +188,21 @@ Notes:
 - This command is additive and must not overwrite canonical `<run_dir>/ml/` promoted-model artifacts.
 - The wrapper entrypoint `python -m market_app.cli ml benchmark ...` should delegate to the same engine contract.
 
+7) Recursively convert an arbitrary folder tree of supported tabular files into Parquet (optional but supported):
+- `python -m market_monitor.cli storage convert-folder-parquet --source-root <path> [--out-dir <dir>] [--strict]`
+
+Supported inputs:
+- `.csv`, `.tsv`, `.tab`, `.psv`, `.txt` (tabular only), `.json`, `.jsonl`, `.ndjson`, `.parquet`
+
+Outputs:
+- Mirrors the source folder structure under `<out-dir>` (default: sibling `<source-root>_parquet`)
+- Writes `folder_conversion_manifest.json`, `folder_conversion_inventory.csv`, and `folder_conversion_report.md` to the output root
+
+Notes:
+- Source files are never modified in place.
+- Unsupported or empty files are reported as skipped by default.
+- `--strict` fails the command if any file is skipped instead of converted.
+
 ### 4.2 Exit codes (engine)
 - `0`: success (all required artifacts produced)
 - `2`: invalid config / schema validation failure
