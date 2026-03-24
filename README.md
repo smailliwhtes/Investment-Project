@@ -133,6 +133,14 @@ Optional:
 
 The Windows GUI also exposes this as a standalone converter window from the Run page so you can pick the source/output folders with the native folder picker instead of typing paths manually.
 
+If you want a dedicated double-clickable converter app instead of the full dashboard shell, publish `src/gui/MarketApp.ParquetConverter/MarketApp.ParquetConverter.csproj`:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/publish_parquet_converter.ps1
+```
+
+That writes the standalone executable to `artifacts/parquet-converter/MarketApp.ParquetConverter.exe`.
+
 ## Audit command
 
 ```bash
